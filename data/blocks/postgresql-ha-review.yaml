@@ -1,0 +1,29 @@
+slug: "postgresql-ha-review"
+version: "1.0.0"
+domain: postgresql
+intent: review
+last_verified: "2026-04-11"
+tags: [postgresql, ha, replication, reliability, review]
+context_weight: 900
+provides: [db-reliability]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["postgresql-patterns-build"]
+
+constraints:
+  - "Verify the replication lag between the primary and standby nodes using pg_stat_replication"
+  - "Ensure that automated failover (e.g., via Patroni or Stolon) is configured and tested regularly"
+  - "Implement connection pooling (pgBouncer) to handle a large number of client connections efficiently"
+  - "Use a separate read-only endpoint for analytics or heavy reporting queries to reduce load on the primary"
+  - "Review the backup strategy: ensure Point-in-Time Recovery (PITR) is possible and backups are stored off-site"
+
+anti_patterns:
+  - "Do not rely on a single database instance for production-critical applications"
+  - "Do not perform manual failover unless in an extreme emergency — automated systems are much faster and less prone to error"
+  - "Do not forget to monitor disk space on the primary node to prevent WAL buildup from stalling replication"
+
+doc_anchors:
+  - url: "https://www.postgresql.org/docs/current/high-availability.html"
+    verified: "2026-04-11"
+  - url: "https://patroni.readthedocs.io/en/latest/"
+    verified: "2026-04-11"

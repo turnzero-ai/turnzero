@@ -1,0 +1,27 @@
+slug: "typescript-generics-debug"
+version: "1.0.0"
+domain: typescript
+intent: debug
+last_verified: "2026-04-11"
+tags: [typescript, generics, debugging, types]
+context_weight: 700
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["typescript-strict-build"]
+
+constraints:
+  - "Use 'extends' to constrain generic parameters (e.g., <T extends object>) to avoid 'any' fallback"
+  - "Use 'infer' within conditional types to extract nested types dynamically"
+  - "Provide default values for generic parameters (<T = string>) to simplify usage when the type is predictable"
+  - "Use 'keyof' and 'T[K]' to maintain type safety when accessing properties dynamically"
+  - "Debug complex types by hovering over them in VS Code or using a Type-level logger utility"
+
+anti_patterns:
+  - "Do not over-complicate generics — if a type takes more than 3 parameters, consider if it should be split or simplified"
+  - "Do not use 'any' when you can't figure out a generic constraint — use 'unknown' and a type guard instead"
+  - "Do not forget that generic constraints are checked at the call site, not just inside the definition"
+
+doc_anchors:
+  - url: "https://www.typescriptlang.org/docs/handbook/2/generics.html"
+    verified: "2026-04-11"

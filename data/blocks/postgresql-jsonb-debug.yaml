@@ -1,0 +1,29 @@
+slug: "postgresql-jsonb-debug"
+version: "1.0.0"
+domain: postgresql
+intent: debug
+last_verified: "2026-04-11"
+tags: [postgresql, jsonb, sql, debugging]
+context_weight: 700
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use ->> to extract values as text when comparing to strings, or -> for JSON object extraction"
+  - "Ensure you have a GIN index on jsonb columns if you're frequently querying by keys or containment (@>)"
+  - "Cast extracted values explicitly when performing mathematical operations (e.g., (data->>'price')::numeric)"
+  - "Use jsonb_set to update specific keys rather than replacing the entire JSON object"
+  - "Validate that JSON keys are present using the ? or ?| operators before extracting values to avoid NULL issues"
+
+anti_patterns:
+  - "Do not use the JSON type for large documents — always use JSONB for performance and indexing"
+  - "Do not perform complex joins using JSONB keys if they can be normalized into separate columns"
+  - "Do not forget to use double quotes for keys that are reserved words or contain special characters"
+
+doc_anchors:
+  - url: "https://www.postgresql.org/docs/current/datatype-json.html"
+    verified: "2026-04-11"
+  - url: "https://www.postgresql.org/docs/current/functions-json.html"
+    verified: "2026-04-11"

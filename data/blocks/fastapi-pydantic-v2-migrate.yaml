@@ -1,0 +1,27 @@
+slug: "fastapi-pydantic-v2-migrate"
+version: "1.0.0"
+domain: fastapi
+intent: migrate
+last_verified: "2026-04-11"
+tags: [fastapi, pydantic, migration, pydantic-v2]
+context_weight: 800
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use model_validate() instead of from_orm() for creating models from objects"
+  - "Use model_dump() instead of dict() for converting models to dictionaries"
+  - "Update Field(regex=...) to Field(pattern=...) for string validation"
+  - "Use GenericBeforeBaseModel or similar if you were using root_validators with pre=True"
+  - "Replace .json() with .model_dump_json() for JSON serialization"
+
+anti_patterns:
+  - "Do not use class Config: for model configuration — use ConfigDict instead"
+  - "Do not use validator() or root_validator() — use field_validator() and model_validator() decorators"
+  - "Do not expect .schema() to work — use .model_json_schema() instead"
+
+doc_anchors:
+  - url: "https://docs.pydantic.dev/latest/migration/"
+    verified: "2026-04-11"

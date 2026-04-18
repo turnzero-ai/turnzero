@@ -1,0 +1,20 @@
+id: fastapi-pydantic-v2-migration-build
+version: 1.0.0
+domain: fastapi
+intent: migrate
+last_verified: '2026-04-11'
+tags:
+- pydantic
+- migration
+context_weight: 16
+conflicts_with: []
+requires: []
+constraints:
+- do not use `.dict()` instead of `.model_dump()`
+- do not use `@validator` instead of `@field_validator`
+anti_patterns:
+- Do not import `BaseModel` from `pydantic.v1`
+- Do not import `BaseModel` from `pydantic`
+doc_anchors:
+- url: https://fastapi.tiangolo.com/tutorial/pydantic-v2/
+  verified: '2026-04-11'

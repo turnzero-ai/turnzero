@@ -1,0 +1,18 @@
+id: supabase-auth-block-3
+version: 1.0.0
+domain: supabase
+intent: migrate
+last_verified: '2026-04-11'
+tags:
+- supabase
+- auth
+context_weight: 12
+conflicts_with: []
+requires: []
+constraints:
+- Use the PKCE flow for auth with Supabase
+- Don't use the PKCE flow without proper setup
+anti_patterns:
+- Avoid using the PKCE flow for auth without proper setup
+- Don't use the PKCE flow for auth without proper setup
+doc_anchors: []

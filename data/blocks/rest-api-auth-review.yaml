@@ -1,0 +1,29 @@
+slug: "rest-api-auth-review"
+version: "1.0.0"
+domain: rest-api
+intent: review
+last_verified: "2026-04-11"
+tags: [api, rest, auth, security, review, jwt]
+context_weight: 850
+provides: [api-auth]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["rest-api-design-review"]
+
+constraints:
+  - "Use standard Authorization headers (e.g., Authorization: Bearer <token>) for passing credentials"
+  - "Review JWT implementation: ensure they are signed with a strong algorithm (RS256) and have a short expiration (exp)"
+  - "Implement refresh token logic to allow users to stay logged in without long-lived access tokens"
+  - "Ensure that all sensitive endpoints are protected by an authentication check and appropriate scope/role checks"
+  - "Verify that logout invalidates the session or token (e.g., via a denylist for JWTs or session deletion)"
+
+anti_patterns:
+  - "Do not pass authentication tokens in query parameters — they are often logged by servers and proxies"
+  - "Do not use basic auth over non-HTTPS connections"
+  - "Do not store secrets or sensitive data inside JWT payloads — they are easily decoded by anyone"
+
+doc_anchors:
+  - url: "https://auth0.com/docs/secure/api-security/api-authorization/best-practices"
+    verified: "2026-04-11"
+  - url: "https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html"
+    verified: "2026-04-11"

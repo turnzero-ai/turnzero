@@ -1,0 +1,29 @@
+slug: "react-native-testing-review"
+version: "1.0.0"
+domain: react-native
+intent: review
+last_verified: "2026-04-11"
+tags: [react-native, testing, review, jest, mobile]
+context_weight: 850
+provides: [mobile-testing]
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use React Native Testing Library (@testing-library/react-native) for component tests — focus on user behavior, not implementation"
+  - "Mock native modules using jest.mock() to prevent tests from failing due to missing native environments"
+  - "Use user-event for simulating interactions like pressing and typing for more realistic tests"
+  - "Check for 'act()' warnings in tests, which usually indicate unhandled async state updates"
+  - "Implement end-to-end tests using Detox or Maestro for critical user flows on real devices/simulators"
+
+anti_patterns:
+  - "Do not use enzyme — it's deprecated and encourages testing implementation details"
+  - "Do not rely on snapshot testing for everything — they are brittle and don't verify behavior"
+  - "Do not skip testing for accessibility: use accessibilityRole and accessibilityLabel and verify them in tests"
+
+doc_anchors:
+  - url: "https://callstack.github.io/react-native-testing-library/"
+    verified: "2026-04-11"
+  - url: "https://jestjs.io/docs/tutorial-react-native"
+    verified: "2026-04-11"

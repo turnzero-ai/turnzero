@@ -1,0 +1,27 @@
+slug: go-http-build
+version: "1.0.0"
+domain: go
+intent: build
+title: "Go HTTP server — build"
+description: "Prevents common Go 1.22+ HTTP server mistakes"
+last_verified: "2026-04-18"
+tags: [go, http, net/http, middleware, routing]
+context_weight: 900
+conflicts_with: []
+requires: []
+constraints:
+  - "Use Go 1.22+ ServeMux with typed path parameters ({id} syntax); no third-party router needed for simple APIs"
+  - "Always pass context.Context as the first argument to every handler and downstream function"
+  - "Use http.Error() for error responses; write status code before body; never write body then status"
+  - "Wrap handlers with middleware using adapter pattern: func(http.Handler) http.Handler"
+  - "Set read/write timeouts on http.Server — never use http.ListenAndServe() directly in production"
+anti_patterns:
+  - "Do not use gorilla/mux or chi for simple routing — Go 1.22 ServeMux handles method+path matching natively"
+  - "Do not ignore the error from r.Body.Close() in handlers — defer r.Body.Close() immediately"
+  - "Do not call w.WriteHeader() after writing to w — headers must be set before any Write() call"
+  - "Do not use global http.DefaultServeMux in production — always create a dedicated mux"
+doc_anchors:
+  - url: "https://pkg.go.dev/net/http"
+    verified: "2026-04-18"
+  - url: "https://go.dev/blog/routing-enhancements"
+    verified: "2026-04-18"

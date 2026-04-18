@@ -1,0 +1,29 @@
+slug: "postgresql-security-review"
+version: "1.0.0"
+domain: postgresql
+intent: review
+last_verified: "2026-04-11"
+tags: [postgresql, security, rls, review, sql]
+context_weight: 800
+provides: [db-security]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["postgresql-patterns-build"]
+
+constraints:
+  - "Enable Row Level Security (RLS) on all tables containing sensitive or user-specific data"
+  - "Use the principle of least privilege: create dedicated roles for the application, migration, and read-only access"
+  - "Enforce SSL/TLS for all connections to the database in production"
+  - "Audit all functions marked as SECURITY DEFINER — they execute with the privileges of the owner, not the caller"
+  - "Use parameterized queries or ORM features to prevent SQL injection — never concatenate user input into SQL strings"
+
+anti_patterns:
+  - "Do not use the 'postgres' superuser for application connections"
+  - "Do not store passwords in plain text — use pgcrypto for hashing if done in-database, or handle in the app layer"
+  - "Do not expose the database port (5432) to the public internet — use a VPN or private network"
+
+doc_anchors:
+  - url: "https://www.postgresql.org/docs/current/ddl-rls.html"
+    verified: "2026-04-11"
+  - url: "https://www.postgresql.org/docs/current/security-best-practices.html"
+    verified: "2026-04-11"

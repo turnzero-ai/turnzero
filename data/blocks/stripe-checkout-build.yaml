@@ -1,0 +1,29 @@
+slug: "stripe-checkout-build"
+version: "1.0.0"
+domain: stripe
+intent: build
+last_verified: "2026-04-11"
+tags: [stripe, payments, checkout, build]
+context_weight: 850
+provides: [payment-provider]
+conflicts_with_tags: [payment-provider]
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use Stripe Checkout for pre-built payment pages to reduce PCI compliance burden"
+  - "Always handle webhooks (stripe-events) to update order status — never rely solely on the client-side redirect"
+  - "Use the official Stripe SDK for your language; do not construct raw HTTP requests to the Stripe API"
+  - "Pass a unique idempotency-key in the headers for all mutation requests to prevent double-charging"
+  - "Store the Stripe Customer ID in your database, but never store raw credit card numbers"
+
+anti_patterns:
+  - "Do not use the secret API key on the client side — it must only live in server-side environment variables"
+  - "Do not skip signature verification when receiving webhooks — it's essential to prevent spoofing"
+  - "Do not hardcode price IDs; retrieve them from environment variables or the database"
+
+doc_anchors:
+  - url: "https://stripe.com/docs/payments/checkout"
+    verified: "2026-04-11"
+  - url: "https://stripe.com/docs/webhooks"
+    verified: "2026-04-11"

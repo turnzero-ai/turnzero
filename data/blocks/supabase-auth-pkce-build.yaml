@@ -1,0 +1,32 @@
+slug: "supabase-auth-pkce-build"
+version: "1.0.0"
+domain: supabase
+intent: build
+last_verified: "2026-04-11"
+tags: [supabase, auth, nextjs, pkce, ssr]
+context_weight: 750
+provides: ["auth-provider"]
+conflicts_with_tags: ["auth-provider"]
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use @supabase/ssr not @supabase/auth-helpers-nextjs — auth-helpers is deprecated as of 2024"
+  - "Create two separate clients: createServerClient (server components, route handlers, middleware) and createBrowserClient (client components) — they are not interchangeable"
+  - "Use PKCE flow for all redirect-based auth (OAuth, magic links, email confirmation) — set flowType: 'pkce' in createBrowserClient options"
+  - "Store auth cookies using the cookies() API in middleware and server components — never localStorage for SSR apps"
+  - "Enable Row Level Security (RLS) on every table before exposing it — no exceptions, even for dev"
+  - "Refresh session in middleware on every request: call supabase.auth.getUser() not getSession() — getSession() reads from cookie without server verification"
+
+anti_patterns:
+  - "Do not use the service role key on the client side or in browser-accessible code — it bypasses all RLS"
+  - "Do not use magic links as the primary auth method for Next.js App Router — PKCE redirect flow is more reliable across environments"
+  - "Do not call createClient() from @supabase/supabase-js directly in a Next.js SSR context — cookie handling requires the @supabase/ssr wrappers"
+  - "Do not store Supabase URL or anon key in .env.local without the NEXT_PUBLIC_ prefix if they're needed client-side, but never expose the service role key via NEXT_PUBLIC_"
+  - "Do not skip the auth.uid() check in RLS policies — using true for all authenticated users is not sufficient if you have per-user data"
+
+doc_anchors:
+  - url: "https://supabase.com/docs/guides/auth/server-side/nextjs"
+    verified: "2026-04-11"
+  - url: "https://supabase.com/docs/guides/auth/auth-helpers/auth-ui"
+    verified: "2026-04-11"

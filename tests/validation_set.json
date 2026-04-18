@@ -1,0 +1,58 @@
+[
+  {
+    "prompt": "I'm building a Next.js 15 app with App Router and TypeScript. How do I set up server-side data fetching?",
+    "relevant_block_ids": ["nextjs15-approuter-build"]
+  },
+  {
+    "prompt": "My FastAPI app keeps throwing async errors when hitting the database concurrently",
+    "relevant_block_ids": ["fastapi-error-handling-debug", "fastapi-async-build"]
+  },
+  {
+    "prompt": "Setting up Supabase auth with Next.js, getting session not persisting after login",
+    "relevant_block_ids": ["nextjs-auth-debug", "supabase-auth-pkce-build"]
+  },
+  {
+    "prompt": "How do I configure TypeScript strict mode for a new project?",
+    "relevant_block_ids": ["typescript-strict-build"]
+  },
+  {
+    "prompt": "How do I configure a Docker Compose setup for production deployment with volumes?",
+    "relevant_block_ids": ["docker-compose-production-build"]
+  },
+  {
+    "prompt": "Building a LangChain LCEL chain with a retriever and ChatOpenAI for document Q&A",
+    "relevant_block_ids": ["langchain-lcel-build"]
+  },
+  {
+    "prompt": "Building a PostgreSQL database schema with JSONB fields and UUID primary keys",
+    "relevant_block_ids": ["postgresql-patterns-build"]
+  },
+  {
+    "prompt": "Starting a new React Native app with Expo, need to display a list of 1000 items",
+    "relevant_block_ids": ["react-native-expo-build"]
+  },
+  {
+    "prompt": "Create a FastAPI REST API with Pydantic models and async SQLAlchemy",
+    "relevant_block_ids": ["fastapi-async-build"]
+  },
+  {
+    "prompt": "Building a Next.js site, need to understand when to use Server vs Client components",
+    "relevant_block_ids": ["nextjs15-approuter-build"]
+  },
+  {
+    "prompt": "I need to set up secrets management for my app — storing API keys and database passwords securely",
+    "relevant_block_ids": ["security-secrets-build"]
+  },
+  {
+    "prompt": "Hardening my web app against OWASP Top 10 vulnerabilities before going live",
+    "relevant_block_ids": ["security-webapp-harden-build"]
+  },
+  {
+    "prompt": "Running a security audit of my npm dependencies to check for known CVEs",
+    "relevant_block_ids": ["security-supply-chain-review"]
+  },
+  {
+    "prompt": "I think my AWS access key was accidentally committed to a public git repo — how do I rotate credentials",
+    "relevant_block_ids": ["security-credential-rotation-debug"]
+  }
+]

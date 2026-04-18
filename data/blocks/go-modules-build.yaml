@@ -1,0 +1,26 @@
+slug: go-modules-build
+version: "1.0.0"
+domain: go
+intent: build
+title: "Go modules — build"
+description: "Prevents go.mod/go.sum and workspace pitfalls"
+last_verified: "2026-04-18"
+tags: [go, modules, go.mod, go.sum, workspace, versioning]
+context_weight: 650
+conflicts_with: []
+requires: []
+constraints:
+  - "Run go mod tidy after every dependency change — it removes unused deps and updates go.sum"
+  - "Commit both go.mod and go.sum to version control; go.sum is a security checksum, not a lock file to ignore"
+  - "Use go work (workspace mode) for multi-module repos instead of replace directives pointing to local paths"
+  - "Pin major versions in import paths for v2+: github.com/foo/bar/v2 — mixing v1 and v2 paths causes silent bugs"
+anti_patterns:
+  - "Do not use replace directives for local paths in production go.mod — use go workspaces instead"
+  - "Do not delete go.sum and regenerate — it breaks reproducibility and removes tamper detection"
+  - "Do not vendor dependencies unless you have a specific air-gap reason; go module cache is the standard"
+  - "Do not import internal packages from other modules — the go compiler enforces internal/ visibility"
+doc_anchors:
+  - url: "https://go.dev/ref/mod"
+    verified: "2026-04-18"
+  - url: "https://go.dev/doc/tutorial/workspaces"
+    verified: "2026-04-18"

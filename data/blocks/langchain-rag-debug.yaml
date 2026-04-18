@@ -1,0 +1,29 @@
+slug: "langchain-rag-debug"
+version: "1.0.0"
+domain: langchain
+intent: debug
+last_verified: "2026-04-11"
+tags: [langchain, rag, debugging, vector-db, embeddings]
+context_weight: 900
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["langchain-lcel-build"]
+
+constraints:
+  - "Check the similarity scores of retrieved documents — low scores usually indicate poor embedding match or missing data"
+  - "Verify chunking strategy (size and overlap) — chunks that are too small lose context, too large exceed token limits"
+  - "Debug the 'Search Query' vs 'Raw Prompt' — the LLM might be transforming the search term incorrectly"
+  - "Inspect the retrieved context before it's passed to the LLM to ensure relevant information is present"
+  - "Ensure the embedding model used for indexing is identical to the one used for querying"
+
+anti_patterns:
+  - "Do not assume the vector database is the source of truth — verify the indexing pipeline first"
+  - "Do not pass more than 5-10 documents as context without a re-ranking step (Cross-Encoder)"
+  - "Do not ignore the metadata filtering — often 'wrong' results are just from the wrong category/file"
+
+doc_anchors:
+  - url: "https://python.langchain.com/docs/use_cases/question_answering/"
+    verified: "2026-04-11"
+  - url: "https://python.langchain.com/docs/modules/data_connection/retrievers/"
+    verified: "2026-04-11"

@@ -1,0 +1,29 @@
+slug: "langchain-tools-build"
+version: "1.0.0"
+domain: langchain
+intent: build
+last_verified: "2026-04-11"
+tags: [langchain, tools, build, agents, llm]
+context_weight: 750
+provides: [llm-tools]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["langchain-lcel-build"]
+
+constraints:
+  - "Use the @tool decorator for simple function-to-tool conversion with automatic schema generation"
+  - "Define clear, descriptive docstrings for each tool: the LLM uses these to understand 'when' and 'how' to use the tool"
+  - "Include a Pydantic model for complex tool inputs to ensure the LLM provides data in the correct format"
+  - "Handle errors within the tool and return a helpful message to the LLM so it can attempt to correct its path"
+  - "Set 'return_direct=True' if the tool's output should be given directly to the user without further LLM processing"
+
+anti_patterns:
+  - "Do not give tools vague names (e.g., avoid 'func1' or 'process_data')"
+  - "Do not trust the LLM to provide valid input — always validate data within the tool function"
+  - "Do not create tools that perform dangerous side effects without a clear confirmation step"
+
+doc_anchors:
+  - url: "https://python.langchain.com/docs/modules/agents/tools/"
+    verified: "2026-04-11"
+  - url: "https://python.langchain.com/docs/modules/agents/tools/custom_tools"
+    verified: "2026-04-11"

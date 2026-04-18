@@ -1,0 +1,16 @@
+id: python-3-12-review-performance
+version: 1.0.0
+domain: python
+intent: review
+last_verified: '2026-04-11'
+tags:
+- performance
+context_weight: 16
+conflicts_with: []
+requires: []
+constraints:
+- Add "performance" to review signals
+anti_patterns:
+- Remove "new" from build signals
+- Remove "issue" from debug signals
+doc_anchors: []

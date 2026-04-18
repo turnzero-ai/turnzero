@@ -1,0 +1,26 @@
+slug: go-errors-build
+version: "1.0.0"
+domain: go
+intent: build
+title: "Go error handling — build"
+description: "Prevents sentinel error anti-patterns and wrapping mistakes"
+last_verified: "2026-04-18"
+tags: [go, errors, error-handling, fmt, wrapping]
+context_weight: 700
+conflicts_with: []
+requires: []
+constraints:
+  - "Wrap errors with fmt.Errorf(\"context: %w\", err) to preserve the chain; use errors.Is/As for inspection"
+  - "Define sentinel errors as var ErrFoo = errors.New(\"foo\") at package level for comparison with errors.Is()"
+  - "Return errors as the last return value; use named return only when it improves clarity in deferred logic"
+  - "Handle every error at most once — either log it or return it, never both"
+anti_patterns:
+  - "Do not use fmt.Errorf(\"...: %v\", err) for wrapping — %v loses the type; use %w to preserve errors.Is/As"
+  - "Do not panic for expected errors — only panic for truly unrecoverable programmer mistakes"
+  - "Do not discard errors with _ in production code — at minimum log them"
+  - "Do not compare errors with == directly — use errors.Is() to handle wrapped errors correctly"
+doc_anchors:
+  - url: "https://go.dev/blog/go1.13-errors"
+    verified: "2026-04-18"
+  - url: "https://pkg.go.dev/errors"
+    verified: "2026-04-18"

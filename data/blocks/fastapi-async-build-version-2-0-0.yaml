@@ -1,0 +1,23 @@
+id: fastapi-async-build-version-2-0-0
+version: 1.0.0
+domain: fastapi
+intent: build
+last_verified: '2026-04-11'
+tags:
+- fastapi
+- async
+context_weight: 10
+conflicts_with: []
+requires: []
+constraints:
+- Use async def for all endpoints
+- Organize routes with APIRouter, never @app.get directly
+- Pydantic v2: model_config = ConfigDict(...)
+- DB sessions via Depends(), not inside route functions
+- gen_random_uuid() for UUIDs in PostgreSQL
+anti_patterns:
+- Do not assume synchronous code
+- Do not use Pages Router
+doc_anchors:
+- url: https://fastapi.tiangolo.com/tutorial/async-routes/
+  verified: '2026-04-11'

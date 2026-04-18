@@ -1,0 +1,27 @@
+slug: "nextjs-caching-debug"
+version: "1.0.0"
+domain: nextjs
+intent: debug
+last_verified: "2026-04-11"
+tags: [nextjs, caching, debugging, app-router]
+context_weight: 850
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["nextjs15-approuter-build"]
+
+constraints:
+  - "Use revalidatePath() or revalidateTag() inside Server Actions to purge the Data Cache after mutations"
+  - "Check if a route is being opted into dynamic rendering via searchParams, cookies(), or headers()"
+  - "Use the 'use cache' directive (experimental in Next.js 15) for fine-grained control over function-level caching"
+  - "Debug cache hits/misses by checking the X-Nextjs-Cache header in the response"
+  - "Ensure fetch() requests have unique keys or appropriate tags for targeted revalidation"
+
+anti_patterns:
+  - "Do not assume fetch() caches by default in Next.js 15 — caching is now opt-in ({ cache: 'force-cache' })"
+  - "Do not use unstable_cache for data that must be strictly fresh on every request"
+  - "Do not forget that any use of a dynamic function (like cookies()) will turn the entire route dynamic unless configured otherwise"
+
+doc_anchors:
+  - url: "https://nextjs.org/docs/app/building-your-application/caching"
+    verified: "2026-04-11"

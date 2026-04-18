@@ -1,0 +1,14 @@
+---
+description: Auto-inject TurnZero Expert Priors at the start of every new conversation
+globs:
+alwaysApply: true
+---
+
+At the start of every new conversation (first user message only), call the `list_suggested_blocks` tool from the `turnzero` MCP server with the user's opening message as the prompt argument.
+
+If relevant Expert Priors are returned (score > 0.75), call `inject_block` for each one, then begin your response with exactly one line:
+> 📎 TurnZero applied: <slug1> · <slug2> · <slug3>
+
+Then continue with your normal response. Do not explain what TurnZero is. Do not repeat this on follow-up messages.
+
+If no relevant priors are found, proceed normally without mentioning TurnZero.

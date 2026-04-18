@@ -1,0 +1,16 @@
+id: python-3-12-build-rich
+version: 1.0.0
+domain: python
+intent: build
+last_verified: '2026-04-11'
+tags:
+- Rich
+context_weight: 16
+conflicts_with: []
+requires: []
+constraints:
+- Rich Console.print() does not have an err kwarg
+anti_patterns:
+- Do not pass err=True to console.print()
+- Create a dedicated stderr console
+doc_anchors: []

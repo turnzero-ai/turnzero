@@ -1,0 +1,26 @@
+slug: flask-sqlalchemy-build
+version: "1.0.0"
+domain: flask
+intent: build
+title: "Flask-SQLAlchemy — build"
+description: "Prevents session management and connection pool mistakes with Flask-SQLAlchemy"
+last_verified: "2026-04-18"
+tags: [flask, sqlalchemy, database, session, migrations, flask-migrate]
+context_weight: 800
+conflicts_with: []
+requires: []
+constraints:
+  - "Use Flask-Migrate (Alembic) for all schema changes — never modify the database directly or rely on db.create_all() in production"
+  - "Access db.session within the request context only; for background tasks use app.app_context() as a context manager"
+  - "Commit or rollback explicitly in views — Flask-SQLAlchemy does not auto-commit; add db.session.commit() at the end of write operations"
+  - "Set SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True} to detect stale connections after database restarts"
+anti_patterns:
+  - "Do not call db.create_all() in production to manage schema — use flask db upgrade (Alembic migrations)"
+  - "Do not use db.session outside of request/application context — it will raise RuntimeError or silently use the wrong session"
+  - "Do not store db.session references across requests — sessions are request-scoped and must not be shared between threads"
+  - "Do not use lazy='dynamic' on relationships in SQLAlchemy 2.0+ — it is deprecated; use select or joined loading strategies"
+doc_anchors:
+  - url: "https://flask-sqlalchemy.palletsprojects.com/en/3.1.x/"
+    verified: "2026-04-18"
+  - url: "https://flask-migrate.readthedocs.io/en/latest/"
+    verified: "2026-04-18"

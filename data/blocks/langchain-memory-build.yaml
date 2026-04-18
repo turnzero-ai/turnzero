@@ -1,0 +1,27 @@
+slug: "langchain-memory-build"
+version: "1.0.0"
+domain: langchain
+intent: build
+last_verified: "2026-04-11"
+tags: [langchain, memory, build, llm, chat]
+context_weight: 800
+provides: [llm-memory]
+conflicts_with_tags: [llm-memory]
+conflicts_with: []
+requires: ["langchain-lcel-build"]
+
+constraints:
+  - "Use External Message History (e.g., RedisChatMessageHistory) for production apps — in-memory history is lost on restart"
+  - "Implement windowing or summarization (ConversationBufferWindowMemory) to stay within the LLM's token limit"
+  - "Use the LCEL RunnableWithMessageHistory wrapper for a clean separation of memory logic and chain logic"
+  - "Ensure session_id is handled consistently across the request lifecycle to prevent context bleed between users"
+  - "Store both the raw user input and the AI response in the history for complete context"
+
+anti_patterns:
+  - "Do not store large document contents in the message history — use a Vector Store and RAG instead"
+  - "Do not pass the entire history to every LLM call if it's not relevant — pruning is essential for cost and speed"
+  - "Do not use deprecated memory classes like ConversationChain; use LCEL-based chains instead"
+
+doc_anchors:
+  - url: "https://python.langchain.com/docs/expression_language/how_to/message_history"
+    verified: "2026-04-11"

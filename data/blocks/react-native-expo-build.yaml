@@ -1,0 +1,33 @@
+slug: "react-native-expo-build"
+version: "1.0.0"
+domain: react-native
+intent: build
+last_verified: "2026-04-11"
+tags: [react-native, expo, expo-router, mobile, typescript]
+context_weight: 750
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use Expo SDK 51+ with Expo Router v3 for new projects — React Navigation is the alternative but Expo Router is file-based and simpler for most apps"
+  - "Use StyleSheet.create() for all styles — inline style objects are recreated on every render; StyleSheet.create() caches and optimizes them"
+  - "Use FlatList or SectionList for any list that may exceed ~20 items — map() renders all items at once and causes jank on long lists"
+  - "Pass stable references to FlatList's renderItem and keyExtractor — wrap with useCallback to prevent full list re-renders"
+  - "Use expo-image not the built-in Image component — it supports blurhash placeholders, better caching, and performance"
+  - "Request permissions at the moment they are needed, not at app startup — users are more likely to grant permission with clear context"
+  - "Use Expo's managed workflow unless you need a native module not in Expo SDK — bare workflow requires maintaining native builds"
+
+anti_patterns:
+  - "Do not use anonymous arrow functions as renderItem props: renderItem={({ item }) => <Row item={item} />} — define outside or useCallback"
+  - "Do not use ScrollView for long dynamic lists — it renders all children; FlatList virtualizes them"
+  - "Do not rely on Flexbox defaults matching web — React Native uses flexDirection: 'column' by default, web uses 'row'"
+  - "Do not use the Dimensions API for responsive layouts without a resize listener — it does not update on orientation change without re-subscription"
+  - "Do not import from react-native directly for platform-specific modules (Camera, Location, etc.) — use the corresponding expo-* package"
+
+doc_anchors:
+  - url: "https://docs.expo.dev/router/introduction/"
+    verified: "2026-04-11"
+  - url: "https://reactnative.dev/docs/optimizing-flatlist-configuration"
+    verified: "2026-04-11"

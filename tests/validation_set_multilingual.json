@@ -1,0 +1,52 @@
+[
+  {
+    "prompt": "Je construis une application Next.js 15 avec App Router et TypeScript, comment configurer le data fetching côté serveur?",
+    "relevant_block_ids": ["nextjs15-approuter-build"],
+    "language": "fr"
+  },
+  {
+    "prompt": "Ich baue eine Next.js 15 App mit App Router und TypeScript. Wie richte ich serverseitiges Data Fetching ein?",
+    "relevant_block_ids": ["nextjs15-approuter-build"],
+    "language": "de"
+  },
+  {
+    "prompt": "Minha aplicação FastAPI continua lançando erros assíncronos ao acessar o banco de dados de forma concorrente",
+    "relevant_block_ids": ["fastapi-error-handling-debug", "fastapi-async-build"],
+    "language": "pt"
+  },
+  {
+    "prompt": "Estoy configurando autenticación de Supabase con Next.js pero la sesión no persiste después del login",
+    "relevant_block_ids": ["nextjs-auth-debug", "supabase-auth-pkce-build"],
+    "language": "es"
+  },
+  {
+    "prompt": "Sto configurando un setup Docker Compose per la produzione con volumi e variabili d'ambiente",
+    "relevant_block_ids": ["docker-compose-production-build"],
+    "language": "it"
+  },
+  {
+    "prompt": "我正在用 FastAPI 构建 REST API，使用 Pydantic 模型和异步 SQLAlchemy",
+    "relevant_block_ids": ["fastapi-async-build"],
+    "language": "zh"
+  },
+  {
+    "prompt": "TypeScriptのstrictモードを新しいプロジェクトに設定する方法を教えてください",
+    "relevant_block_ids": ["typescript-strict-build"],
+    "language": "ja"
+  },
+  {
+    "prompt": "React NativeとExpoで新しいアプリを始めています。1000件のリストを表示する必要があります",
+    "relevant_block_ids": ["react-native-expo-build"],
+    "language": "ja"
+  },
+  {
+    "prompt": "Construindo um esquema de banco de dados PostgreSQL com campos JSONB e chaves primárias UUID",
+    "relevant_block_ids": ["postgresql-patterns-build"],
+    "language": "pt"
+  },
+  {
+    "prompt": "Estoy construyendo una cadena LangChain LCEL con un retriever y ChatOpenAI para Q&A sobre documentos",
+    "relevant_block_ids": ["langchain-lcel-build"],
+    "language": "es"
+  }
+]

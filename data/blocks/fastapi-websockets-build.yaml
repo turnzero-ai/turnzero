@@ -1,0 +1,27 @@
+slug: "fastapi-websockets-build"
+version: "1.0.0"
+domain: fastapi
+intent: build
+last_verified: "2026-04-11"
+tags: [fastapi, websockets, python, realtime, build]
+context_weight: 800
+provides: [fastapi-realtime]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["fastapi-async-build"]
+
+constraints:
+  - "Use the 'WebSocket' class from fastapi for type-hinting and easy access to connection methods"
+  - "Implement a ConnectionManager class to track active connections and broadcast messages to multiple clients"
+  - "Handle 'WebSocketDisconnect' exceptions to clean up resources when a client leaves"
+  - "Use 'await websocket.accept()' at the start of the handler and 'await websocket.receive_text/json()' in a loop"
+  - "Ensure that WebSocket endpoints are protected by the same authentication logic as your REST endpoints (e.g., via query params or subprotocols)"
+
+anti_patterns:
+  - "Do not perform blocking synchronous operations inside the WebSocket loop — it will stall all active connections"
+  - "Do not forget to implement a heartbeat/ping-pong mechanism to detect and close stale connections"
+  - "Do not send extremely large payloads over WebSockets — consider using a separate file upload/download flow for large data"
+
+doc_anchors:
+  - url: "https://fastapi.tiangolo.com/advanced/websockets/"
+    verified: "2026-04-11"

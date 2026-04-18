@@ -1,0 +1,29 @@
+slug: "typescript-enums-review"
+version: "1.0.0"
+domain: typescript
+intent: review
+last_verified: "2026-04-11"
+tags: [typescript, enums, review, types, safety]
+context_weight: 700
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["typescript-strict-build"]
+
+constraints:
+  - "Prefer string-based union types or const objects over standard numeric enums for better readability and safety"
+  - "Use 'const enum' if you need the performance benefits of inlining, but be aware of the pitfalls in shared libraries"
+  - "Ensure that all enum usages are exhaustive: use 'never' in a default case to get a compiler error when a value is missed"
+  - "Review enum values for consistency (e.g., all UPPER_CASE or all PascalCase)"
+  - "Avoid using enums for values that are likely to change frequently or come from an external API"
+
+anti_patterns:
+  - "Do not use numeric enums without explicit values — they are prone to subtle bugs if the order changes"
+  - "Do not use enums as a way to group unrelated constants — use namespaces or constant objects instead"
+  - "Do not forget that enums generate runtime code, whereas union types are purely a compile-time construct"
+
+doc_anchors:
+  - url: "https://www.typescriptlang.org/docs/handbook/enums.html"
+    verified: "2026-04-11"
+  - url: "https://github.com/microsoft/TypeScript/wiki/Performance#preferred-const-enums"
+    verified: "2026-04-11"

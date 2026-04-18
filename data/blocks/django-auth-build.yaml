@@ -1,0 +1,26 @@
+slug: django-auth-build
+version: "1.0.0"
+domain: django
+intent: build
+title: "Django auth and User model — build"
+description: "Prevents irreversible AUTH_USER_MODEL mistakes and permission pitfalls"
+last_verified: "2026-04-18"
+tags: [django, auth, user-model, permissions, AbstractUser]
+context_weight: 800
+conflicts_with: []
+requires: []
+constraints:
+  - "Set AUTH_USER_MODEL = 'myapp.User' in settings.py BEFORE running any migrations — this cannot be changed after the first migration is applied"
+  - "Always extend AbstractUser (keeps username/email/password) or AbstractBaseUser (full control); never add fields directly to the built-in User via a profile model in new projects"
+  - "Use get_user_model() to reference the User model in code; never import from django.contrib.auth.models.User directly"
+  - "Use LoginRequiredMixin for class-based views and @login_required for function-based views; check request.user.is_authenticated in templates"
+anti_patterns:
+  - "Do not start a project without a custom User model even if you do not need extra fields yet — swapping later requires dropping all auth tables"
+  - "Do not store passwords in plaintext or use MD5/SHA1 — Django's PBKDF2 hasher is the default; use check_password() never manual comparison"
+  - "Do not use User.objects.create() to create users — use User.objects.create_user() which hashes the password"
+  - "Do not rely on request.user.groups.all() in a loop without prefetch_related — it fires a query per user object"
+doc_anchors:
+  - url: "https://docs.djangoproject.com/en/5.0/topics/auth/customizing/#substituting-a-custom-user-model"
+    verified: "2026-04-18"
+  - url: "https://docs.djangoproject.com/en/5.0/ref/contrib/auth/"
+    verified: "2026-04-18"

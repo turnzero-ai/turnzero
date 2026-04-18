@@ -1,0 +1,24 @@
+id: docker-compose-production-build-version-16-2-alpine
+version: 1.0.0
+domain: docker-compose
+intent: build
+last_verified: '2026-04-11'
+tags:
+- docker
+- compose
+context_weight: 10
+conflicts_with: []
+requires: []
+constraints:
+- Secrets via env file, never hardcoded in compose file
+- Pin image versions explicitly (postgres:16.2-alpine)
+- Do not expose DB port to 0.0.0.0 in production
+- healthcheck + depends_on condition: service_healthy
+- mem_limit and cpus on all services
+- restart: unless-stopped for all services
+anti_patterns:
+- Do not assume dev context
+- Do not use hardcoded secrets
+doc_anchors:
+- url: https://docs.docker.com/compose/reference/config-files/
+  verified: '2026-04-11'

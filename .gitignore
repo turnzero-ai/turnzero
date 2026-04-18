@@ -1,0 +1,77 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.so
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+.uv/
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
+
+# Test caches
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Generated at index build time — do not commit
+data/prompts/
+data/clusters/
+
+# Runtime stats and session data (machine-specific)
+data/hook_stats.json
+data/sessions/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Claude Code local settings (personal MCP config, paths are machine-specific)
+.claude/settings.local.json
+*.swp
+*.swo
+
+# Binary Documents
+*.docx
+
+# Conversations and mining data (contains sensitive content)
+data/conversations/
+
+# Cursor MCP config (machine-specific paths — use .cursor/mcp.json.example instead)
+.cursor/mcp.json
+
+# Personal knowledge base files (not part of PromptGraph)
+entities.json
+mempalace.yaml
+scripts/mempalace-mcp.sh
+
+# Internal planning docs (not for public repo)
+ANALOGY.md
+PROTOTYPE_PLAN.md
+SETUP.md
+STRATEGY.md
+data/.processed

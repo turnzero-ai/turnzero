@@ -1,0 +1,20 @@
+id: nextjs-app-router-fetch-data-verify
+version: 1.0.0
+domain: app-router
+intent: migrate
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- apirouter
+context_weight: 16
+conflicts_with: []
+requires: []
+constraints:
+- use Server Components instead of `getServerSideProps` in Next.js 15 App Router
+- consider caching options for dynamic fetches in Next.js 15 App Router
+anti_patterns:
+- Do not use `force-cache` by default
+- Do not rely on earlier App Router versions' caching behavior
+doc_anchors:
+- url: https://nextjs.org/docs/advanced-features/app-router#fetching-data
+  verified: '2026-04-11'

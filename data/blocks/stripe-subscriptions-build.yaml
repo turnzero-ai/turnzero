@@ -1,0 +1,29 @@
+slug: "stripe-subscriptions-build"
+version: "1.0.0"
+domain: stripe
+intent: build
+last_verified: "2026-04-11"
+tags: [stripe, subscriptions, billing, payments, build]
+context_weight: 900
+provides: [payment-subscriptions]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["stripe-checkout-build"]
+
+constraints:
+  - "Use Stripe Billing for managing recurring payments and subscription lifecycles"
+  - "Implement the Stripe Customer Portal to allow users to manage their own subscriptions and payment methods"
+  - "Handle 'customer.subscription.deleted' webhooks to immediately revoke access when a subscription is cancelled or fails"
+  - "Use the 'expand' parameter in API calls to retrieve related objects (like prices or products) in a single request"
+  - "Always check the subscription status ('active', 'past_due', 'trialing') before granting access to features"
+
+anti_patterns:
+  - "Do not implement your own billing logic for handling trials, cancellations, or upgrades — use Stripe's built-in features"
+  - "Do not store subscription price amounts in your database; always use the Stripe Price ID as the source of truth"
+  - "Do not forget to handle prorations when users switch between different subscription tiers"
+
+doc_anchors:
+  - url: "https://stripe.com/docs/billing/subscriptions/overview"
+    verified: "2026-04-11"
+  - url: "https://stripe.com/docs/customer-portal"
+    verified: "2026-04-11"

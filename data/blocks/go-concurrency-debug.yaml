@@ -1,0 +1,28 @@
+slug: go-concurrency-debug
+version: "1.0.0"
+domain: go
+intent: debug
+title: "Go concurrency — debug"
+description: "Diagnoses goroutine leaks, deadlocks, and data races"
+last_verified: "2026-04-18"
+tags: [go, goroutines, channels, context, sync, race-detector]
+context_weight: 950
+conflicts_with: []
+requires: []
+constraints:
+  - "Every goroutine must have a way to stop — pass context.Context and select on ctx.Done()"
+  - "Run with -race flag during development and CI; data races are undefined behaviour in Go"
+  - "Use sync.WaitGroup to wait for goroutine completion; always call wg.Add() before go func()"
+  - "Prefer channels for ownership transfer; prefer sync.Mutex for shared state guarded by a struct"
+  - "Close channels from the sender side only; closing a nil or already-closed channel panics"
+anti_patterns:
+  - "Do not launch goroutines without a cancellation mechanism — they will leak on shutdown"
+  - "Do not range over a channel that is never closed — the range loop will block forever"
+  - "Do not copy a sync.Mutex value — always pass by pointer or embed in a struct"
+  - "Do not use time.Sleep to synchronise goroutines — use channels or sync primitives"
+  - "Do not share memory by communicating — communicate by sharing memory is the wrong direction"
+doc_anchors:
+  - url: "https://go.dev/doc/articles/race_detector"
+    verified: "2026-04-18"
+  - url: "https://pkg.go.dev/sync"
+    verified: "2026-04-18"

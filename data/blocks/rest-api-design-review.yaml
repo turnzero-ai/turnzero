@@ -1,0 +1,28 @@
+slug: "rest-api-design-review"
+version: "1.0.0"
+domain: rest-api
+intent: review
+last_verified: "2026-04-11"
+tags: [api, rest, design, review, http]
+context_weight: 800
+provides: [api-design]
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use plural nouns for resource paths (e.g., /users, not /user)"
+  - "Return appropriate HTTP status codes: 201 for creation, 204 for empty success, 400 for validation errors, 401 for auth, 403 for permissions"
+  - "Use ISO 8601 format for all timestamps (YYYY-MM-DDTHH:mm:ssZ)"
+  - "Implement consistent error response body: { 'error': { 'code': '...', 'message': '...' } }"
+  - "Use kebab-case for URL paths and camelCase or snake_case consistently for JSON keys"
+
+anti_patterns:
+  - "Do not use verbs in resource paths (e.g., avoid /getUser or /create_order)"
+  - "Do not return 200 OK for requests that resulted in an error — error details belong in the body AND status code"
+  - "Do not nest resources more than two levels deep (e.g., /users/1/posts/2 is okay, /users/1/posts/2/comments/3 is too deep)"
+  - "Do not expose internal database IDs if UUIDs or slugs are available"
+
+doc_anchors:
+  - url: "https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md"
+    verified: "2026-04-11"

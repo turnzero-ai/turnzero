@@ -1,0 +1,29 @@
+slug: "supabase-functions-debug"
+version: "1.0.0"
+domain: supabase
+intent: debug
+last_verified: "2026-04-11"
+tags: [supabase, edge-functions, debugging, deno, typescript]
+context_weight: 800
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["supabase-auth-pkce-build"]
+
+constraints:
+  - "Use the Supabase CLI (supabase functions serve) to debug edge functions locally"
+  - "Check the function logs in the Supabase Dashboard for runtime errors and console.log output"
+  - "Verify environment variables: ensure they are set in the Dashboard or via 'supabase secrets set'"
+  - "Debug CORS issues by checking the 'Access-Control-Allow-Origin' headers in the function response"
+  - "Ensure that you are using the correct Deno version and standard library imports within the function"
+
+anti_patterns:
+  - "Do not perform long-running tasks in Edge Functions — they have a strict execution time limit (e.g., 60s)"
+  - "Do not use Node.js-specific modules (like 'fs' or 'path') — Edge Functions run in a Deno environment"
+  - "Do not forget to handle authentication: use the 'auth' client from @supabase/supabase-js within the function"
+
+doc_anchors:
+  - url: "https://supabase.com/docs/guides/functions/debugging"
+    verified: "2026-04-11"
+  - url: "https://supabase.com/docs/guides/functions/secrets"
+    verified: "2026-04-11"

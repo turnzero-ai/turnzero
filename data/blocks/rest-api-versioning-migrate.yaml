@@ -1,0 +1,29 @@
+slug: "rest-api-versioning-migrate"
+version: "1.0.0"
+domain: rest-api
+intent: migrate
+last_verified: "2026-04-11"
+tags: [api, rest, versioning, migration, http]
+context_weight: 800
+provides: [api-versioning]
+conflicts_with_tags: []
+conflicts_with: []
+requires: ["rest-api-design-review"]
+
+constraints:
+  - "Implement versioning via the URL path (e.g., /v1/users) or the Accept header (e.g., application/vnd.myapi.v1+json)"
+  - "Maintain backward compatibility for the previous version for a defined sunset period"
+  - "Use a 'Sunset' HTTP header to warn developers of impending version deprecation"
+  - "Document all breaking changes clearly in a migration guide"
+  - "Provide a clear mapping between old and new resource structures to help developers transition"
+
+anti_patterns:
+  - "Do not introduce breaking changes without incrementing the major version"
+  - "Do not support more than 2-3 versions simultaneously — it leads to massive maintenance overhead"
+  - "Do not use query parameters for versioning (e.g., /users?v=1) — it's not standard and harder to cache"
+
+doc_anchors:
+  - url: "https://restfulapi.net/versioning/"
+    verified: "2026-04-11"
+  - url: "https://www.freecodecamp.org/news/api-versioning-best-practices-2/"
+    verified: "2026-04-11"

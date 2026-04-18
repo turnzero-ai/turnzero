@@ -1,0 +1,27 @@
+slug: "fastapi-error-handling-debug"
+version: "1.0.0"
+domain: fastapi
+intent: debug
+last_verified: "2026-04-11"
+tags: [fastapi, python, debugging, errors, middleware]
+context_weight: 750
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+
+constraints:
+  - "Use HTTPException from fastapi, not the starlette version, for consistent response handling"
+  - "Define custom error handlers using @app.exception_handler(MyCustomException) to catch domain-specific errors"
+  - "Return a consistent JSON structure for all errors to help client-side parsing"
+  - "Use Pydantic models to define the shape of error responses in the documentation"
+  - "Log the full stack trace on the server side for 500 errors, but hide internal details from the user response"
+
+anti_patterns:
+  - "Do not use bare 'except Exception:' blocks — they hide bugs and make debugging impossible"
+  - "Do not return plain string error messages; always return a JSON object"
+  - "Do not forget to register handlers for Starlette's RequestValidationError to customize 422 responses"
+
+doc_anchors:
+  - url: "https://fastapi.tiangolo.com/tutorial/handling-errors/"
+    verified: "2026-04-11"

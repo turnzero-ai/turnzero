@@ -1,0 +1,22 @@
+id: nextjs15-approuter-build-version-16-0-0
+version: 1.0.0
+domain: nextjs
+intent: build
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- app-router
+context_weight: 10
+conflicts_with: []
+requires: []
+constraints:
+- Use App Router (app/) not Pages Router
+- Use @supabase/ssr for Next.js SSR auth (auth-helpers deprecated)
+- Use PKCE flow for redirect-based auth
+- fetch() in Next.js 15 is not cached by default
+anti_patterns:
+- Do not assume synchronous code
+- Do not use Pages Router
+doc_anchors:
+- url: https://nextjs.org/docs/api-routes/advanced/app-router
+  verified: '2026-04-11'

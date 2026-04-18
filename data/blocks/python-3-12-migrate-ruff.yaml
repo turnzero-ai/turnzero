@@ -1,0 +1,18 @@
+id: python-3-12-migrate-ruff
+version: 1.0.0
+domain: python
+intent: migrate
+last_verified: '2026-04-11'
+tags:
+- ruff
+- Typer CLI
+context_weight: 16
+conflicts_with: []
+requires: []
+constraints:
+- ruff B904 should be ignored in pyproject.toml
+- typer.Argument(...), typer.Exit(1) are intended API patterns
+anti_patterns:
+- Do not add "from None" to typer.Exit calls
+- Do not move Argument calls into function bodies
+doc_anchors: []

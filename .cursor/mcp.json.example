@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "turnzero": {
+      "command": "/path/to/turnzero/.venv/bin/python",
+      "args": ["-m", "turnzero.mcp_server"],
+      "env": {
+        "TURNZERO_DATA_DIR": "/path/to/turnzero/data"
+      }
+    }
+  }
+}
