@@ -285,14 +285,26 @@ def setup(
         None, "--data-dir", "-d",
         help="Where to store blocks and index. Default: ~/.turnzero",
     ),
-    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing hook/MCP config."),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing MCP config."),
+    with_hook: bool = typer.Option(
+        False, "--with-hook",
+        help="Also install the Claude Code UserPromptSubmit hook for guaranteed injection regardless of model behaviour.",
+    ),
     openai_key: str = typer.Option(
         None, "--openai-key",
         help="OpenAI API key for cloud embedding fallback (stored at ~/.turnzero/openai_key).",
         envvar="OPENAI_API_KEY",
     ),
 ) -> None:
-    """One-command setup: install hook, register MCP server, build index."""
+    """One-command setup: register MCP server and build index.
+
+    Registers the TurnZero MCP server globally. Any MCP-compatible AI client
+    (Claude Code, Cursor, Claude Desktop) will automatically call
+    list_suggested_blocks on Turn 0 and inject Expert Priors.
+
+    Use --with-hook to also install the Claude Code UserPromptSubmit hook
+    for guaranteed injection regardless of model behaviour.
+    """
     import json
     import shutil
     import subprocess
@@ -342,29 +354,48 @@ def setup(
             "copy your blocks/ directory to [cyan]{dest_blocks}[/cyan] manually."
         )
 
-    # ── 2. Check ollama + nomic-embed-text ────────────────────────────────
+    # ── 2. Check embedding backend ────────────────────────────────────────
     console.print()
     ollama_ok = False
+
+    # Check ollama
     try:
         result = subprocess.run(
             ["ollama", "list"], capture_output=True, text=True, timeout=5
         )
         if "nomic-embed-text" in result.stdout:
-            console.print("[green]✓[/green] ollama + nomic-embed-text ready")
+            console.print("[green]✓[/green] Embedding backend: ollama + nomic-embed-text")
             ollama_ok = True
         else:
-            console.print("[yellow]⚠[/yellow]  ollama found but nomic-embed-text not pulled")
-            console.print("    Run: [cyan]ollama pull nomic-embed-text[/cyan]")
-    except FileNotFoundError:
-        if os.environ.get("OPENAI_API_KEY"):
-            console.print("[green]✓[/green] ollama not found — using OpenAI embedding fallback")
-            ollama_ok = True  # OpenAI can substitute for index build
-        else:
-            console.print("[yellow]⚠[/yellow]  ollama not found and no OPENAI_API_KEY set")
-            console.print("    Option 1 (local):  install ollama + pull nomic-embed-text")
-            console.print("    Option 2 (cloud):  turnzero setup --openai-key sk-...")
-    except subprocess.TimeoutExpired:
-        console.print("[yellow]⚠[/yellow]  ollama timed out — is the daemon running?")
+            console.print("[yellow]⚠[/yellow]  ollama found but nomic-embed-text not pulled — run: [cyan]ollama pull nomic-embed-text[/cyan]")
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    # Check sentence-transformers
+    if not ollama_ok:
+        try:
+            import importlib
+            importlib.import_module("sentence_transformers")
+            console.print("[green]✓[/green] Embedding backend: sentence-transformers")
+            ollama_ok = True
+        except ImportError:
+            pass
+
+    # Check OpenAI
+    if not ollama_ok and os.environ.get("OPENAI_API_KEY"):
+        console.print("[green]✓[/green] Embedding backend: OpenAI API")
+        ollama_ok = True
+
+    # Nothing found — show clear options
+    if not ollama_ok:
+        console.print("[yellow]⚠[/yellow]  No embedding backend found. TurnZero needs one to work.\n")
+        console.print("    [bold]Option 1[/bold] — ollama (local, no internet after setup):")
+        console.print("      [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]\n")
+        console.print("    [bold]Option 2[/bold] — sentence-transformers (local, no server, ~500MB):")
+        console.print("      [cyan]pip install 'turnzero[local]'[/cyan]\n")
+        console.print("    [bold]Option 3[/bold] — OpenAI API (cloud):")
+        console.print("      [cyan]turnzero setup --openai-key sk-...[/cyan]\n")
+        console.print("    Re-run [cyan]turnzero setup[/cyan] after installing a backend.")
 
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()
@@ -390,37 +421,40 @@ def setup(
             "  [cyan]TURNZERO_DATA_DIR={resolved} turnzero index build[/cyan]"
         )
 
-    # ── 4. Write hook script ──────────────────────────────────────────────
+    # ── 4. Write hook script (optional) ──────────────────────────────────
     console.print()
-    hook_path = claude_dir / "turnzero-hook.py"
-    if not hook_path.exists() or force:
-        hook_path.write_text(_generate_hook(sys.executable, resolved), encoding="utf-8")
-        hook_path.chmod(0o755)
-        console.print(f"[green]✓[/green] Hook written → {hook_path}")
-    else:
-        console.print(f"[dim]✓ Hook already exists ({hook_path}) — use --force to regenerate[/dim]")
+    if with_hook:
+        hook_path = claude_dir / "turnzero-hook.py"
+        if not hook_path.exists() or force:
+            hook_path.write_text(_generate_hook(sys.executable, resolved), encoding="utf-8")
+            hook_path.chmod(0o755)
+            console.print(f"[green]✓[/green] Hook written → {hook_path}")
+        else:
+            console.print(f"[dim]✓ Hook already exists ({hook_path}) — use --force to regenerate[/dim]")
 
-    # ── 5. Register hook in ~/.claude/settings.json ───────────────────────
-    settings_path = claude_dir / "settings.json"
-    settings: dict = {}
-    if settings_path.exists():
-        try:
-            settings = json.loads(settings_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            pass
+        # ── 5. Register hook in ~/.claude/settings.json ───────────────────
+        settings_path = claude_dir / "settings.json"
+        settings: dict = {}
+        if settings_path.exists():
+            try:
+                settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                pass
 
-    hook_command = f"{sys.executable} {hook_path}"
-    hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
-    hooks = settings.setdefault("hooks", {})
-    submit_hooks = hooks.setdefault("UserPromptSubmit", [{"hooks": []}])
-    hook_list = submit_hooks[0].setdefault("hooks", [])
-    already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
-    if not already:
-        hook_list.append(hook_entry)
-        settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-        console.print(f"[green]✓[/green] Hook registered in {settings_path}")
+        hook_command = f"{sys.executable} {hook_path}"
+        hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
+        hooks = settings.setdefault("hooks", {})
+        submit_hooks = hooks.setdefault("UserPromptSubmit", [{"hooks": []}])
+        hook_list = submit_hooks[0].setdefault("hooks", [])
+        already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
+        if not already:
+            hook_list.append(hook_entry)
+            settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+            console.print(f"[green]✓[/green] Hook registered in {settings_path}")
+        else:
+            console.print(f"[dim]✓ Hook already registered in settings.json[/dim]")
     else:
-        console.print(f"[dim]✓ Hook already registered in settings.json[/dim]")
+        console.print("[dim]Hook not installed (MCP server is enough for most clients — use --with-hook for Claude Code guarantee)[/dim]")
 
     # ── 6. Register MCP in ~/.claude.json ────────────────────────────────
     claude_json = Path.home() / ".claude.json"
@@ -431,10 +465,10 @@ def setup(
         except json.JSONDecodeError:
             pass
 
+    mcp_bin = str(Path(sys.executable).parent / "turnzero-mcp")
     mcp_entry = {
         "type": "stdio",
-        "command": sys.executable,
-        "args": ["-m", "turnzero.mcp_server"],
+        "command": mcp_bin,
         "env": {"TURNZERO_DATA_DIR": str(resolved)},
     }
     servers = cfg.setdefault("mcpServers", {})
@@ -452,7 +486,8 @@ def setup(
         console.print(
             "Start a [bold]new[/bold] Claude Code session and paste this prompt to verify:\n\n"
             "  [cyan]Building a FastAPI REST API with Pydantic models and async SQLAlchemy[/cyan]\n\n"
-            "You should see TurnZero inject Expert Priors before the first response."
+            "TurnZero will inject Expert Priors automatically on Turn 0.\n"
+            "Add [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
         )
     else:
         console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")

@@ -1,14 +1,14 @@
 [project]
 name = "turnzero"
-version = "0.1.0"
-description = "Privacy-first Expert Prior injection for AI sessions — eliminates cold-start friction at Turn 0"
+version = "0.2.0"
+description = "Expert Prior injection for AI sessions — eliminates cold-start friction at Turn 0 for any domain"
 readme = "README.md"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "TurnZero", email = "hello@turnzero.dev"},
 ]
-keywords = ["ai", "llm", "rag", "prompt-engineering", "developer-tools", "claude", "mcp"]
+keywords = ["ai", "llm", "rag", "prompt-engineering", "mcp", "claude", "context-injection", "expert-priors"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

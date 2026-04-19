@@ -28,10 +28,11 @@ import yaml
 # ---------------------------------------------------------------------------
 
 EXTRACTION_PROMPT = """\
-You are a TurnZero Expert Prior extractor. Your job is to analyse a developer AI \
-conversation and extract reusable Expert Priors that represent knowledge a \
-senior developer would inject at the START of that session to prevent \
-mid-session corrections.
+You are a TurnZero Expert Prior extractor. Your job is to analyse an AI \
+conversation and extract reusable Expert Priors that represent knowledge an \
+expert would inject at the START of that session to prevent mid-session corrections.\
+Expert Priors can be from any domain — software, law, medicine, finance, design, \
+writing, science, or any other field where domain-specific knowledge prevents mistakes.
 
 An Expert Prior captures:
 - constraints: rules the AI should follow (version-specific, domain-specific)
@@ -80,12 +81,24 @@ and name both the wrong pattern AND the right pattern.
 5. Focus on the mid-session CORRECTIONS — what did the user have to clarify \
 after the AI got it wrong? Those corrections are your highest-signal source.
 6. context_weight: estimate 4 tokens per word across all constraints + anti_patterns.
-7. Do NOT extract personal preferences: editor choice (PyCharm, VSCode), shell setup, \
-OS-specific paths, workflow habits, or team conventions. \
-A valid Expert Prior must be true for ALL developers using that stack — \
-not just this one developer.
+7. Do NOT extract personal preferences, individual habits, team conventions, or \
+OS-specific paths. A valid Expert Prior must be true for ANYONE working in \
+that domain — not just this one person.
 8. If the session contains no mid-session corrections and no domain-specific \
 gotchas, output nothing. An empty response is better than a junk block.
+9. SCOPE CHECK — if the session is casual conversation, venting, or contains \
+no domain-specific knowledge that would prevent an AI mistake, output nothing.
+
+GOOD Expert Prior (specific, universally true for the domain, based on a real correction):
+  domain: nextjs — "Do not use getServerSideProps — Pages Router only, does not exist in App Router"
+  domain: law — "In Swiss employment law, non-compete clauses are unenforceable beyond 3 years"
+  domain: finance — "Options Delta is not linear near expiration — gamma accelerates rapidly"
+  domain: medicine — "eGFR thresholds for CKD staging differ between CKD-EPI 2009 and 2021 equations"
+
+BAD Expert Prior (personal preference or generic advice):
+  "Always write unit tests" — generic, not domain-specific
+  "Use VSCode with Prettier" — personal tooling preference
+  "Be more concise in your writing" — personal style feedback
 
 CONVERSATION TO ANALYSE:
 ---

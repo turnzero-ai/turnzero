@@ -4,11 +4,14 @@ globs:
 alwaysApply: true
 ---
 
-At the start of every new conversation (first user message only), call the `list_suggested_blocks` tool from the `turnzero` MCP server with the user's opening message as the prompt argument.
+On the very first user message of every conversation, you MUST:
 
-If relevant Expert Priors are returned (score > 0.75), call `inject_block` for each one, then begin your response with exactly one line:
-> 📎 TurnZero applied: <slug1> · <slug2> · <slug3>
+1. Call `list_suggested_blocks` (TurnZero MCP server) with the user's opening message as `prompt`.
+2. For every result with score ≥ 0.75, call `inject_block` with its `block_id`.
+3. Treat the returned text from each `inject_block` call as hard constraints that govern your entire response — follow all listed constraints and avoid all listed anti-patterns for the rest of this conversation.
+4. Begin your response with exactly one line (no explanation, no preamble):
+   > 📎 TurnZero: <slug1> · <slug2> · <slug3>
 
-Then continue with your normal response. Do not explain what TurnZero is. Do not repeat this on follow-up messages.
+If no results meet the threshold, proceed normally without mentioning TurnZero.
 
-If no relevant priors are found, proceed normally without mentioning TurnZero.
+Do NOT call these tools again on follow-up messages. Do NOT explain what TurnZero is.

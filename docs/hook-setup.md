@@ -1,6 +1,10 @@
-# Auto-injection hook for Claude Code
+# Claude Code hook (optional)
 
-This hook fires before Claude responds to your first message in each session. It embeds your opening prompt, finds matching Expert Priors, and injects them silently — no manual invocation needed.
+> **Most users don't need this.** `turnzero setup` registers the MCP server — the AI calls `list_suggested_blocks` automatically on Turn 0. The hook is an extra guarantee for Claude Code users who want injection to fire regardless of model behaviour.
+>
+> Install with: `turnzero setup --with-hook`
+
+The hook fires before Claude responds to your first message in each session. It embeds your opening prompt, finds matching Expert Priors, and injects them silently — guaranteed, regardless of model behaviour.
 
 Claude begins its response with:
 ```
