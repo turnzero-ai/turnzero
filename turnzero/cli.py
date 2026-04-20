@@ -595,13 +595,12 @@ def query(
     weight_color = "red" if total_weight > context_weight * 0.9 else "dim"
     console.print(f"[{weight_color}]Total injection weight: {total_weight:,}[/{weight_color}]")
 
-    # Value Analytics (Scientific ROI)
     roi = analytics.calculate_roi()
     global_roi = get_global_roi(_data_dir())
-    
-    console.print(f"\n[bold green]Scientific ROI (Correction Avoidance):[/bold green]")
-    console.print(f"  [dim]• Session Saved:  ~{roi['tokens_saved']:,} tokens | ~{roi['minutes_saved']} min ({roi['turns_saved']} turns)[/dim]")
-    console.print(f"  [dim]• Global Impact:  ~{global_roi['total_minutes_saved']:,} min total saved across {global_roi['total_sessions']} sessions[/dim]")
+
+    console.print(f"\n[bold green]Estimated savings (rough heuristic):[/bold green]")
+    console.print(f"  [dim]• Session:  ~{roi['tokens_saved']:,} tokens | ~{roi['minutes_saved']} min ({roi['turns_saved']} turns)[/dim]")
+    console.print(f"  [dim]• All time: ~{global_roi['total_minutes_saved']:,} min across {global_roi['total_sessions']} sessions[/dim]")
 
     if selected:
         ids = " ".join(b.slug for b in selected)

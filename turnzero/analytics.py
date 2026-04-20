@@ -1,4 +1,4 @@
-"""Scientifically precise ROI and session analytics for TurnZero."""
+"""Session analytics and estimated ROI for TurnZero."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class SessionAnalytics:
     start_time: float
     events: list[SessionEvent] = field(default_factory=list)
     
-    # Constants for Scientific ROI (Heuristic based on developer study benchmarks)
+    # Rough estimates — 1 prior ≈ 1 avoided correction turn, ~1500 tokens, ~4 min
     TURNS_SAVED_PER_PRIOR: float = 2.5
     TOKENS_PER_TURN: int = 1500
     MINUTES_PER_TURN: int = 4.0
@@ -43,7 +43,7 @@ class SessionAnalytics:
         ))
 
     def calculate_roi(self) -> dict[str, Any]:
-        """Compute scientifically grounded ROI metrics for this session."""
+        """Compute estimated ROI metrics for this session."""
         injections = [e for e in self.events if e.event_type == "injection"]
         misses = [e for e in self.events if e.event_type == "miss"]
         
