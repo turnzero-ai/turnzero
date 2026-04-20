@@ -161,6 +161,7 @@ doc_anchors:
 - **Client-side injection only.** TurnZero never sits in the request path between user and AI provider.
 - **Provider neutral.** Works with any MCP-compatible client — Claude Code, Cursor, Claude Desktop, and others.
 - **Token budget aware.** Warns when selected blocks exceed 4000 tokens (configurable).
+- **`harvest` stores transcripts locally.** The `turnzero harvest` command reads your local AI session files and writes conversation transcripts to `~/.turnzero/` for candidate extraction. This is an explicit opt-in step — nothing is read or stored automatically. Transcripts never leave your machine. The MCP injection path (the default) never touches session content at all.
 
 ---
 
