@@ -21,21 +21,43 @@ def _fake_ollama_response(embedding: list[float]) -> MagicMock:
     return resp
 
 
-def test_embed_ollama_uses_httpx_not_ollama_package() -> None:
+def test_embed_ollama_uses_httpx_not_ollama_package(monkeypatch: pytest.MonkeyPatch) -> None:
     """ollama backend must work without the ollama Python package installed."""
-    import sys
-    assert "ollama" not in sys.modules or True  # package may or may not be present
+    monkeypatch.delenv("OLLAMA_HOST", raising=False)
 
     vec = list(range(EMBEDDING_DIM))
     with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
         result = _embed_ollama("test prompt")
 
     mock_post.assert_called_once()
-    call_kwargs = mock_post.call_args
-    assert "11434" in call_kwargs[0][0]  # hits localhost ollama port
-    assert call_kwargs[1]["json"]["model"] == "nomic-embed-text"
+    url = mock_post.call_args[0][0]
+    assert "localhost:11434" in url
+    assert mock_post.call_args[1]["json"]["model"] == "nomic-embed-text"
     assert result.shape == (EMBEDDING_DIM,)
     assert result.dtype == np.float32
+
+
+def test_embed_ollama_respects_ollama_host_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OLLAMA_HOST", "http://my-server:12345")
+
+    vec = list(range(EMBEDDING_DIM))
+    with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
+        _embed_ollama("test prompt")
+
+    url = mock_post.call_args[0][0]
+    assert "my-server:12345" in url
+    assert "localhost" not in url
+
+
+def test_embed_ollama_host_without_scheme(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OLLAMA_HOST", "my-server:12345")
+
+    vec = list(range(EMBEDDING_DIM))
+    with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
+        _embed_ollama("test prompt")
+
+    url = mock_post.call_args[0][0]
+    assert url.startswith("http://my-server:12345")
 
 
 def test_embed_ollama_raises_runtime_error_on_failure() -> None:

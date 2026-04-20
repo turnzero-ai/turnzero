@@ -51,9 +51,13 @@ def embed(text: str) -> np.ndarray:
 def _embed_ollama(text: str) -> np.ndarray:
     import httpx
 
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    if not host.startswith("http"):
+        host = f"http://{host}"
+
     try:
         resp = httpx.post(
-            "http://localhost:11434/api/embeddings",
+            f"{host}/api/embeddings",
             json={"model": "nomic-embed-text", "prompt": text},
             timeout=10.0,
         )
