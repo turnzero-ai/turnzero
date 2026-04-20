@@ -18,7 +18,7 @@ app = typer.Typer(
 index_app = typer.Typer(help="Manage the embedding index.", no_args_is_help=True)
 app.add_typer(index_app, name="index")
 
-source_app = typer.Typer(help="Enable or disable Expert Prior sources (local/community/enterprise).", no_args_is_help=True)
+source_app = typer.Typer(help="Enable or disable Expert Prior sources (local/community/team).", no_args_is_help=True)
 app.add_typer(source_app, name="source")
 
 console = Console()
@@ -855,7 +855,7 @@ def autolearn(
 
                 if any_written:
                     console.print("  Updating search index ...")
-                    _build(_blocks_dir(), _index_path())
+                    _build(_blocks_dir(), _index_path(), data_dir=_data_dir())
                     console.print("  [green]✓ Index updated.[/green]")
 
                 console.print("[dim]Waiting for new files...[/dim]\n")
@@ -1021,7 +1021,7 @@ def harvest(
     if total_candidates > 0 and not dry_run:
         if auto_approve:
             console.print(f"\nRebuilding index with {total_candidates} new block(s)...")
-            count = _build(_blocks_dir(), _index_path())
+            count = _build(_blocks_dir(), _index_path(), data_dir=_data_dir())
             console.print(f"[bold green]✓ {total_candidates} block(s) added. Index now has {count} entries.[/bold green]")
         else:
             console.print(f"\n[bold green]✓ {total_candidates} candidate(s) staged for review.[/bold green]")
@@ -1082,7 +1082,7 @@ def review() -> None:
 
     if approved > 0:
         console.print(f"Rebuilding index with {approved} new block(s)...")
-        count = _build(_blocks_dir(), _index_path())
+        count = _build(_blocks_dir(), _index_path(), data_dir=_data_dir())
         console.print(f"[green]✓ Index updated — {count} blocks total.[/green]\n")
 
     console.print(f"[bold]Done.[/bold] Approved: {approved}  Rejected: {rejected}")
@@ -1400,7 +1400,7 @@ def index_build() -> None:
 
     console.print(f"Building index from [bold]{_blocks_dir()}[/bold] ...")
     try:
-        count = _build(_blocks_dir(), _index_path())
+        count = _build(_blocks_dir(), _index_path(), data_dir=_data_dir())
     except (FileNotFoundError, ValueError) as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -1456,7 +1456,7 @@ def source_list() -> None:
 
 
 @source_app.command("enable")
-def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, community, enterprise")) -> None:
+def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, community, team")) -> None:
     """Enable an Expert Prior source tier."""
     from turnzero.config import load_config, save_config, TIERS
 
@@ -1470,7 +1470,7 @@ def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, c
 
 
 @source_app.command("disable")
-def source_disable(tier: str = typer.Argument(..., help="Tier to disable: local, community, enterprise")) -> None:
+def source_disable(tier: str = typer.Argument(..., help="Tier to disable: local, community, team")) -> None:
     """Disable an Expert Prior source tier."""
     from turnzero.config import load_config, save_config, TIERS
 
@@ -1478,7 +1478,7 @@ def source_disable(tier: str = typer.Argument(..., help="Tier to disable: local,
         console.print(f"[red]Unknown tier '{tier}'. Choose from: {', '.join(TIERS)}[/red]")
         raise typer.Exit(1)
     if tier == "local":
-        console.print("[yellow]⚠[/yellow]  Disabling 'local' means no blocks will be injected unless community or enterprise is enabled.")
+        console.print("[yellow]⚠[/yellow]  Disabling 'local' means no blocks will be injected unless community or team is enabled.")
     cfg = load_config(_data_dir())
     cfg["sources"][tier] = False
     save_config(_data_dir(), cfg)

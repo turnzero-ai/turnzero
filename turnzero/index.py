@@ -3,17 +3,18 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from pathlib import Path
 
-from turnzero.blocks import Block, load_all_blocks, load_block
+from turnzero.blocks import load_all_blocks, load_block
 from turnzero.embed import embed
 
 
-def build(blocks_dir: Path, index_path: Path) -> int:
-    """Embed all blocks and write index.jsonl.
+def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> int:
+    """Embed all blocks and write index.jsonl (merged) plus per-source index files.
 
-    Each block is represented by the text from block.to_search_text().
-    Derives the source tier from the first subdirectory level under blocks_dir.
+    If data_dir is provided, also writes index_{source}.jsonl for each source
+    tier found — enabling cheap registry sync and per-source caching.
     Returns the number of blocks indexed.
     """
     if not blocks_dir.exists():
@@ -24,27 +25,35 @@ def build(blocks_dir: Path, index_path: Path) -> int:
         raise ValueError(f"No blocks found in {blocks_dir}")
 
     index_path.parent.mkdir(parents=True, exist_ok=True)
-    count = 0
 
-    with index_path.open("w") as f:
+    # Collect entries grouped by source for per-source files
+    by_source: dict[str, list[str]] = defaultdict(list)
+
+    with index_path.open("w") as merged:
         for path in paths:
             block = load_block(path)
             rel = path.relative_to(blocks_dir)
             source = rel.parts[0] if len(rel.parts) > 1 else "local"
             search_text = block.to_search_text()
             embedding = embed(search_text)
-            entry = {
+            line = json.dumps({
                 "block_id": block.slug,
                 "embedding": embedding.tolist(),
                 "domain": block.domain,
                 "intent": block.intent,
                 "tags": block.tags,
                 "source": source,
-            }
-            f.write(json.dumps(entry) + "\n")
-            count += 1
+            })
+            merged.write(line + "\n")
+            by_source[source].append(line)
 
-    return count
+    # Write per-source index files when data_dir is available
+    if data_dir is not None:
+        for source, lines in by_source.items():
+            source_path = data_dir / f"index_{source}.jsonl"
+            source_path.write_text("\n".join(lines) + "\n")
+
+    return sum(len(v) for v in by_source.values())
 
 
 def verify(blocks_dir: Path, max_age_days: int = 90) -> list[str]:

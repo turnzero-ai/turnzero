@@ -6,13 +6,13 @@ from pathlib import Path
 
 import yaml
 
-TIERS = ("local", "community", "enterprise")
+TIERS = ("local", "community", "team")
 
 _DEFAULTS: dict = {
     "sources": {
         "local": True,
         "community": True,
-        "enterprise": False,
+        "team": False,
     }
 }
 

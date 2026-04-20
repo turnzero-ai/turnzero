@@ -22,8 +22,14 @@ from mcp.server.fastmcp import FastMCP
 
 from turnzero.blocks import Block, load_all_blocks
 from turnzero.config import enabled_sources
-from turnzero.retrieval import load_index
+from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
+
+# ---------------------------------------------------------------------------
+# Per-source index cache: path → (mtime, entries)
+# Avoids re-reading disk on every Turn 0 — reloads only when file changes.
+# ---------------------------------------------------------------------------
+_INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
 
 mcp = FastMCP(
     "turnzero",
@@ -73,6 +79,33 @@ def _load_active_blocks() -> dict[str, Block]:
     return load_all_blocks(_blocks_dir(), sources=_active_sources())
 
 
+def _load_source_index(source: str) -> list[IndexEntry]:
+    """Load index for one source tier, using mtime-based cache."""
+    per_source_path = _data_dir() / f"index_{source}.jsonl"
+    path = per_source_path if per_source_path.exists() else _index_path()
+
+    try:
+        mtime = path.stat().st_mtime
+    except FileNotFoundError:
+        return []
+
+    cached = _INDEX_CACHE.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+
+    entries = load_index(path, sources=[source] if path == _index_path() else None)
+    _INDEX_CACHE[path] = (mtime, entries)
+    return entries
+
+
+def _load_active_index() -> list[IndexEntry]:
+    """Load and merge index entries for all enabled sources, with caching."""
+    result: list[IndexEntry] = []
+    for source in _active_sources():
+        result.extend(_load_source_index(source))
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Pure tool logic (importable for testing without a live server)
 # ---------------------------------------------------------------------------
@@ -86,9 +119,8 @@ def _list_suggested_blocks(
     project_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
-    sources = _active_sources()
-    blocks = load_all_blocks(_blocks_dir(), sources=sources)
-    index = load_index(_index_path(), sources=sources)
+    blocks = _load_active_blocks()
+    index = _load_active_index()
     results = _query(
         prompt, index, blocks,
         top_k=top_k, threshold=threshold, context_weight=context_weight,
@@ -368,7 +400,7 @@ def submit_candidate(
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
         # Rebuild index
         from turnzero.index import build as build_index
-        build_index(_blocks_dir(), _index_path())
+        build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
         return (
             f"✓ Expert Prior '{block_id}' added to library and index rebuilt. "
             f"It will be injected in future sessions matching this domain."
