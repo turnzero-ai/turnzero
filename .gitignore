@@ -58,6 +58,9 @@ Thumbs.db
 # Binary Documents
 *.docx
 
+# Demo recordings (uploaded to asciinema.org — not stored in repo)
+*.cast
+
 # Conversations and mining data (contains sensitive content)
 data/conversations/
 

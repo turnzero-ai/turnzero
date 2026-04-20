@@ -14,6 +14,10 @@ Raw prompt text is never stored. Injection is always client-side.
 
 ---
 
+[![Demo](https://asciinema.org/a/8IV2yoLNTloSlZo0.svg)](https://asciinema.org/a/8IV2yoLNTloSlZo0)
+
+---
+
 ## How it works
 
 TurnZero identifies the "Expert Priors" — the specific constraints and patterns an expert would add to a prompt — and ensures the AI knows them before it even starts to answer.
@@ -43,13 +47,6 @@ An **Expert Prior** is the delta between a naive prompt and an expert prompt —
 pip install turnzero
 turnzero setup
 ```
-
-> **PyPI coming soon.** Until then:
-> ```bash
-> git clone https://github.com/turnzero-ai/turnzero
-> cd turnzero && pip install -e .
-> turnzero setup
-> ```
 
 `turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
 
