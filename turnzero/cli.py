@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
+from typing import Optional
 
 import typer
 from rich import box
@@ -15,6 +17,23 @@ app = typer.Typer(
     help="TurnZero — AI Expert Prior injection for developer sessions.",
     no_args_is_help=True,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"turnzero {_pkg_version('turnzero')}")
+        raise typer.Exit()
+
+
+@app.callback()
+def _app_options(
+    version: Optional[bool] = typer.Option(  # noqa: UP007
+        None, "--version", "-V",
+        callback=_version_callback, is_eager=True,
+        help="Show version and exit.",
+    ),
+) -> None:
+    pass
 index_app = typer.Typer(help="Manage the embedding index.", no_args_is_help=True)
 app.add_typer(index_app, name="index")
 
@@ -80,8 +99,8 @@ def preview(
 ) -> None:
     """Preview which Expert Priors would be injected for a prompt.
 
-    Works immediately after pip install — no setup, no ollama, no configuration.
     Uses the pre-built index bundled with the package.
+    Requires an embedding backend (ollama, sentence-transformers, or OPENAI_API_KEY).
 
     \b
     Example:
@@ -346,10 +365,10 @@ def setup(
             if dest_blocks.exists():
                 shutil.rmtree(dest_blocks)
             shutil.copytree(source_blocks, dest_blocks)
-            n = len(list(dest_blocks.glob("*.yaml")))
+            n = len(list(dest_blocks.rglob("*.yaml")))
             console.print(f"[green]✓[/green] Copied {n} blocks → {dest_blocks}")
         else:
-            n = len(list(dest_blocks.glob("*.yaml")))
+            n = len(list(dest_blocks.rglob("*.yaml")))
             console.print(f"[dim]✓ {n} blocks already at {dest_blocks}[/dim]")
     else:
         console.print(
@@ -403,6 +422,7 @@ def setup(
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()
     index_path = resolved / "index.jsonl"
+    index_ok = False
     if ollama_ok and dest_blocks.exists():
         if not index_path.exists() or force:
             console.print("Building embedding index…")
@@ -414,10 +434,12 @@ def setup(
                     env=env, check=True,
                 )
                 console.print("[green]✓[/green] Index built")
+                index_ok = True
             except subprocess.CalledProcessError:
                 console.print("[red]✗ Index build failed — check ollama is running[/red]")
         else:
             console.print("[dim]✓ Index already exists[/dim]")
+            index_ok = True
     else:
         console.print(
             "[dim]Skipping index build. Once ollama is ready, run:[/dim]\n"
@@ -484,7 +506,7 @@ def setup(
 
     # ── 7. Summary ────────────────────────────────────────────────────────
     console.print()
-    if ollama_ok and index_path.exists():
+    if ollama_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")
         console.print(
             "Start a [bold]new[/bold] Claude Code session and paste this prompt to verify:\n\n"

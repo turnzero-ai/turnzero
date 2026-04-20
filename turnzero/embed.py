@@ -49,14 +49,16 @@ def embed(text: str) -> np.ndarray:
 
 
 def _embed_ollama(text: str) -> np.ndarray:
-    try:
-        import ollama
-    except ImportError as e:
-        raise RuntimeError("ollama package not installed") from e
+    import httpx
 
     try:
-        result = ollama.embeddings(model="nomic-embed-text", prompt=text)
-        return np.array(result["embedding"], dtype=np.float32)
+        resp = httpx.post(
+            "http://localhost:11434/api/embeddings",
+            json={"model": "nomic-embed-text", "prompt": text},
+            timeout=10.0,
+        )
+        resp.raise_for_status()
+        return np.array(resp.json()["embedding"], dtype=np.float32)
     except Exception as e:
         raise RuntimeError(f"ollama unavailable: {e}") from e
 
@@ -77,10 +79,7 @@ def _embed_sentence_transformers(text: str) -> np.ndarray:
 
 
 def _embed_openai(text: str) -> np.ndarray:
-    try:
-        import httpx
-    except ImportError as e:
-        raise RuntimeError("httpx not installed") from e
+    import httpx
 
     api_key = os.environ["OPENAI_API_KEY"]
     try:
