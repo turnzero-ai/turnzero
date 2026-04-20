@@ -134,13 +134,29 @@ def load_block(path: Path) -> Block:
     )
 
 
-def load_all_blocks(blocks_dir: Path) -> dict[str, Block]:
-    """Load all *.yaml files from blocks_dir, keyed by block ID."""
+def load_all_blocks(
+    blocks_dir: Path,
+    sources: list[str] | None = None,
+) -> dict[str, Block]:
+    """Load all *.yaml files from blocks_dir (recursive), keyed by block ID.
+
+    If sources is given, only load from those top-level tier subdirectories
+    (e.g. ['local', 'community']). None means load everything.
+    """
     if not blocks_dir.exists():
         raise FileNotFoundError(f"Blocks directory not found: {blocks_dir}")
 
     blocks: dict[str, Block] = {}
-    for path in sorted(blocks_dir.glob("*.yaml")):
+    if sources is not None:
+        paths: list[Path] = []
+        for tier in sources:
+            tier_dir = blocks_dir / tier
+            if tier_dir.exists():
+                paths.extend(sorted(tier_dir.rglob("*.yaml")))
+    else:
+        paths = sorted(blocks_dir.rglob("*.yaml"))
+
+    for path in paths:
         block = load_block(path)
         blocks[block.id] = block
 

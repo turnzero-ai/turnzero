@@ -35,7 +35,7 @@ def test_bundled_blocks_dir_is_reachable() -> None:
 
 def test_bundled_blocks_dir_has_yaml_files() -> None:
     blocks_dir = _bundled_blocks_dir()
-    yaml_files = list(blocks_dir.glob("*.yaml"))
+    yaml_files = list(blocks_dir.rglob("*.yaml"))
     assert len(yaml_files) >= 8, (
         f"Expected at least 8 YAML blocks in {blocks_dir}, found {len(yaml_files)}"
     )

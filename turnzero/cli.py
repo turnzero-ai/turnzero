@@ -18,6 +18,9 @@ app = typer.Typer(
 index_app = typer.Typer(help="Manage the embedding index.", no_args_is_help=True)
 app.add_typer(index_app, name="index")
 
+source_app = typer.Typer(help="Enable or disable Expert Prior sources (local/community/enterprise).", no_args_is_help=True)
+app.add_typer(source_app, name="source")
+
 console = Console()
 err_console = Console(stderr=True)
 
@@ -1427,6 +1430,59 @@ def index_verify(
         console.print(f"[yellow]{len(stale)} stale block(s):[/yellow]")
         for block_id in stale:
             console.print(f"  • {block_id}")
+
+
+# ---------------------------------------------------------------------------
+# Source subcommands — enable/disable block tiers
+# ---------------------------------------------------------------------------
+
+@source_app.command("list")
+def source_list() -> None:
+    """Show which Expert Prior sources are enabled."""
+    from turnzero.config import load_config, TIERS
+
+    cfg = load_config(_data_dir())
+    sources = cfg["sources"]
+    table = Table(box=box.SIMPLE, show_header=False)
+    table.add_column("Source", style="bold")
+    table.add_column("Status")
+    table.add_column("Path")
+    for tier in TIERS:
+        enabled = sources.get(tier, False)
+        status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
+        path = str(_blocks_dir() / tier)
+        table.add_row(tier, status, f"[dim]{path}[/dim]")
+    console.print(table)
+
+
+@source_app.command("enable")
+def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, community, enterprise")) -> None:
+    """Enable an Expert Prior source tier."""
+    from turnzero.config import load_config, save_config, TIERS
+
+    if tier not in TIERS:
+        console.print(f"[red]Unknown tier '{tier}'. Choose from: {', '.join(TIERS)}[/red]")
+        raise typer.Exit(1)
+    cfg = load_config(_data_dir())
+    cfg["sources"][tier] = True
+    save_config(_data_dir(), cfg)
+    console.print(f"[green]✓[/green] Source '[bold]{tier}[/bold]' enabled.")
+
+
+@source_app.command("disable")
+def source_disable(tier: str = typer.Argument(..., help="Tier to disable: local, community, enterprise")) -> None:
+    """Disable an Expert Prior source tier."""
+    from turnzero.config import load_config, save_config, TIERS
+
+    if tier not in TIERS:
+        console.print(f"[red]Unknown tier '{tier}'. Choose from: {', '.join(TIERS)}[/red]")
+        raise typer.Exit(1)
+    if tier == "local":
+        console.print("[yellow]⚠[/yellow]  Disabling 'local' means no blocks will be injected unless community or enterprise is enabled.")
+    cfg = load_config(_data_dir())
+    cfg["sources"][tier] = False
+    save_config(_data_dir(), cfg)
+    console.print(f"[dim]✓ Source '[bold]{tier}[/bold]' disabled.[/dim]")
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ def test_injection_text_has_sections(all_blocks: dict[str, Block]) -> None:
 
 
 def test_load_single_block_roundtrip() -> None:
-    path = BLOCKS_DIR / "nextjs15-approuter-build.yaml"
+    path = BLOCKS_DIR / "local" / "nextjs" / "nextjs15-approuter-build.yaml"
     block = load_block(path)
     assert block.domain == "nextjs"
     assert block.intent == "build"

@@ -21,6 +21,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from turnzero.blocks import Block, load_all_blocks
+from turnzero.config import enabled_sources
 from turnzero.retrieval import load_index
 from turnzero.retrieval import query as _query
 
@@ -64,6 +65,14 @@ def _index_path() -> Path:
     return _data_dir() / "index.jsonl"
 
 
+def _active_sources() -> list[str]:
+    return enabled_sources(_data_dir())
+
+
+def _load_active_blocks() -> dict[str, Block]:
+    return load_all_blocks(_blocks_dir(), sources=_active_sources())
+
+
 # ---------------------------------------------------------------------------
 # Pure tool logic (importable for testing without a live server)
 # ---------------------------------------------------------------------------
@@ -77,8 +86,9 @@ def _list_suggested_blocks(
     project_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
-    blocks = load_all_blocks(_blocks_dir())
-    index = load_index(_index_path())
+    sources = _active_sources()
+    blocks = load_all_blocks(_blocks_dir(), sources=sources)
+    index = load_index(_index_path(), sources=sources)
     results = _query(
         prompt, index, blocks,
         top_k=top_k, threshold=threshold, context_weight=context_weight,
@@ -102,7 +112,7 @@ def _list_suggested_blocks(
 
 def _get_block(block_id: str) -> dict[str, Any]:
     """Return full block data as a serialisable dict."""
-    blocks = load_all_blocks(_blocks_dir())
+    blocks = _load_active_blocks()
     if block_id not in blocks:
         available = sorted(blocks.keys())
         raise ValueError(
@@ -136,7 +146,7 @@ def _get_block(block_id: str) -> dict[str, Any]:
 
 def _inject_block(block_id: str) -> str:
     """Return formatted injection text for a block."""
-    blocks = load_all_blocks(_blocks_dir())
+    blocks = _load_active_blocks()
     if block_id not in blocks:
         available = sorted(blocks.keys())
         raise ValueError(
@@ -267,7 +277,7 @@ def get_stats() -> dict:
     est_tokens = round(priors_total * 0.5 * 1500)
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
+        blocks = _load_active_blocks()
     except FileNotFoundError:
         blocks = {}
 
@@ -351,7 +361,7 @@ def submit_candidate(
     }
 
     if auto_approve:
-        dest_dir = _blocks_dir()
+        dest_dir = _blocks_dir() / "local" / domain
         dest_dir.mkdir(parents=True, exist_ok=True)
         block_path = dest_dir / f"{block_id}.yaml"
         with open(block_path, "w", encoding="utf-8") as f:

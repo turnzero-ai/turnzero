@@ -137,10 +137,17 @@ class IndexEntry:
     domain: str
     intent: str
     tags: list[str]
+    source: str = "local"
 
 
-def load_index(index_path: Path) -> list[IndexEntry]:
-    """Load index.jsonl written by index.build()."""
+def load_index(
+    index_path: Path,
+    sources: list[str] | None = None,
+) -> list[IndexEntry]:
+    """Load index.jsonl written by index.build().
+
+    If sources is given, only return entries whose source tier is in the list.
+    """
     if not index_path.exists():
         raise FileNotFoundError(
             f"Index not found at {index_path}\n"
@@ -152,6 +159,9 @@ def load_index(index_path: Path) -> list[IndexEntry]:
         if not line.strip():
             continue
         data = json.loads(line)
+        source = data.get("source", "local")
+        if sources is not None and source not in sources:
+            continue
         entries.append(
             IndexEntry(
                 block_id=data["block_id"],
@@ -159,6 +169,7 @@ def load_index(index_path: Path) -> list[IndexEntry]:
                 domain=data.get("domain", data.get("stack", "unknown")),
                 intent=data["intent"],
                 tags=data["tags"],
+                source=source,
             )
         )
     return entries
