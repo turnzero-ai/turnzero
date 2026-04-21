@@ -368,6 +368,100 @@ def _setup_codex_mcp(
     con.print(f"[green]✓[/green] MCP server registered in {config_path}")
 
 
+_TURNZERO_CLAUDE_MD_BLOCK = """\
+
+## TurnZero — Expert Prior injection
+TurnZero MCP is installed. Follow these rules every session:
+1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
+2. Call `inject_block` for each relevant prior before answering.
+3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
+Skip only for pure chitchat (greetings, one-word replies).
+"""
+
+_TURNZERO_AGENTS_MD_BLOCK = """\
+
+## TurnZero — Expert Prior injection
+TurnZero MCP is installed. Follow these rules every session:
+1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
+2. Call `inject_block` for each relevant prior before answering.
+3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
+Skip only for pure chitchat (greetings, one-word replies).
+"""
+
+_TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
+
+
+def _setup_claude_md(
+    force: bool,
+    con: Console,
+    claude_dir: Path | None = None,
+) -> None:
+    """Write TurnZero instruction block to ~/.claude/CLAUDE.md (global Claude Code rules).
+
+    Claude Code auto-discovers this file and injects it into every session system prompt,
+    making list_suggested_blocks and submit_candidate calls more reliable without hooks.
+    """
+    claude_dir = claude_dir if claude_dir is not None else Path.home() / ".claude"
+    if not claude_dir.exists():
+        return
+
+    md_path = claude_dir / "CLAUDE.md"
+    existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+
+    if _TURNZERO_MD_MARKER in existing:
+        if not force:
+            con.print("[dim]✓ TurnZero rule already in ~/.claude/CLAUDE.md[/dim]")
+            return
+        # Remove old block before rewriting
+        lines = existing.splitlines(keepends=True)
+        filtered: list[str] = []
+        skip = False
+        for line in lines:
+            if _TURNZERO_MD_MARKER in line:
+                skip = True
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+                skip = False
+            if not skip:
+                filtered.append(line)
+        existing = "".join(filtered).rstrip("\n")
+
+    md_path.write_text(existing + _TURNZERO_CLAUDE_MD_BLOCK, encoding="utf-8")
+    con.print(f"[green]✓[/green] TurnZero rule written to {md_path}")
+
+
+def _setup_codex_agents_md(
+    force: bool,
+    con: Console,
+    codex_dir: Path | None = None,
+) -> None:
+    """Write TurnZero instruction block to ~/.codex/AGENTS.md (global Codex CLI rules)."""
+    codex_dir = codex_dir if codex_dir is not None else Path.home() / ".codex"
+    if not codex_dir.exists():
+        return
+
+    md_path = codex_dir / "AGENTS.md"
+    existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+
+    if _TURNZERO_MD_MARKER in existing:
+        if not force:
+            con.print("[dim]✓ TurnZero rule already in ~/.codex/AGENTS.md[/dim]")
+            return
+        lines = existing.splitlines(keepends=True)
+        filtered_lines: list[str] = []
+        skip = False
+        for line in lines:
+            if _TURNZERO_MD_MARKER in line:
+                skip = True
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+                skip = False
+            if not skip:
+                filtered_lines.append(line)
+        existing = "".join(filtered_lines).rstrip("\n")
+
+    md_path.write_text(existing + _TURNZERO_AGENTS_MD_BLOCK, encoding="utf-8")
+    con.print(f"[green]✓[/green] TurnZero rule written to {md_path}")
+
+
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -575,6 +669,10 @@ def setup(
 
     # ── 6b. Register MCP in ~/.codex/config.toml (Codex CLI) ─────────────
     _setup_codex_mcp(mcp_bin, resolved, force, console)
+
+    # ── 6c. Write global instruction rules (makes AI invoke tools reliably) ─
+    _setup_claude_md(force, console)
+    _setup_codex_agents_md(force, console)
 
     # ── 7. Summary ────────────────────────────────────────────────────────
     console.print()

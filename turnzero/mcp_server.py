@@ -34,18 +34,24 @@ _INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
 mcp = FastMCP(
     "turnzero",
     instructions=(
-        "TurnZero injects Expert Priors at the start of AI sessions to prevent mid-session corrections. "
-        "Expert Priors exist for any domain — software, law, medicine, finance, design, writing, and more. "
-        "Call list_suggested_blocks at the start of every session with the user's opening prompt. "
-        "Use inject_block to retrieve the formatted text for each relevant prior. "
-        "During the session: if the user corrects you on any domain-specific fact, API, rule, or pattern, "
-        "call submit_candidate with auto_approve=True — add it to the library immediately. "
-        "Also call submit_candidate with auto_approve=True if the user explicitly says "
-        "'remember this', 'save this', or 'note this for next time'. "
-        "You are the best extractor — you already know which turns were corrections. "
+        "TurnZero injects Expert Priors to prevent mid-session corrections. "
+        "Expert Priors exist for any domain — software, law, medicine, finance, security, writing, and more. "
+        "\n\n"
+        "RULE 1 — ALWAYS call list_suggested_blocks before responding to ANY non-trivial user message. "
+        "Do not wait — call it in parallel with preparing your response. "
+        "This applies to every message, not just the first one in a session. "
+        "Skip only for pure chitchat (greetings, thanks, one-word replies). "
+        "Use inject_block to retrieve the full text of each relevant prior before answering. "
+        "\n\n"
+        "RULE 2 — ALWAYS call submit_candidate with auto_approve=True when: "
+        "(a) the user corrects you on any domain-specific fact, API, rule, pattern, or threshold; "
+        "(b) the user says 'remember this', 'save this', or 'note this for next time'. "
+        "Do this immediately — do not wait until the end of the session. "
+        "You are the best extractor: you already know which turns were corrections. "
+        "\n\n"
         "Always use auto_approve=True for live sessions. "
         "The review queue (auto_approve=False) is only for offline harvest runs. "
-        "Call get_stats when the user asks about TurnZero usage, stats, or how many priors have been injected."
+        "Call get_stats when the user asks about TurnZero usage or how many priors have been injected."
     ),
 )
 
