@@ -53,10 +53,28 @@ def classify_intent(prompt: str) -> str:
     return best if scores[best] > 0 else "build"
 
 
-# Positive signals that a prompt describes an active technical task.
-# Require at least one to be present before hitting the similarity index.
-# Two categories: action verbs (user is doing something) and
-# problem signals (something concrete is failing or broken).
+# ---------------------------------------------------------------------------
+# Implementation gate — three-tier, domain-agnostic
+# ---------------------------------------------------------------------------
+# Tier 1: pre-filters (fast, no domain knowledge required)
+#   - reject known social/chitchat patterns
+#   - require at least one word ≥ 6 chars (proxy for domain vocabulary)
+# Tier 2: positive signal (ANY one passes)
+#   - action/problem keyword hit (software + security verbs)
+#   - question pattern (domain-agnostic: "?", "how do I", "should I", ...)
+#   - domain detected in prompt or filesystem
+# Tier 3: similarity threshold (0.75) is the final quality gate
+
+_SOCIAL_PATTERNS: frozenset[str] = frozenset({
+    "how are you", "good morning", "good afternoon", "good evening",
+    "good night", "how's it going", "how is it going", "what's up",
+    "whats up", "hey there", "hi there", "tell me a joke",
+    "thanks", "thank you", "you're welcome", "youre welcome",
+    "sounds good", "sounds great", "got it", "makes sense",
+    "ok", "okay", "sure", "yes", "no", "great", "awesome",
+    "nice", "cool", "interesting", "noted",
+})
+
 _IMPL_ACTION_SIGNALS: frozenset[str] = frozenset({
     "build", "building", "create", "creating", "scaffold", "implement",
     "implementing", "set up", "setting up", "configure", "configuring",
@@ -68,6 +86,9 @@ _IMPL_ACTION_SIGNALS: frozenset[str] = frozenset({
     "upgrading", "wire up", "hook up", "spin up",
     "harden", "hardening", "scan", "scanning", "audit", "auditing",
     "pentest", "pentesting", "rotate", "rotating", "remediate", "remediating",
+    "patch", "patching", "mitigate", "mitigating", "investigate", "investigating",
+    "secure", "securing", "protect", "protecting", "analyze", "analyzing",
+    "analyse", "analysing", "exploit", "exploiting", "assess", "assessing",
 })
 
 _IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
@@ -80,23 +101,33 @@ _IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
     "leaked", "exposed", "compromised", "breached", "accidentally",
 })
 
+# Question phrases that signal a real professional query (domain-agnostic)
+_QUESTION_PATTERNS: frozenset[str] = frozenset({
+    "?",
+    "how do i", "how do we", "how should i", "how should we",
+    "how can i", "how can we", "how to",
+    "what is the", "what are the", "what should i", "what should we",
+    "what's the", "whats the", "what would",
+    "which ", "when should", "when do i", "when do we",
+    "should i ", "should we ", "can i ", "can we ",
+    "help me", "help us", "i need to", "we need to",
+    "i want to", "we want to", "i'm trying to", "im trying to",
+    "i am trying to", "we are trying to",
+    "best way to", "best approach", "best practice",
+    "recommend", "recommendation", "advice on", "guidance on",
+    "difference between", "when to use", "pros and cons",
+})
 
 _ALL_SIGNALS: frozenset[str] = _IMPL_ACTION_SIGNALS | _IMPL_PROBLEM_SIGNALS
 
 # Single-word signals long enough for fuzzy matching (≥5 chars).
-# Short words like "add", "run", "fix" require exact match to avoid false positives.
 _FUZZY_SIGNALS: frozenset[str] = frozenset(
     s for s in _ALL_SIGNALS if " " not in s and len(s) >= 5
 )
 
 
 def _fuzzy_signal_match(words: list[str]) -> bool:
-    """Return True if any prompt word is within edit distance 1 of a fuzzy signal.
-
-    Uses SequenceMatcher ratio ≥ 0.82, which catches single-character typos and
-    transpositions (e.g. 'biulding' → 'building', 'depoly' → 'deploy') while
-    rejecting unrelated words.
-    """
+    """Return True if any prompt word is within edit distance 1 of a fuzzy signal."""
     from difflib import SequenceMatcher
 
     for word in words:
@@ -110,20 +141,49 @@ def _fuzzy_signal_match(words: list[str]) -> bool:
     return False
 
 
-def is_implementation_prompt(prompt: str) -> bool:
-    """Return True only when the prompt describes an active technical task.
+def _has_substance(prompt: str, lower: str) -> bool:
+    """Pre-filter: reject pure chitchat before the positive signal check.
 
-    Requires at least one action signal (user is doing something) or
-    problem signal (something is broken/failing). Evaluation, comparison,
-    and learning prompts that lack these signals return False.
-
-    Exact substring match runs first (free). Fuzzy word-level match runs as
-    fallback to catch typos (e.g. 'biulding', 'depoly', 'creaet').
+    Returns False (no substance) when:
+      - the entire prompt matches a known social pattern, OR
+      - no word is ≥ 6 characters (proxy for domain vocabulary)
     """
-    lower = prompt.lower()
+    if lower.strip() in _SOCIAL_PATTERNS:
+        return False
+    return any(len(w) >= 6 for w in lower.split())
+
+
+def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> bool:
+    """Return True when the prompt is likely a real professional task.
+
+    Three-tier gate (domain-agnostic):
+      1. Pre-filter: reject known social patterns and vocabulary-free prompts
+      2. Positive signal: action keyword OR question pattern OR known domain detected
+      3. Final quality gate: similarity ≥ 0.75 (in the query layer, not here)
+
+    Works for any domain — software, medicine, law, finance, security, etc.
+    """
+    lower = prompt.lower().strip()
+
+    # Tier 1: pre-filters
+    if not _has_substance(prompt, lower):
+        return False
+
+    # Tier 2a: action / problem keyword (exact or fuzzy)
     if any(sig in lower for sig in _ALL_SIGNALS):
         return True
-    return _fuzzy_signal_match(lower.split())
+    if _fuzzy_signal_match(lower.split()):
+        return True
+
+    # Tier 2b: question / intent pattern
+    if any(pat in lower for pat in _QUESTION_PATTERNS):
+        return True
+
+    # Tier 2c: domain detected from filesystem (high-confidence — physical files exist)
+    # Keyword-based domain detection is NOT used here: a mention of "security" or
+    # "CVE" in a passive sentence ("I like reading about CVEs") would fire a false positive.
+    # Question patterns in tier 2b already cover professional cross-domain prompts.
+    return project_root is not None and detect_domain(prompt, project_root) is not None
 
 
 # ---------------------------------------------------------------------------

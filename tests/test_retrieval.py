@@ -143,3 +143,72 @@ def test_impl_gate_blocks_vague_security_prompts(prompt: str) -> None:
     assert not is_implementation_prompt(prompt), (
         f"Expected impl gate to BLOCK vague prompt: {prompt!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Impl gate — domain-agnostic triggering across professions
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("prompt", [
+    # Security / IT (Dino's domain)
+    "what's the recommended approach for secrets rotation after a credential leak?",
+    "help me find SQL injection vulnerabilities in this codebase",
+    "we got a CVE on our JWT library, what do we need to patch?",
+    "what secrets management approach should we use for our microservices?",
+    "how do I set up zero-trust network policies for our infrastructure?",
+    "should I use RBAC or ABAC for our IAM model?",
+    "what are the OWASP Top 10 risks I need to address before launch?",
+    # Medicine
+    "what is the recommended dosage of metformin for a CKD stage 3 patient?",
+    "how should I adjust warfarin dosing when adding fluconazole?",
+    "what are the contraindications for beta-blockers in heart failure?",
+    "should I order a CT or MRI for suspected pulmonary embolism?",
+    "help me interpret these troponin levels in the context of NSTEMI",
+    # Law
+    "what are the enforceability requirements for non-compete clauses in California?",
+    "how should I structure a limitation of liability clause in a SaaS contract?",
+    "what's the difference between indemnification and hold harmless clauses?",
+    "should I include a mandatory arbitration clause in our terms of service?",
+    "advice on GDPR data processing agreements for a US company with EU customers",
+    # Finance
+    "what's the best approach for hedging currency exposure with forward contracts?",
+    "how should I account for unrealised gains under IFRS 9?",
+    "can I use a 1031 exchange for this commercial real estate transaction?",
+    "what are the disclosure requirements for material non-public information?",
+    "recommendation for structuring a convertible note with a valuation cap",
+    # Generic professional questions
+    "best way to approach a performance review conversation with an underperformer",
+    "what's the difference between gross margin and contribution margin?",
+    "i need to prepare for a difficult negotiation with a vendor",
+    "help me understand the pros and cons of microservices vs monolith",
+])
+def test_impl_gate_passes_cross_domain_professional_prompts(prompt: str) -> None:
+    assert is_implementation_prompt(prompt), (
+        f"Expected impl gate to PASS for professional prompt: {prompt!r}"
+    )
+
+
+@pytest.mark.parametrize("prompt", [
+    # Pure social / chitchat
+    "how are you",
+    "good morning",
+    "thanks",
+    "thank you so much",
+    "sounds good",
+    "got it",
+    "ok",
+    "sure",
+    "great",
+    "nice",
+    # Too vague — no substance, no question, no domain
+    "tell me about security",
+    "what is machine learning",
+    "interesting",
+    "I like coding",
+    "yes",
+    "no",
+])
+def test_impl_gate_blocks_chitchat_and_vague_prompts(prompt: str) -> None:
+    assert not is_implementation_prompt(prompt), (
+        f"Expected impl gate to BLOCK chitchat/vague prompt: {prompt!r}"
+    )
