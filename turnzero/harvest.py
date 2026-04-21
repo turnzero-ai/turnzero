@@ -137,7 +137,7 @@ def load_conversation(path: Path) -> str:
             pass
 
     # Aider and any markdown with role headers
-    if path.suffix in (".md", ".txt", "") or True:
+    if True:  # noqa: SIM210 — future: dispatch on path.suffix
         result = _parse_markdown_conversation(text)
         if result:
             return result

@@ -9,7 +9,6 @@ import pytest
 
 from turnzero.embed import EMBEDDING_DIM, _embed_ollama, _embed_openai, embed
 
-
 # ---------------------------------------------------------------------------
 # _embed_ollama — uses httpx directly, no ollama package required
 # ---------------------------------------------------------------------------
@@ -61,9 +60,9 @@ def test_embed_ollama_host_without_scheme(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_embed_ollama_raises_runtime_error_on_failure() -> None:
-    with patch("httpx.post", side_effect=Exception("connection refused")):
-        with pytest.raises(RuntimeError, match="ollama unavailable"):
-            _embed_ollama("test prompt")
+    with patch("httpx.post", side_effect=Exception("connection refused")), \
+         pytest.raises(RuntimeError, match="ollama unavailable"):
+        _embed_ollama("test prompt")
 
 
 # ---------------------------------------------------------------------------
@@ -109,9 +108,9 @@ def test_embed_raises_when_no_backend_available(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
-         patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("not installed")):
-        with pytest.raises(RuntimeError, match="No embedding backend available"):
-            embed("test prompt")
+         patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("not installed")), \
+         pytest.raises(RuntimeError, match="No embedding backend available"):
+        embed("test prompt")
 
 
 def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -119,8 +118,8 @@ def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None
 
     with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
          patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("not installed")), \
-         patch("turnzero.embed._embed_openai") as mock_openai:
-        with pytest.raises(RuntimeError):
-            embed("test")
+         patch("turnzero.embed._embed_openai") as mock_openai, \
+         pytest.raises(RuntimeError):
+        embed("test")
 
     mock_openai.assert_not_called()

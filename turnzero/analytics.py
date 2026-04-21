@@ -25,7 +25,7 @@ class SessionAnalytics:
     # Rough estimates — 1 prior ≈ 1 avoided correction turn, ~1500 tokens, ~4 min
     TURNS_SAVED_PER_PRIOR: float = 2.5
     TOKENS_PER_TURN: int = 1500
-    MINUTES_PER_TURN: int = 4.0
+    MINUTES_PER_TURN: float = 4.0
 
     def log_injection(self, block_ids: list[str]) -> None:
         self.events.append(SessionEvent(

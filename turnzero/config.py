@@ -8,7 +8,7 @@ import yaml
 
 TIERS = ("local", "community", "team")
 
-_DEFAULTS: dict = {
+_DEFAULTS: dict[str, dict[str, bool]] = {
     "sources": {
         "local": True,
         "community": True,
@@ -17,7 +17,7 @@ _DEFAULTS: dict = {
 }
 
 
-def load_config(data_dir: Path) -> dict:
+def load_config(data_dir: Path) -> dict[str, dict[str, bool]]:
     path = data_dir / "config.yaml"
     if not path.exists():
         return {k: dict(v) for k, v in _DEFAULTS.items()}
@@ -28,7 +28,7 @@ def load_config(data_dir: Path) -> dict:
     return result
 
 
-def save_config(data_dir: Path, config: dict) -> None:
+def save_config(data_dir: Path, config: dict[str, dict[str, bool]]) -> None:
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "config.yaml").write_text(
         yaml.dump(config, default_flow_style=False, sort_keys=True)

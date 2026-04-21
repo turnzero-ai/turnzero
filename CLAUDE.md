@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.2.2** (PyPI live) / **v0.2.3** (GitHub, pending PyPI token).
+TurnZero is at **v0.2.3** (PyPI live, confirmed external install via Codex).
 
 - 74 blocks shipped in wheel, 123 blocks in Darijo's local library
 - Any domain — software, law, medicine, finance, design, writing, research
@@ -88,3 +88,70 @@ When adding or changing behaviour:
 ### 4. Always ask before pushing to GitHub or publishing to PyPI
 **Never run `git push` or `hatch publish` without explicit confirmation from the user first.**
 State what will be pushed and where, then wait for a yes. This applies even when the user says "deploy" or "ship it" — confirm the exact action first.
+
+---
+
+## Coding Standards
+
+### Python style
+- Python 3.12+ — use native syntax (`X | Y`, `match`, f-strings)
+- `from __future__ import annotations` at the top of every module
+- Types: `list[str]` not `List[str]`; `X | None` not `Optional[X]`; use `Any` only where the type genuinely can't be narrowed at the call site (e.g. `yaml.safe_load()` return) — add an inline comment explaining why
+- mypy strict — zero errors; no `# type: ignore` without a reason on the same line
+- ruff for lint — line length 88, rules: `E, F, I, UP, B, SIM`, ignore `E501, B904, B008`
+- No comments unless the WHY is non-obvious. No docstrings on private functions. Public MCP tools get one-line description + Args/Returns only
+- Error handling only at system boundaries (user input, external APIs, file I/O)
+- `Path` not `str` for filesystem paths
+- `Console(stderr=True)` for error output — never `console.print(..., err=True)`
+
+### Tests
+- pytest + pytest-asyncio (`asyncio_mode = "auto"`)
+- Test file naming: `tests/test_<module>.py`
+- Every new behaviour gets a test before the task is closed
+- Retrieval quality gate: Hit Rate@3 ≥ 1.00 on `tests/validation_set.json` — run `turnzero validate` before any retrieval change
+- Test the public contract, not internals. Mock nothing that can be tested with real data
+- Run: `source .venv/bin/activate && pytest`
+
+### Git commit standards
+- Conventional commits: `fix:`, `feat:`, `docs:`, `refactor:`, `test:`, `chore:`
+- Subject line ≤ 72 chars, present tense, imperative (`fix: deduplicate ...` not `fixed: ...`)
+- One logical change per commit — don't bundle unrelated fixes
+- Never `--no-verify`, never amend a published commit
+
+### Branching
+- **`main` = always shippable.** Direct commits only for single-file hotfixes (typos, one-liner bugs)
+- **Feature branches** (`fix/...`, `feat/...`) for anything spanning multiple files, touching the MCP contract, or taking more than one session
+- Rule of thumb: if a failure would break `pipx install turnzero`, it goes on a branch
+- No PR required — branch → tests pass locally → merge to main
+
+### Pre-push gate
+Run this before every push to main — must be fully clean:
+```bash
+source .venv/bin/activate && pytest && ruff check . && mypy turnzero
+```
+
+### Versioning
+- semver: `PATCH` = bug fix, `MINOR` = new feature, `MAJOR` = breaking CLI/MCP/schema change
+- Bump only in `pyproject.toml` — consumed via `importlib.metadata`
+- Version bump is a **dedicated commit immediately before `hatch publish`** — never mixed into feature work
+- Tag every PyPI release: `git tag vX.Y.Z`
+
+### Release checklist (before every `hatch publish`)
+1. All tests green: `pytest`
+2. Lint + types clean: `ruff check . && mypy turnzero`
+3. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
+4. Version bumped in `pyproject.toml` in its own commit
+5. Tagged: `git tag vX.Y.Z`
+6. Confirm with Darijo before running `hatch publish`
+
+### Block YAML schema
+- Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)
+- Never mutate a slug for a breaking change — create a new slug
+- Every `anti_patterns` entry must start with `"Do not"`
+- `context_weight` = realistic token estimate (word count × 4)
+- `last_verified` = ISO date — update whenever the block is re-verified
+
+### MCP tools
+- Tool names: `snake_case` verbs
+- Every tool must catch `RuntimeError` from embedding and return a structured error dict — never crash the MCP server
+- New tools need a matching test in `tests/test_mcp_server.py`
