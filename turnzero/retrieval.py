@@ -76,7 +76,7 @@ _IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
     "can't", "cannot", "stuck", "blocked", "error", "exception", "bug",
     "not persisting", "not rendering", "not loading", "not connecting",
     "wrong", "incorrect", "unexpected", "undefined", "null pointer",
-    "fix", "fixing", "debug", "debugging", "broken", "issue",
+    "fix", "fixing", "debug", "debugging", "issue",
     "leaked", "exposed", "compromised", "breached", "accidentally",
 })
 
@@ -387,12 +387,18 @@ def _resolve_conflicts(
 
     Handles both explicit slug-based conflicts and tag-based (provides) conflicts.
     """
+    seen_slugs: set[str] = set()
     blocked_slugs: set[str] = set()
     active_provides: set[str] = set()
     resolved: list[tuple[Block, float]] = []
     total_weight = 0
 
     for block, score in results:
+        # Deduplicate — same block can appear in multiple source indexes
+        if block.slug in seen_slugs:
+            continue
+        seen_slugs.add(block.slug)
+
         # Check explicit slug conflicts
         if block.slug in blocked_slugs:
             continue

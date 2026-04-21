@@ -192,6 +192,27 @@ def _inject_block(block_id: str) -> str:
 # MCP tool definitions
 # ---------------------------------------------------------------------------
 
+def _log_mcp_injection(block_ids: list[str], domains: list[str], prompt_words: int) -> None:
+    """Append a session entry to hook_log.jsonl so get_stats reflects MCP injections."""
+    import json
+    import time
+
+    entry = json.dumps({
+        "ts": time.time(),
+        "blocks": block_ids,
+        "domains": domains,
+        "prompt_words": prompt_words,
+        "source": "mcp",
+    })
+    log_path = _data_dir() / "hook_log.jsonl"
+    try:
+        _data_dir().mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(entry + "\n")
+    except Exception:
+        pass
+
+
 @mcp.tool()
 def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
     """Suggest Expert Priors relevant to an opening developer prompt.
@@ -210,7 +231,14 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
         Returns a single error entry if no embedding backend is configured.
     """
     try:
-        return _list_suggested_blocks(prompt, project_root=Path.cwd())
+        suggestions = _list_suggested_blocks(prompt, project_root=Path.cwd())
+        if suggestions:
+            _log_mcp_injection(
+                block_ids=[s["block_id"] for s in suggestions],
+                domains=list({s["domain"] for s in suggestions}),
+                prompt_words=len(prompt.split()),
+            )
+        return suggestions
     except RuntimeError as e:
         return [{
             "error": "no_embedding_backend",
@@ -264,7 +292,7 @@ def inject_block(block_id: str) -> str:
 
 
 @mcp.tool()
-def get_stats() -> dict:
+def get_stats() -> dict[str, Any]:
     """Return TurnZero usage and library statistics.
 
     Call this when the user asks how TurnZero is doing, how many priors have
@@ -274,20 +302,18 @@ def get_stats() -> dict:
         Dict with sessions, priors injected, estimated turns saved, top domains,
         top blocks, library size, stale block count, and candidates pending review.
     """
+    import contextlib
     import json
     import time
     from collections import Counter
-    from turnzero.blocks import load_all_blocks
 
     data_dir = _data_dir()
     log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict] = []
+    entries: list[dict[str, Any]] = []
     if log_path.exists():
         for line in log_path.read_text(encoding="utf-8").splitlines():
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 entries.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
 
     now = time.time()
     week_ago = now - 7 * 86400
@@ -297,8 +323,8 @@ def get_stats() -> dict:
     priors_total = sum(len(e.get("blocks", [])) for e in entries)
     priors_week = sum(len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago)
 
-    block_counts: Counter = Counter()
-    domain_counts: Counter = Counter()
+    block_counts: Counter[str] = Counter()
+    domain_counts: Counter[str] = Counter()
     for e in entries:
         for slug in e.get("blocks", []):
             block_counts[slug] += 1
@@ -373,7 +399,7 @@ def submit_candidate(
         Confirmation that the candidate was saved or approved into the library.
     """
     import yaml as _yaml
-    from turnzero.blocks import load_all_blocks
+
 
     today = __import__("datetime").date.today().isoformat()
     block = {
@@ -435,7 +461,6 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
         A success message indicating the log has been queued for auto-learning.
     """
     import time
-    from pathlib import Path
 
     # Ensure the conversations directory exists
     conv_dir = _data_dir() / "conversations"
@@ -446,7 +471,10 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
     file_path = conv_dir / f"{session_name}-{timestamp}.md"
     file_path.write_text(transcript, encoding="utf-8")
 
-    return f"✓ Conversation logged to {file_path.name}. The Auto-Learn daemon will process it shortly."
+    return (
+        f"✓ Conversation logged to {file_path.name}. "
+        "Run `turnzero harvest` to extract Expert Priors from this transcript."
+    )
 
 
 # ---------------------------------------------------------------------------

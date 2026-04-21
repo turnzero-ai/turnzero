@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+from collections import Counter
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
 import typer
 from rich import box
@@ -27,7 +28,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def _app_options(
-    version: Optional[bool] = typer.Option(  # noqa: UP007
+    version: bool | None = typer.Option(  # noqa: UP007
         None, "--version", "-V",
         callback=_version_callback, is_eager=True,
         help="Show version and exit.",
@@ -108,7 +109,8 @@ def preview(
       turnzero preview "goroutine leaking in my HTTP handler"
     """
     from turnzero.blocks import load_all_blocks
-    from turnzero.retrieval import load_index, query as _query
+    from turnzero.retrieval import load_index
+    from turnzero.retrieval import query as _query
 
     index_path = _bundled_index_path()
     blocks_dir = _bundled_blocks_dir()
@@ -144,14 +146,14 @@ def preview(
         anti_patterns = block.anti_patterns
 
         if constraints:
-            console.print(f"    [green]constraints:[/green]")
+            console.print("    [green]constraints:[/green]")
             for c in constraints[:3]:
                 console.print(f"      • {c}")
             if len(constraints) > 3:
                 console.print(f"      [dim]… +{len(constraints) - 3} more[/dim]")
 
         if anti_patterns:
-            console.print(f"    [red]anti-patterns:[/red]")
+            console.print("    [red]anti-patterns:[/red]")
             for a in anti_patterns[:2]:
                 console.print(f"      • {a}")
             if len(anti_patterns) > 2:
@@ -337,7 +339,7 @@ def setup(
 
     resolved = (data_dir or Path.home() / ".turnzero").expanduser().resolve()
 
-    console.print(f"\n[bold]TurnZero Setup[/bold]\n")
+    console.print("\n[bold]TurnZero Setup[/bold]\n")
     console.print(f"Data directory: [cyan]{resolved}[/cyan]\n")
 
     # Persist OpenAI key if provided
@@ -459,12 +461,11 @@ def setup(
 
         # ── 5. Register hook in ~/.claude/settings.json ───────────────────
         settings_path = claude_dir / "settings.json"
-        settings: dict = {}
+        settings: dict[str, Any] = {}
         if settings_path.exists():
-            try:
+            import contextlib
+            with contextlib.suppress(json.JSONDecodeError):
                 settings = json.loads(settings_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
-                pass
 
         hook_command = f"{sys.executable} {hook_path}"
         hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
@@ -477,18 +478,17 @@ def setup(
             settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
             console.print(f"[green]✓[/green] Hook registered in {settings_path}")
         else:
-            console.print(f"[dim]✓ Hook already registered in settings.json[/dim]")
+            console.print("[dim]✓ Hook already registered in settings.json[/dim]")
     else:
         console.print("[dim]Hook not installed (MCP server is enough for most clients — use --with-hook for Claude Code guarantee)[/dim]")
 
     # ── 6. Register MCP in ~/.claude.json ────────────────────────────────
     claude_json = Path.home() / ".claude.json"
-    cfg: dict = {}
+    cfg: dict[str, Any] = {}
     if claude_json.exists():
-        try:
+        import contextlib
+        with contextlib.suppress(json.JSONDecodeError):
             cfg = json.loads(claude_json.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
-            pass
 
     mcp_bin = str(Path(sys.executable).parent / "turnzero-mcp")
     mcp_entry = {
@@ -502,7 +502,7 @@ def setup(
         claude_json.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
         console.print(f"[green]✓[/green] MCP server registered in {claude_json}")
     else:
-        console.print(f"[dim]✓ MCP server already registered in .claude.json[/dim]")
+        console.print("[dim]✓ MCP server already registered in .claude.json[/dim]")
 
     # ── 7. Summary ────────────────────────────────────────────────────────
     console.print()
@@ -598,7 +598,7 @@ def query(
     roi = analytics.calculate_roi()
     global_roi = get_global_roi(_data_dir())
 
-    console.print(f"\n[bold green]Estimated savings (rough heuristic):[/bold green]")
+    console.print("\n[bold green]Estimated savings (rough heuristic):[/bold green]")
     console.print(f"  [dim]• Session:  ~{roi['tokens_saved']:,} tokens | ~{roi['minutes_saved']} min ({roi['turns_saved']} turns)[/dim]")
     console.print(f"  [dim]• All time: ~{global_roi['total_minutes_saved']:,} min across {global_roi['total_sessions']} sessions[/dim]")
 
@@ -715,7 +715,7 @@ def stats() -> None:
     """Show injection history and block library statistics."""
     import json
     import time
-    from collections import Counter
+
     from turnzero.blocks import load_all_blocks
     from turnzero.retrieval import load_index
 
@@ -723,13 +723,12 @@ def stats() -> None:
 
     # ── Live injection log (written by hook) ─────────────────────────────
     log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict] = []
+    entries: list[dict[str, Any]] = []
     if log_path.exists():
+        import contextlib
         for line in log_path.read_text(encoding="utf-8").splitlines():
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 entries.append(json.loads(line))
-            except json.JSONDecodeError:
-                pass
 
     now = time.time()
     week_ago = now - 7 * 86400
@@ -739,8 +738,8 @@ def stats() -> None:
     priors_total = sum(len(e.get("blocks", [])) for e in entries)
     priors_week = sum(len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago)
 
-    block_counts: Counter = Counter()
-    domain_counts: Counter = Counter()
+    block_counts: Counter[str] = Counter()
+    domain_counts: Counter[str] = Counter()
     for e in entries:
         for slug in e.get("blocks", []):
             block_counts[slug] += 1
@@ -844,7 +843,7 @@ def autolearn(
     if processed_file.exists():
         processed = set(processed_file.read_text().splitlines())
 
-    console.print(f"[bold green]Auto-Learn daemon started.[/bold green]")
+    console.print("[bold green]Auto-Learn daemon started.[/bold green]")
     console.print(f"[dim]Watching {conversations_dir} (interval: {interval}s, model: {model})[/dim]")
     console.print("[dim]Press Ctrl+C to stop.[/dim]\n")
 
@@ -927,9 +926,15 @@ def harvest(
       OpenAI SDK   [{role, content}] JSON
       Markdown     any User:/Assistant: or #### user markers
     """
-    from turnzero.harvest import load_conversation, scan_new_sessions
-    from turnzero.harvest import extract_with_llm, parse_candidates, write_candidate
-    from turnzero.harvest import is_self_referential, validate_candidate
+    from turnzero.harvest import (
+        extract_with_llm,
+        is_self_referential,
+        load_conversation,
+        parse_candidates,
+        scan_new_sessions,
+        validate_candidate,
+        write_candidate,
+    )
     from turnzero.index import build as _build
 
     data_dir = _data_dir()
@@ -955,7 +960,7 @@ def harvest(
     console.print(
         f"\nFound [bold]{total_found}[/bold] new session(s). "
         f"Processing [bold]{len(batch)}[/bold] this run "
-        f"{'(all)' if len(batch) == total_found else f'— run again for the next batch'}.\n"
+        f"{'(all)' if len(batch) == total_found else '— run again for the next batch'}.\n"
     )
 
     dest_dir = _blocks_dir() if auto_approve else candidates_dir
@@ -972,7 +977,7 @@ def harvest(
     total_candidates = 0
     llm_fatal = False
 
-    def _process(session_path: Path) -> tuple[Path, list, str | None, str | None]:
+    def _process(session_path: Path) -> tuple[Path, list[Any], str | None, str | None]:
         """Returns (path, candidates, fatal_error, skip_reason)."""
         try:
             conversation = load_conversation(session_path)
@@ -1092,14 +1097,14 @@ def review() -> None:
             dest = _blocks_dir() / path.name
             dest.write_text(content, encoding="utf-8")
             path.unlink()
-            console.print(f"  [green]✓ Added to library.[/green]\n")
+            console.print("  [green]✓ Added to library.[/green]\n")
             approved += 1
         elif choice in ("n", "no"):
             path.unlink()
-            console.print(f"  [red]✗ Rejected and deleted.[/red]\n")
+            console.print("  [red]✗ Rejected and deleted.[/red]\n")
             rejected += 1
         else:
-            console.print(f"  [dim]Skipped — still in candidates/.[/dim]\n")
+            console.print("  [dim]Skipped — still in candidates/.[/dim]\n")
 
     if approved > 0:
         console.print(f"Rebuilding index with {approved} new block(s)...")
@@ -1460,7 +1465,7 @@ def index_verify(
 @source_app.command("list")
 def source_list() -> None:
     """Show which Expert Prior sources are enabled."""
-    from turnzero.config import load_config, TIERS
+    from turnzero.config import TIERS, load_config
 
     cfg = load_config(_data_dir())
     sources = cfg["sources"]
@@ -1479,7 +1484,7 @@ def source_list() -> None:
 @source_app.command("enable")
 def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, community, team")) -> None:
     """Enable an Expert Prior source tier."""
-    from turnzero.config import load_config, save_config, TIERS
+    from turnzero.config import TIERS, load_config, save_config
 
     if tier not in TIERS:
         console.print(f"[red]Unknown tier '{tier}'. Choose from: {', '.join(TIERS)}[/red]")
@@ -1493,7 +1498,7 @@ def source_enable(tier: str = typer.Argument(..., help="Tier to enable: local, c
 @source_app.command("disable")
 def source_disable(tier: str = typer.Argument(..., help="Tier to disable: local, community, team")) -> None:
     """Disable an Expert Prior source tier."""
-    from turnzero.config import load_config, save_config, TIERS
+    from turnzero.config import TIERS, load_config, save_config
 
     if tier not in TIERS:
         console.print(f"[red]Unknown tier '{tier}'. Choose from: {', '.join(TIERS)}[/red]")
