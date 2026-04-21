@@ -300,6 +300,75 @@ except Exception:
 
 
 # ---------------------------------------------------------------------------
+# Codex MCP registration helper
+# ---------------------------------------------------------------------------
+
+def _setup_codex_mcp(
+    mcp_bin: str,
+    data_dir: Path,
+    force: bool,
+    con: Console,
+    codex_dir: Path | None = None,
+) -> None:
+    """Write TurnZero MCP entry to ~/.codex/config.toml if Codex CLI is present.
+
+    Uses tomllib (stdlib 3.11+) to read the existing config and appends/updates
+    the [mcp_servers.turnzero] section. Writes manually to avoid adding tomli-w
+    as a runtime dependency.
+    """
+    import tomllib
+
+    codex_dir = codex_dir if codex_dir is not None else Path.home() / ".codex"
+    if not codex_dir.exists():
+        return  # Codex not installed
+
+    config_path = codex_dir / "config.toml"
+
+    # Read existing config (may be empty or absent)
+    existing: dict[str, Any] = {}
+    if config_path.exists():
+        try:
+            existing = tomllib.loads(config_path.read_text(encoding="utf-8"))
+        except tomllib.TOMLDecodeError:
+            con.print("[yellow]⚠[/yellow]  ~/.codex/config.toml is malformed — skipping Codex registration")
+            return
+
+    mcp_servers: dict[str, Any] = existing.get("mcp_servers", {})
+    if "turnzero" in mcp_servers and not force:
+        con.print("[dim]✓ MCP server already registered in ~/.codex/config.toml[/dim]")
+        return
+
+    # Build new TOML block — only touch the [mcp_servers.turnzero] section
+    new_block = (
+        "\n[mcp_servers.turnzero]\n"
+        f'command = "{mcp_bin}"\n'
+        f'env = {{ TURNZERO_DATA_DIR = "{data_dir}" }}\n'
+    )
+
+    # Append to file (or create it) — safe: only adds our section
+    codex_dir.mkdir(parents=True, exist_ok=True)
+    if config_path.exists():
+        # Remove any existing [mcp_servers.turnzero] block before rewriting
+        text = config_path.read_text(encoding="utf-8")
+        lines = text.splitlines(keepends=True)
+        filtered: list[str] = []
+        skip = False
+        for line in lines:
+            if line.strip() == "[mcp_servers.turnzero]":
+                skip = True
+                continue
+            if skip and line.startswith("["):
+                skip = False
+            if not skip:
+                filtered.append(line)
+        config_path.write_text("".join(filtered).rstrip("\n") + new_block, encoding="utf-8")
+    else:
+        config_path.write_text(new_block.lstrip("\n"), encoding="utf-8")
+
+    con.print(f"[green]✓[/green] MCP server registered in {config_path}")
+
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
@@ -503,6 +572,9 @@ def setup(
         console.print(f"[green]✓[/green] MCP server registered in {claude_json}")
     else:
         console.print("[dim]✓ MCP server already registered in .claude.json[/dim]")
+
+    # ── 6b. Register MCP in ~/.codex/config.toml (Codex CLI) ─────────────
+    _setup_codex_mcp(mcp_bin, resolved, force, console)
 
     # ── 7. Summary ────────────────────────────────────────────────────────
     console.print()
