@@ -48,15 +48,18 @@ pip install turnzero
 turnzero setup
 ```
 
+Python support: `3.12` and `3.13`.
+
 `turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
 
 **Embedding backend — pick one:**
 
 | Option | Setup |
 |---|---|
-| ollama (local, free, private) | `ollama pull nomic-embed-text` |
-| sentence-transformers (local, no server) | `pip install -e ".[local]"` |
+| ollama (local, free, private) | `ollama serve && ollama pull nomic-embed-text` |
 | OpenAI API | `export OPENAI_API_KEY=sk-...` |
+
+If you want local embeddings, install `ollama`, start it with `ollama serve`, and pull the embedding model with `ollama pull nomic-embed-text`. TurnZero no longer ships a separate local Python embedding stack.
 
 ---
 

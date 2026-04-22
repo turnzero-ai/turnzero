@@ -101,7 +101,11 @@ def preview(
     """Preview which Expert Priors would be injected for a prompt.
 
     Uses the pre-built index bundled with the package.
-    Requires an embedding backend (ollama, sentence-transformers, or OPENAI_API_KEY).
+    Requires an embedding backend:
+      - local: `ollama serve && ollama pull nomic-embed-text`
+      - cloud: OPENAI_API_KEY
+    This preview path does not build embeddings itself; it reads the bundled
+    index and uses whatever backend is already available.
 
     \b
     Example:
@@ -491,6 +495,8 @@ def setup(
 
     Use --with-hook to also install the Claude Code UserPromptSubmit hook
     for guaranteed injection regardless of model behaviour.
+
+    Local embeddings require: `ollama serve && ollama pull nomic-embed-text`.
     """
     import json
     import shutil
@@ -551,33 +557,23 @@ def setup(
             ["ollama", "list"], capture_output=True, text=True, timeout=5
         )
         if "nomic-embed-text" in result.stdout:
-            console.print("[green]✓[/green] Embedding backend: ollama + nomic-embed-text")
+            console.print("[green]✓[/green] Embedding backend: ollama (`ollama serve && ollama pull nomic-embed-text`)")
             ollama_ok = True
         else:
-            console.print("[yellow]⚠[/yellow]  ollama found but nomic-embed-text not pulled — run: [cyan]ollama pull nomic-embed-text[/cyan]")
+            console.print("[yellow]⚠[/yellow]  ollama is installed, but run this exact command first: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]")
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
-
-    # Check sentence-transformers (bundled — should always succeed)
-    if not ollama_ok:
-        try:
-            import importlib
-            importlib.import_module("sentence_transformers")
-            console.print("[green]✓[/green] Embedding backend: sentence-transformers (bundled, fully local)")
-            ollama_ok = True
-        except ImportError:
-            pass
 
     # Check OpenAI
     if not ollama_ok and os.environ.get("OPENAI_API_KEY"):
         console.print("[green]✓[/green] Embedding backend: OpenAI API")
         ollama_ok = True
 
-    # Nothing found — sentence-transformers is bundled so this should not happen
+    # Nothing found — user needs ollama or an OpenAI key
     if not ollama_ok:
-        console.print("[red]✗[/red]  No embedding backend found — sentence-transformers failed to load.\n")
-        console.print("    Try reinstalling: [cyan]pip install --upgrade turnzero[/cyan]\n")
-        console.print("    Or use a local server: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]")
+        console.print("[red]✗[/red]  No embedding backend found.\n")
+        console.print("    Try a local server: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]\n")
+        console.print("    Or use OpenAI: set [cyan]OPENAI_API_KEY[/cyan]")
 
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()
@@ -1064,7 +1060,12 @@ def harvest(
         None, "--file", "-f",
         help="Harvest a single file (any supported format) instead of scanning sessions.",
     ),
-    model: str = typer.Option("llama3.2", "--model", "-m", help="ollama model, or set OPENAI_API_KEY / ANTHROPIC_API_KEY for cloud."),
+    model: str = typer.Option(
+        "llama3.2",
+        "--model",
+        "-m",
+        help="Local ollama model name for harvest; for embeddings use `ollama serve && ollama pull nomic-embed-text`, or set OPENAI_API_KEY / ANTHROPIC_API_KEY for cloud.",
+    ),
     auto_approve: bool = typer.Option(False, "--auto-approve", "-y", help="Add all candidates directly to library without review."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be found without writing."),
     limit: int = typer.Option(20, "--limit", "-n", help="Max sessions to process per run. Run again to continue."),
@@ -1074,7 +1075,7 @@ def harvest(
 
     Auto-discovers sessions from Claude Code, Aider, Cursor, and Windsurf.
     Use --file to import any conversation manually.
-    Works with ollama (local), OpenAI, or Anthropic — whichever key is set.
+    Works with local ollama models, OpenAI, or Anthropic — whichever key is set.
 
     Processes --limit sessions per run. Run again to continue with the next batch.
 

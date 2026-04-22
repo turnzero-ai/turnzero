@@ -51,7 +51,7 @@ These are the core risks identified in the Architectural Review that must be add
 ### Priority 1: Pre-Launch Survival (users drop within first session if not fixed)
 
 **P1-A — Zero-dep install (TD-002)**
-- [x] Move `sentence-transformers` to default dependencies — fully local, zero-config, no server, no API key. Cloud embedding removed entirely (would violate "no raw prompts off-device" principle).
+- [x] Remove `sentence-transformers` from the supported install path. Local embeddings now require `ollama`; OpenAI remains the optional cloud fallback.
 - [ ] Ship pre-built community index so `index build` isn't required.
 - [ ] Update `turnzero setup` to check for multiple AI clients and register them.
 
@@ -78,7 +78,7 @@ These are the core risks identified in the Architectural Review that must be add
 
 ### Show HN Launch Gate
 **Do not launch until all of the following are true:**
-- [x] Zero-dep install — `sentence-transformers` bundled, no ollama/API key required
+- [ ] Zero-dep install — local use now requires `ollama` or an OpenAI key
 - [x] Confidence scoring live — TD-005 mitigated; `turnzero review` surfaces low-confidence blocks
 - [ ] Pre-built index ships in wheel — no `index build` required
 - [ ] `pipx install turnzero && turnzero setup` tested cold on a machine with no ollama/API key
@@ -115,6 +115,7 @@ These are the core risks identified in the Architectural Review that must be add
 ---
 
 ## 5. Maintenance & Done
+- [x] v0.2.6 — Runtime contract hardening (`requires-python <3.14`, pinned local embedding deps, packaging guard tests).
 - [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.
 - [x] v0.2.2 — PyPI live, 1-click install verified, `OLLAMA_HOST` support.
 - [x] v0.2.0 — MCP-first architecture, `submit_candidate` learning loop.

@@ -3,6 +3,7 @@
 import glob
 import json
 import os
+from contextlib import suppress
 
 mem_dir = os.path.expanduser(
     "~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/"
@@ -15,10 +16,8 @@ files = sorted(
 
 parts = []
 for path in files:
-    try:
-        parts.append(open(path).read().strip())
-    except OSError:
-        pass
+    with suppress(OSError), open(path) as file:
+        parts.append(file.read().strip())
 
 if not parts:
     raise SystemExit(0)

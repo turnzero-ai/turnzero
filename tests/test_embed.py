@@ -91,20 +91,6 @@ def test_embed_openai_uses_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
 # embed() fallback chain
 # ---------------------------------------------------------------------------
 
-def test_embed_falls_back_to_sentence_transformers_when_ollama_down() -> None:
-    vec = [0.5] * EMBEDDING_DIM
-
-    with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("ollama down")), \
-         patch(
-             "turnzero.embed._embed_sentence_transformers",
-             return_value=np.array(vec, dtype=np.float32),
-         ) as mock_st:
-        result = embed("test")
-
-    mock_st.assert_called_once()
-    assert result.shape == (EMBEDDING_DIM,)
-
-
 def test_embed_falls_back_to_openai_when_local_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -112,7 +98,6 @@ def test_embed_falls_back_to_openai_when_local_unavailable(
     vec = [0.5] * EMBEDDING_DIM
 
     with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("ollama down")), \
-         patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("no st")), \
          patch("turnzero.embed._embed_openai", return_value=np.array(vec, dtype=np.float32)) as mock_openai:
         result = embed("test")
 
@@ -124,7 +109,6 @@ def test_embed_raises_when_all_backends_fail(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
-         patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("failed")), \
          pytest.raises(RuntimeError, match="No embedding backend available"):
         embed("test prompt")
 
@@ -133,7 +117,6 @@ def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
-         patch("turnzero.embed._embed_sentence_transformers", side_effect=RuntimeError("failed")), \
          patch("turnzero.embed._embed_openai") as mock_openai, \
          pytest.raises(RuntimeError):
         embed("test")
@@ -141,12 +124,12 @@ def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None
     mock_openai.assert_not_called()
 
 
-def test_embed_prefers_ollama_over_sentence_transformers() -> None:
+def test_embed_prefers_ollama_over_openai() -> None:
     vec = [0.4] * EMBEDDING_DIM
 
     with patch("turnzero.embed._embed_ollama", return_value=np.array(vec, dtype=np.float32)) as mock_ollama, \
-         patch("turnzero.embed._embed_sentence_transformers") as mock_st:
+         patch("turnzero.embed._embed_openai") as mock_openai:
         embed("test")
 
     mock_ollama.assert_called_once()
-    mock_st.assert_not_called()
+    mock_openai.assert_not_called()

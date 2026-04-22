@@ -39,6 +39,11 @@ THRESHOLD = 0.75
 TARGET_HIT_RATE = 0.70
 
 
+@pytest.fixture(autouse=True)
+def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
+
+
 @pytest.fixture(scope="module")
 def retrieval_fixtures():  # type: ignore[return]
     """Load blocks and index once for all precision tests."""

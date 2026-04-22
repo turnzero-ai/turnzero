@@ -18,6 +18,11 @@ from turnzero.mcp_server import (
     learn_from_session,
 )
 
+
+@pytest.fixture(autouse=True)
+def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
+
 # ---------------------------------------------------------------------------
 # list_suggested_blocks
 # ---------------------------------------------------------------------------

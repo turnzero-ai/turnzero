@@ -13,7 +13,7 @@ TurnZero is at **v0.2.6** (PyPI live).
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.75 (CLI, hook, MCP, retrieval)
-- Embedding: httpx-only fallback chain — ollama (via OLLAMA_HOST) → sentence-transformers → OpenAI
+- Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
 
 ## What TurnZero Does
 
@@ -23,7 +23,7 @@ Raw prompt text is **never stored** — only embeddings. Injection is always cli
 
 ## Tech Stack
 
-- **Language**: Python 3.12+
+- **Language**: Python 3.12-3.13
 - **Retrieval Engine**: Hybrid vector + heuristic similarity
 - **CLI framework**: Typer
 - **Integration**: MCP-native architecture
@@ -97,7 +97,7 @@ State what will be pushed and where, then wait for a yes. This applies even when
 ## Coding Standards
 
 ### Python style
-- Python 3.12+ — use native syntax (`X | Y`, `match`, f-strings)
+- Python 3.12-3.13 — use native syntax (`X | Y`, `match`, f-strings)
 - `from __future__ import annotations` at the top of every module
 - Types: `list[str]` not `List[str]`; `X | None` not `Optional[X]`; use `Any` only where the type genuinely can't be narrowed at the call site (e.g. `yaml.safe_load()` return) — add an inline comment explaining why
 - mypy strict — zero errors; no `# type: ignore` without a reason on the same line

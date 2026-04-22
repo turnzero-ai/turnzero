@@ -253,9 +253,7 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
                 "TurnZero needs an embedding backend to work. Choose one:\n\n"
                 "  Option 1 — ollama (local, no internet after setup):\n"
                 "    ollama serve && ollama pull nomic-embed-text\n\n"
-                "  Option 2 — sentence-transformers (local, no server):\n"
-                "    pip install 'turnzero[local]'\n\n"
-                "  Option 3 — OpenAI API (cloud):\n"
+                "  Option 2 — OpenAI API (cloud):\n"
                 "    export OPENAI_API_KEY=sk-...\n\n"
                 "Then restart your AI session."
             ),
