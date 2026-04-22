@@ -7,14 +7,21 @@ import os
 from pathlib import Path
 
 import pytest
+import yaml
 
 from turnzero.mcp_server import (
+    _compute_confidence,
     _get_block,
     _inject_block,
     _list_suggested_blocks,
     _log_mcp_injection,
     learn_from_session,
 )
+
+
+@pytest.fixture(autouse=True)
+def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
 
 # ---------------------------------------------------------------------------
 # list_suggested_blocks
@@ -217,3 +224,84 @@ def test_inject_block_all_seed_blocks() -> None:
     for block_id in seed_ids:
         text = _inject_block(block_id)
         assert len(text) > 100, f"{block_id}: injection text too short"
+
+
+# ---------------------------------------------------------------------------
+# _compute_confidence
+# ---------------------------------------------------------------------------
+
+def test_compute_confidence_minimal_signals() -> None:
+    score = _compute_confidence("x", ["one constraint"], [], [], "")
+    assert score == pytest.approx(0.25, abs=0.01)
+
+
+def test_compute_confidence_full_signals() -> None:
+    score = _compute_confidence(
+        "nextjs15-approuter-auth-build",
+        ["Use App Router", "Pin to Next.js 15"],
+        ["Do not use Pages Router", "Do not use getServerSideProps"],
+        ["nextjs", "auth"],
+        "AI used deprecated Pages Router API in Next.js 15 project",
+    )
+    assert score == pytest.approx(0.95, abs=0.01)
+
+
+def test_compute_confidence_caps_at_0_95() -> None:
+    for _ in range(3):
+        score = _compute_confidence(
+            "a-b-c-d",
+            ["c1", "c2", "c3"],
+            ["Do not do x", "Do not do y"],
+            ["tag1", "tag2"],
+            "long enough reason here to get bonus",
+        )
+    assert score <= 0.95
+
+
+def test_compute_confidence_reason_bonus() -> None:
+    without = _compute_confidence("slug-a-b", ["c1", "c2"], ["Do not x"], ["t"], "")
+    with_reason = _compute_confidence(
+        "slug-a-b", ["c1", "c2"], ["Do not x"], ["t"], "AI got this wrong in session"
+    )
+    assert with_reason > without
+
+
+def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None:
+    import turnzero.mcp_server as mcp
+
+    orig_data = mcp._data_dir
+    orig_blocks = mcp._blocks_dir
+    orig_index = mcp._index_path
+
+    data_dir = tmp_path / "data"
+    blocks_dir = tmp_path / "blocks"
+    index_file = data_dir / "index.jsonl"
+    data_dir.mkdir()
+    blocks_dir.mkdir()
+
+    mcp._data_dir = lambda: data_dir
+    mcp._blocks_dir = lambda: blocks_dir
+    mcp._index_path = lambda: index_file
+
+    try:
+        from turnzero.mcp_server import submit_candidate
+        submit_candidate(
+            block_id="test-confidence-build",
+            domain="fastapi",
+            intent="build",
+            constraints=["Use async def", "Use Pydantic v2"],
+            anti_patterns=["Do not use sync def in async context"],
+            tags=["fastapi"],
+            reason="AI used sync def in async FastAPI route",
+            auto_approve=False,
+        )
+        candidate_path = data_dir / "candidates" / "test-confidence-build.yaml"
+        assert candidate_path.exists()
+        data = yaml.safe_load(candidate_path.read_text())
+        assert "confidence" in data
+        assert 0.0 < data["confidence"] <= 0.95
+        assert data["archived"] is False
+    finally:
+        mcp._data_dir = orig_data
+        mcp._blocks_dir = orig_blocks
+        mcp._index_path = orig_index

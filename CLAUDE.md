@@ -4,15 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.2.3** (PyPI live, confirmed external install via Codex).
+TurnZero is at **v0.2.7** (PyPI live).
+
+- **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
+- **Internal SSOT:** `PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 74 blocks shipped in wheel, 123 blocks in Darijo's local library
-- Any domain — software, law, medicine, finance, design, writing, research
-- 135 tests passing; Hit Rate@3 = 1.00 on validation set
+- 204 tests passing; Hit Rate@3 = 1.00 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.75 (CLI, hook, MCP, retrieval)
-- Embedding: httpx-only fallback chain — ollama (via OLLAMA_HOST) → sentence-transformers → OpenAI
+- Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
 
 ## What TurnZero Does
 
@@ -22,7 +24,7 @@ Raw prompt text is **never stored** — only embeddings. Injection is always cli
 
 ## Tech Stack
 
-- **Language**: Python 3.12+
+- **Language**: Python 3.12-3.13
 - **Retrieval Engine**: Hybrid vector + heuristic similarity
 - **CLI framework**: Typer
 - **Integration**: MCP-native architecture
@@ -69,14 +71,18 @@ pytest
 
 ## Session Workflow (Claude must follow these rules every session)
 
-### 1. Load full memory at session start
-A `SessionStart` hook automatically injects all memory files into context. At the start of every session, treat that loaded memory as ground truth for project state — do not rely on stale knowledge from training data.
+### 1. Load full memory & SSOT at session start
+A `SessionStart` hook automatically injects all memory files into context. At the start of every session:
+- **Read `PROJECT_STATE.md`** for the latest active tickets and technical debt.
+- **Read [ROADMAP.md](ROADMAP.md)** for the high-level project vision.
+- Treat loaded memory as ground truth for project state.
 
-### 2. Keep memory and docs in sync
+### 2. Keep memory and SSOT in sync
 After any strategic decision, architectural change, or significant implementation:
+- **Update `PROJECT_STATE.md`** when tickets are completed or new debt is found.
+- **Update [ROADMAP.md](ROADMAP.md)** if high-level phases or milestones changed.
 - Update the relevant memory file(s) in `~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/`
-- Update `CLAUDE.md` if project status, commands, or constraints changed
-- Update `ROADMAP.md` if phase items were completed or priorities shifted
+- Update `CLAUDE.md` if project status, commands, or constraints changed.
 Do this during the session, not as an afterthought at the end.
 
 ### 3. Maintain test coverage
@@ -94,7 +100,7 @@ State what will be pushed and where, then wait for a yes. This applies even when
 ## Coding Standards
 
 ### Python style
-- Python 3.12+ — use native syntax (`X | Y`, `match`, f-strings)
+- Python 3.12-3.13 — use native syntax (`X | Y`, `match`, f-strings)
 - `from __future__ import annotations` at the top of every module
 - Types: `list[str]` not `List[str]`; `X | None` not `Optional[X]`; use `Any` only where the type genuinely can't be narrowed at the call site (e.g. `yaml.safe_load()` return) — add an inline comment explaining why
 - mypy strict — zero errors; no `# type: ignore` without a reason on the same line
@@ -139,10 +145,11 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 ### Release checklist (before every `hatch publish`)
 1. All tests green: `pytest`
 2. Lint + types clean: `ruff check . && mypy turnzero`
-3. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
-4. Version bumped in `pyproject.toml` in its own commit
-5. Tagged: `git tag vX.Y.Z`
-6. Confirm with Darijo before running `hatch publish`
+3. Retrieval quality gate: `turnzero validate` — Hit Rate@3 must be ≥ 1.00
+4. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
+5. Version bumped in `pyproject.toml` in its own commit
+6. Tagged: `git tag vX.Y.Z`
+7. Confirm with Darijo before running `hatch publish`
 
 ### Block YAML schema
 - Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)
