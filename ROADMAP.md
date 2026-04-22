@@ -51,7 +51,7 @@ These are the core risks identified in the Architectural Review that must be add
 ### Priority 1: Pre-Launch Survival (users drop within first session if not fixed)
 
 **P1-A — Zero-dep install (TD-002)**
-- [ ] Add `cloud` provider to `turnzero/embed.py` fallback chain.
+- [x] Move `sentence-transformers` to default dependencies — fully local, zero-config, no server, no API key. Cloud embedding removed entirely (would violate "no raw prompts off-device" principle).
 - [ ] Ship pre-built community index so `index build` isn't required.
 - [ ] Update `turnzero setup` to check for multiple AI clients and register them.
 
@@ -78,10 +78,10 @@ These are the core risks identified in the Architectural Review that must be add
 
 ### Show HN Launch Gate
 **Do not launch until all of the following are true:**
-- [ ] Cloud embedding fallback live — zero-dep install works end-to-end
+- [x] Zero-dep install — `sentence-transformers` bundled, no ollama/API key required
+- [x] Confidence scoring live — TD-005 mitigated; `turnzero review` surfaces low-confidence blocks
 - [ ] Pre-built index ships in wheel — no `index build` required
 - [ ] `pipx install turnzero && turnzero setup` tested cold on a machine with no ollama/API key
-- [ ] Confidence scoring live — `submit_candidate` sets confidence, `turnzero review` surfaces low-confidence blocks
 - [ ] Gate validated on real-world developer prompts — not just internal test set
 
 ---

@@ -364,11 +364,16 @@ def query(
     scored.sort(key=lambda x: x[1], reverse=True)
     candidates = [(e, s) for e, s in scored if s >= threshold][:top_k]
 
-    results: list[tuple[Block, float]] = [
-        (blocks[e.block_id], s)
-        for e, s in candidates
-        if e.block_id in blocks
-    ]
+    results: list[tuple[Block, float]] = []
+    for e, s in candidates:
+        if e.block_id not in blocks:
+            continue
+        block = blocks[e.block_id]
+        if block.archived:
+            continue
+        # Down-weight AI-submitted blocks proportionally to their confidence score
+        results.append((block, s * block.confidence))
+    results.sort(key=lambda x: x[1], reverse=True)
 
     if rerank_model:
         results = rerank_with_llm(prompt, results, model=rerank_model)

@@ -558,12 +558,12 @@ def setup(
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
-    # Check sentence-transformers
+    # Check sentence-transformers (bundled — should always succeed)
     if not ollama_ok:
         try:
             import importlib
             importlib.import_module("sentence_transformers")
-            console.print("[green]✓[/green] Embedding backend: sentence-transformers")
+            console.print("[green]✓[/green] Embedding backend: sentence-transformers (bundled, fully local)")
             ollama_ok = True
         except ImportError:
             pass
@@ -573,16 +573,11 @@ def setup(
         console.print("[green]✓[/green] Embedding backend: OpenAI API")
         ollama_ok = True
 
-    # Nothing found — show clear options
+    # Nothing found — sentence-transformers is bundled so this should not happen
     if not ollama_ok:
-        console.print("[yellow]⚠[/yellow]  No embedding backend found. TurnZero needs one to work.\n")
-        console.print("    [bold]Option 1[/bold] — ollama (local, no internet after setup):")
-        console.print("      [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]\n")
-        console.print("    [bold]Option 2[/bold] — sentence-transformers (local, no server, ~500MB):")
-        console.print("      [cyan]pip install 'turnzero[local]'[/cyan]\n")
-        console.print("    [bold]Option 3[/bold] — OpenAI API (cloud):")
-        console.print("      [cyan]turnzero setup --openai-key sk-...[/cyan]\n")
-        console.print("    Re-run [cyan]turnzero setup[/cyan] after installing a backend.")
+        console.print("[red]✗[/red]  No embedding backend found — sentence-transformers failed to load.\n")
+        console.print("    Try reinstalling: [cyan]pip install --upgrade turnzero[/cyan]\n")
+        console.print("    Or use a local server: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]")
 
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()
@@ -1240,11 +1235,34 @@ def review() -> None:
 
     Shows each candidate and prompts for approval.
     Approved candidates are added to your block library and the index is rebuilt.
+    Also surfaces low-confidence blocks already in the library (confidence < 0.7).
     """
+    from turnzero.blocks import load_all_blocks
     from turnzero.index import build as _build
 
     data_dir = _data_dir()
     candidates_dir = data_dir / "candidates"
+
+    # ── Low-confidence library blocks ────────────────────────────────────────
+    try:
+        all_blocks = load_all_blocks(_blocks_dir())
+        low_conf = [
+            b for b in all_blocks.values()
+            if b.confidence < 0.7 and not b.archived
+        ]
+        if low_conf:
+            console.print(f"\n[yellow]⚠  {len(low_conf)} low-confidence block(s) in library (confidence < 0.7)[/yellow]")
+            console.print("[dim]These were auto-submitted and may contain errors. Verify or archive them.[/dim]\n")
+            for block in sorted(low_conf, key=lambda b: b.confidence):
+                console.print(
+                    f"  [bold]{block.slug}[/bold]  "
+                    f"[dim]confidence={block.confidence:.2f}  domain={block.domain}[/dim]"
+                )
+                if block.constraints:
+                    console.print(f"    [dim]{block.constraints[0][:100]}[/dim]")
+            console.print()
+    except FileNotFoundError:
+        pass
 
     if not candidates_dir.exists() or not list(candidates_dir.glob("*.yaml")):
         console.print("[dim]No candidates to review. Run [bold]turnzero harvest[/bold] first.[/dim]")

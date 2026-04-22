@@ -18,11 +18,14 @@ def embed(text: str) -> np.ndarray:
     """Embed text, returning a float32 ndarray of shape (768,).
 
     Fallback chain:
-      1. ollama nomic-embed-text       (local, no download if already pulled)
-      2. sentence-transformers         (local, pip install turnzero[local])
+      1. ollama nomic-embed-text       (local server, fastest if already running)
+      2. sentence-transformers         (bundled, zero-config — always available)
       3. OpenAI text-embedding-3-small (cloud, OPENAI_API_KEY)
 
-    Raises RuntimeError with actionable instructions if nothing is available.
+    Everything runs locally by default. No text leaves the machine unless
+    OPENAI_API_KEY is explicitly set.
+
+    Raises RuntimeError only if sentence-transformers fails unexpectedly.
     """
     try:
         return _embed_ollama(text)
@@ -39,11 +42,11 @@ def embed(text: str) -> np.ndarray:
 
     raise RuntimeError(
         "No embedding backend available.\n\n"
-        "Option 1 (local, no server):\n"
-        "  pip install 'turnzero[local]'\n\n"
-        "Option 2 (local, with server):\n"
+        "sentence-transformers is bundled but failed unexpectedly.\n"
+        "Try: pip install --upgrade 'turnzero' to reinstall dependencies.\n\n"
+        "Or use a local server:\n"
         "  ollama serve && ollama pull nomic-embed-text\n\n"
-        "Option 3 (cloud):\n"
+        "Or use OpenAI:\n"
         "  export OPENAI_API_KEY=sk-..."
     )
 

@@ -1,10 +1,21 @@
 """Tests for intent classification, domain detection, impl gate, and cosine similarity."""
 
+from __future__ import annotations
+
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
+from turnzero.blocks import Block
 from turnzero.embed import cosine_similarity
-from turnzero.retrieval import classify_intent, detect_domain, is_implementation_prompt
+from turnzero.retrieval import (
+    IndexEntry,
+    classify_intent,
+    detect_domain,
+    is_implementation_prompt,
+    query,
+)
 
 # ---------------------------------------------------------------------------
 # Intent classifier
@@ -212,3 +223,86 @@ def test_impl_gate_blocks_chitchat_and_vague_prompts(prompt: str) -> None:
     assert not is_implementation_prompt(prompt), (
         f"Expected impl gate to BLOCK chitchat/vague prompt: {prompt!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Confidence multiplier and archived exclusion
+# ---------------------------------------------------------------------------
+
+
+
+
+def _make_block(slug: str, confidence: float = 1.0, archived: bool = False) -> Block:
+    return Block(
+        slug=slug,
+        hash="deadbeef",
+        version="1.0.0",
+        domain="fastapi",
+        intent="build",
+        last_verified="2026-01-01",
+        tags=["fastapi"],
+        context_weight=100,
+        constraints=["Use async def"],
+        anti_patterns=["Do not use sync"],
+        doc_anchors=[],
+        confidence=confidence,
+        archived=archived,
+    )
+
+
+def _make_entry(block_id: str, vec: np.ndarray) -> IndexEntry:
+    return IndexEntry(
+        block_id=block_id,
+        embedding=vec,
+        domain="fastapi",
+        intent="build",
+        tags=["fastapi"],
+    )
+
+
+def test_query_excludes_archived_blocks() -> None:
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [_make_entry("archived-block", vec)]
+    blocks = {"archived-block": _make_block("archived-block", archived=True)}
+
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query("build a fastapi app", index, blocks, threshold=0.0)
+
+    assert len(results) == 0
+
+
+def test_query_confidence_multiplier_reduces_score() -> None:
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [
+        _make_entry("high-conf", vec),
+        _make_entry("low-conf", vec),
+    ]
+    blocks = {
+        "high-conf": _make_block("high-conf", confidence=1.0),
+        "low-conf": _make_block("low-conf", confidence=0.5),
+    }
+
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query("build a fastapi app", index, blocks, threshold=0.0)
+
+    scores = {b.slug: s for b, s in results}
+    assert "high-conf" in scores
+    assert "low-conf" in scores
+    assert scores["high-conf"] > scores["low-conf"]
+
+
+def test_query_high_confidence_block_ranks_first() -> None:
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [
+        _make_entry("low-conf", vec),
+        _make_entry("high-conf", vec),
+    ]
+    blocks = {
+        "low-conf": _make_block("low-conf", confidence=0.3),
+        "high-conf": _make_block("high-conf", confidence=1.0),
+    }
+
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query("build a fastapi app", index, blocks, threshold=0.0)
+
+    assert results[0][0].slug == "high-conf"

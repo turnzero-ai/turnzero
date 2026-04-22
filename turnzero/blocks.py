@@ -34,6 +34,10 @@ class Block:
     conflicts_with_tags: list[str] = field(default_factory=list)
     provides: list[str] = field(default_factory=list)
     requires: list[str] = field(default_factory=list)
+    # 0.0–1.0; curated blocks default to 1.0, AI-submitted blocks get computed score
+    confidence: float = 1.0
+    # Excluded from retrieval when True; set by auto-archive after 90 days without reinforcement
+    archived: bool = False
 
     @property
     def id(self) -> str:
@@ -131,6 +135,8 @@ def load_block(path: Path) -> Block:
         conflicts_with_tags=[str(t) for t in raw.get("conflicts_with_tags", [])],
         provides=[str(p) for p in raw.get("provides", [])],
         requires=[str(r) for r in raw.get("requires", [])],
+        confidence=float(raw.get("confidence", 1.0)),
+        archived=bool(raw.get("archived", False)),
     )
 
 
