@@ -486,6 +486,10 @@ def setup(
         help="OpenAI API key for cloud embedding fallback (stored at ~/.turnzero/openai_key).",
         envvar="OPENAI_API_KEY",
     ),
+    interactive: bool = typer.Option(
+        True, "--interactive/--no-interactive",
+        help="Whether to prompt for actions like pulling models.",
+    ),
 ) -> None:
     """One-command setup: register MCP server and build index.
 
@@ -495,13 +499,13 @@ def setup(
 
     Use --with-hook to also install the Claude Code UserPromptSubmit hook
     for guaranteed injection regardless of model behaviour.
-
-    Local embeddings require: `ollama serve && ollama pull nomic-embed-text`.
     """
     import json
     import shutil
     import subprocess
     import sys
+    import httpx
+    import time
 
     claude_dir = Path.home() / ".claude"
     claude_dir.mkdir(exist_ok=True)
@@ -524,8 +528,6 @@ def setup(
         console.print("[dim]✓ OpenAI API key loaded from previous setup[/dim]\n")
 
     # ── 1. Copy blocks ────────────────────────────────────────────────────
-    # pip install → blocks land at turnzero/data/blocks/ inside the wheel
-    # pip install -e . (dev) → fall back to repo's data/blocks/
     pkg_blocks = Path(__file__).parent / "data" / "blocks"
     repo_blocks = Path(__file__).parent.parent / "data" / "blocks"
     source_blocks = pkg_blocks if pkg_blocks.exists() else repo_blocks
@@ -550,30 +552,74 @@ def setup(
     # ── 2. Check embedding backend ────────────────────────────────────────
     console.print()
     ollama_ok = False
+    
+    # Check if ollama is in PATH
+    ollama_path = shutil.which("ollama")
+    if not ollama_path:
+        console.print("[red]✗[/red] ollama not found in PATH.")
+        console.print("  Required for local-only privacy. Install from [cyan]https://ollama.com[/cyan]\n")
+    else:
+        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+        try:
+            # Check if server is running
+            with httpx.Client(timeout=2.0) as client:
+                client.get(f"{host}/api/tags")
+            
+            # Server is running, check for model
+            result = subprocess.run(
+                ["ollama", "list"], capture_output=True, text=True, timeout=5
+            )
+            if "nomic-embed-text" in result.stdout:
+                console.print("[green]✓[/green] Embedding backend: ollama (nomic-embed-text)")
+                ollama_ok = True
+            else:
+                if interactive and typer.confirm("\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"):
+                    console.print("Pulling nomic-embed-text…")
+                    # Use subprocess directly to show progress if possible, 
+                    # or just wait.
+                    subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
+                    console.print("[green]✓[/green] nomic-embed-text pulled")
+                    ollama_ok = True
+                else:
+                    console.print("[yellow]⚠[/yellow] nomic-embed-text missing. Run: [cyan]ollama pull nomic-embed-text[/cyan]")
+        except (httpx.ConnectError, httpx.TimeoutException):
+            console.print("[yellow]⚠[/yellow] ollama is installed but the server is not running.")
+            if interactive and typer.confirm("Attempt to start ollama server?"):
+                console.print("Starting ollama serve in background…")
+                # Start in background
+                subprocess.Popen(
+                    ["ollama", "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True
+                )
+                console.print("Waiting for server to start…")
+                for _ in range(5):
+                    time.sleep(1)
+                    try:
+                        with httpx.Client(timeout=1.0) as client:
+                            if client.get(f"{host}/api/tags").status_code == 200:
+                                break
+                    except Exception:
+                        pass
+                
+                # Try pulling model now
+                try:
+                    subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
+                    console.print("[green]✓[/green] ollama started and model pulled")
+                    ollama_ok = True
+                except Exception:
+                    console.print("[red]✗ Failed to pull model. Please run 'ollama pull nomic-embed-text' manually.[/red]")
 
-    # Check ollama
-    try:
-        result = subprocess.run(
-            ["ollama", "list"], capture_output=True, text=True, timeout=5
-        )
-        if "nomic-embed-text" in result.stdout:
-            console.print("[green]✓[/green] Embedding backend: ollama (`ollama serve && ollama pull nomic-embed-text`)")
-            ollama_ok = True
-        else:
-            console.print("[yellow]⚠[/yellow]  ollama is installed, but run this exact command first: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]")
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-
-    # Check OpenAI
+    # Check OpenAI as fallback
     if not ollama_ok and os.environ.get("OPENAI_API_KEY"):
         console.print("[green]✓[/green] Embedding backend: OpenAI API")
         ollama_ok = True
 
-    # Nothing found — user needs ollama or an OpenAI key
     if not ollama_ok:
-        console.print("[red]✗[/red]  No embedding backend found.\n")
-        console.print("    Try a local server: [cyan]ollama serve && ollama pull nomic-embed-text[/cyan]\n")
-        console.print("    Or use OpenAI: set [cyan]OPENAI_API_KEY[/cyan]")
+        console.print("\n[red]✗ No embedding backend available.[/red]")
+        console.print("  TurnZero requires either local [bold]ollama[/bold] or [bold]OpenAI[/bold] for embeddings.")
+        console.print("  Setup will continue, but you must fix this before querying.")
 
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()

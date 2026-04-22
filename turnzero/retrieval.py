@@ -5,13 +5,14 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
 from turnzero.blocks import Block
-from turnzero.embed import cosine_similarity
+from turnzero.embed import cosine_similarity, get_model_id
 
 # ---------------------------------------------------------------------------
 # Intent classifier
@@ -59,7 +60,7 @@ def classify_intent(prompt: str) -> str:
 # ---------------------------------------------------------------------------
 # Tier 1: pre-filters (fast, no domain knowledge required)
 #   - reject known social/chitchat patterns
-#   - require at least one word ≥ 6 chars (proxy for domain vocabulary)
+#   - require minimum length/substance or professional question starter
 # Tier 2: positive signal (ANY one passes)
 #   - action/problem keyword hit (software + security verbs)
 #   - question pattern (domain-agnostic: "?", "how do I", "should I", ...)
@@ -147,11 +148,22 @@ def _has_substance(prompt: str, lower: str) -> bool:
 
     Returns False (no substance) when:
       - the entire prompt matches a known social pattern, OR
-      - no word is ≥ 6 characters (proxy for domain vocabulary)
+      - the prompt is extremely short (< 2 words) AND not a direct question.
     """
     if lower.strip() in _SOCIAL_PATTERNS:
         return False
-    return any(len(w) >= 6 for w in lower.split())
+    
+    words = lower.split()
+    if len(words) < 2:
+        # Allow single-word "Question?" but not just "Hey"
+        return "?" in lower and len(lower) > 3
+
+    # Professional question starters bypass length checks (e.g. "How to X")
+    if any(lower.startswith(q) for q in ["how to", "what is", "should i", "can i"]):
+        return True
+
+    # Require at least one substantial word (≥ 3 chars)
+    return any(len(w) >= 3 for w in words)
 
 
 def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> bool:
@@ -216,10 +228,35 @@ def load_index(
         )
 
     entries: list[IndexEntry] = []
+    current_model = get_model_id()
+
     for line in index_path.read_text().splitlines():
         if not line.strip():
             continue
         data = json.loads(line)
+
+        # Handle header line
+        if "header" in data:
+            built_model = data["header"].get("model_id")
+            if built_model and built_model != current_model:
+                # Use Rich if available (it is in our dependencies)
+                try:
+                    from rich.console import Console
+                    console = Console(stderr=True)
+                    console.print(
+                        f"\n[bold yellow]⚠[/bold yellow] [yellow]Index model mismatch:[/yellow]\n"
+                        f"  Built with: [cyan]{built_model}[/cyan]\n"
+                        f"  Current:    [cyan]{current_model}[/cyan]\n"
+                        f"  Retrieval scores may be inaccurate. Re-build: [bold]turnzero index build[/bold]\n"
+                    )
+                except ImportError:
+                    print(
+                        f"\nWARNING: Index model mismatch (built with {built_model}, using {current_model}).\n"
+                        "Retrieval scores may be inaccurate. Re-build: turnzero index build\n",
+                        file=sys.stderr,
+                    )
+            continue
+
         source = data.get("source", "local")
         if sources is not None and source not in sources:
             continue

@@ -4,10 +4,20 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from dataclasses import dataclass, asdict
+from datetime import datetime
 from pathlib import Path
 
 from turnzero.blocks import load_all_blocks, load_block
-from turnzero.embed import embed
+from turnzero.embed import embed, get_model_id
+
+
+@dataclass(frozen=True)
+class IndexHeader:
+    """Header line for index files to ensure model compatibility."""
+    model_id: str
+    built_at: str
+    version: str = "1"
 
 
 def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> int:
@@ -28,8 +38,15 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
 
     # Collect entries grouped by source for per-source files
     by_source: dict[str, list[str]] = defaultdict(list)
+    model_id = get_model_id()
+    header = IndexHeader(
+        model_id=model_id,
+        built_at=datetime.now().isoformat(timespec="seconds"),
+    )
+    header_json = json.dumps({"header": asdict(header)})
 
     with index_path.open("w") as merged:
+        merged.write(header_json + "\n")
         for path in paths:
             block = load_block(path)
             rel = path.relative_to(blocks_dir)
@@ -51,7 +68,7 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
     if data_dir is not None:
         for source, lines in by_source.items():
             source_path = data_dir / f"index_{source}.jsonl"
-            source_path.write_text("\n".join(lines) + "\n")
+            source_path.write_text(header_json + "\n" + "\n".join(lines) + "\n")
 
     return sum(len(v) for v in by_source.values())
 
