@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.2.6** (PyPI live).
+TurnZero is at **v0.2.7** (PyPI live).
 
 **[ROADMAP.md](ROADMAP.md) is the Single Source of Truth (SSOT)** for all active priorities, technical debt, and tickets. Refer to it first for session context.
 
