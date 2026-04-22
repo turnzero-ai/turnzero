@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.2.3** (PyPI live, confirmed external install via Codex).
+TurnZero is at **v0.2.5** (PyPI live).
+
+**[ROADMAP.md](ROADMAP.md) is the Single Source of Truth (SSOT)** for all active priorities, technical debt, and tickets. Refer to it first for session context.
 
 - 74 blocks shipped in wheel, 123 blocks in Darijo's local library
-- Any domain — software, law, medicine, finance, design, writing, research
-- 135 tests passing; Hit Rate@3 = 1.00 on validation set
+- 204 tests passing; Hit Rate@3 = 1.00 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.75 (CLI, hook, MCP, retrieval)
@@ -69,14 +70,16 @@ pytest
 
 ## Session Workflow (Claude must follow these rules every session)
 
-### 1. Load full memory at session start
-A `SessionStart` hook automatically injects all memory files into context. At the start of every session, treat that loaded memory as ground truth for project state — do not rely on stale knowledge from training data.
+### 1. Load full memory & SSOT at session start
+A `SessionStart` hook automatically injects all memory files into context. At the start of every session:
+- **Read [ROADMAP.md](ROADMAP.md)** as the Single Source of Truth for current priorities and tickets.
+- Treat loaded memory as ground truth for project state.
 
-### 2. Keep memory and docs in sync
+### 2. Keep memory and SSOT in sync
 After any strategic decision, architectural change, or significant implementation:
+- **Update [ROADMAP.md](ROADMAP.md)** if tasks were completed, debt was identified, or priorities shifted.
 - Update the relevant memory file(s) in `~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/`
-- Update `CLAUDE.md` if project status, commands, or constraints changed
-- Update `ROADMAP.md` if phase items were completed or priorities shifted
+- Update `CLAUDE.md` if project status, commands, or constraints changed.
 Do this during the session, not as an afterthought at the end.
 
 ### 3. Maintain test coverage
@@ -139,10 +142,11 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 ### Release checklist (before every `hatch publish`)
 1. All tests green: `pytest`
 2. Lint + types clean: `ruff check . && mypy turnzero`
-3. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
-4. Version bumped in `pyproject.toml` in its own commit
-5. Tagged: `git tag vX.Y.Z`
-6. Confirm with Darijo before running `hatch publish`
+3. Retrieval quality gate: `turnzero validate` — Hit Rate@3 must be ≥ 1.00
+4. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
+5. Version bumped in `pyproject.toml` in its own commit
+6. Tagged: `git tag vX.Y.Z`
+7. Confirm with Darijo before running `hatch publish`
 
 ### Block YAML schema
 - Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)
