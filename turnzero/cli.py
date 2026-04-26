@@ -920,6 +920,7 @@ def feedback(
 @app.command()
 def stats() -> None:
     """Show injection history and block library statistics."""
+    import contextlib
     import json
     import time
 
@@ -932,7 +933,6 @@ def stats() -> None:
     log_path = data_dir / "hook_log.jsonl"
     entries: list[dict[str, Any]] = []
     if log_path.exists():
-        import contextlib
         for line in log_path.read_text(encoding="utf-8").splitlines():
             with contextlib.suppress(json.JSONDecodeError):
                 entries.append(json.loads(line))
@@ -961,6 +961,28 @@ def stats() -> None:
     TOKENS_PER_TURN = 1500
     est_turns = round(priors_total * TURNS_PER_PRIOR)
     est_tokens = priors_total * TURNS_PER_PRIOR * TOKENS_PER_TURN
+
+    # ── Tool call log ─────────────────────────────────────────────────────
+    tool_log_path = data_dir / "tool_call_log.jsonl"
+    tool_entries: list[dict[str, Any]] = []
+    if tool_log_path.exists():
+        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                tool_entries.append(json.loads(line))
+
+    tool_calls_total = len(tool_entries)
+    tool_calls_week = sum(1 for e in tool_entries if e.get("ts", 0) >= week_ago)
+    tokens_in_total = sum(e.get("tokens_in", 0) for e in tool_entries)
+    tokens_out_total = sum(e.get("tokens_out", 0) for e in tool_entries)
+    tokens_week = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries if e.get("ts", 0) >= week_ago
+    )
+    submit_tokens = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries if e.get("tool") == "submit_candidate"
+    )
+    by_tool: Counter[str] = Counter(e.get("tool", "unknown") for e in tool_entries)
 
     # ── Library stats ─────────────────────────────────────────────────────
     try:
@@ -998,6 +1020,34 @@ def stats() -> None:
             )
 
     console.print(usage)
+
+    if tool_calls_total > 0:
+        console.print()
+        overhead = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+        overhead.add_column("", style="dim", min_width=26)
+        overhead.add_column("", justify="right")
+        overhead.add_row(
+            "MCP tool calls",
+            f"[bold]{tool_calls_total}[/bold]  [dim](+{tool_calls_week} this week)[/dim]",
+        )
+        overhead.add_row(
+            "MCP token cost (est.)",
+            f"[bold]{(tokens_in_total + tokens_out_total) // 1000}k[/bold]"
+            f"  [dim]in {tokens_in_total // 1000}k · out {tokens_out_total // 1000}k · "
+            f"+{tokens_week // 1000}k this week[/dim]",
+        )
+        if submit_tokens:
+            overhead.add_row(
+                "  of which: new priors",
+                f"[dim]{submit_tokens // 1000}k tokens[/dim]",
+            )
+        if by_tool:
+            breakdown = "  ".join(f"{t}({n})" for t, n in by_tool.most_common())
+            overhead.add_row("  by tool", f"[dim]{breakdown}[/dim]")
+        net_tokens = int(est_tokens) - (tokens_in_total + tokens_out_total)
+        net_label = f"[bold green]+{net_tokens // 1000}k net saved[/bold green]" if net_tokens > 0 else f"[yellow]{net_tokens // 1000}k net[/yellow]"
+        overhead.add_row("Net token benefit", net_label)
+        console.print(overhead)
 
     console.print()
     lib = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))

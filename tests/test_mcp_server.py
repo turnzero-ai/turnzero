@@ -15,6 +15,7 @@ from turnzero.mcp_server import (
     _inject_block,
     _list_suggested_blocks,
     _log_mcp_injection,
+    _log_tool_call,
     learn_from_session,
 )
 
@@ -305,3 +306,95 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
         mcp._data_dir = orig_data
         mcp._blocks_dir = orig_blocks
         mcp._index_path = orig_index
+
+
+# ---------------------------------------------------------------------------
+# _log_tool_call
+# ---------------------------------------------------------------------------
+
+def test_log_tool_call_writes_tool_call_log(tmp_path: Path) -> None:
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "some text output")
+        log_path = tmp_path / "tool_call_log.jsonl"
+        assert log_path.exists()
+        entry = json.loads(log_path.read_text().strip())
+        assert entry["tool"] == "inject_block"
+        assert entry["tokens_in"] > 0
+        assert entry["tokens_out"] > 0
+        assert "ts" in entry
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_log_tool_call_appends_multiple_tools(tmp_path: Path) -> None:
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_tool_call("list_suggested_blocks", {"prompt": "build a fastapi app"}, [])
+        _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "text")
+        _log_tool_call("submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True})
+        lines = (tmp_path / "tool_call_log.jsonl").read_text().strip().splitlines()
+        assert len(lines) == 3
+        tools = [json.loads(ln)["tool"] for ln in lines]
+        assert tools == ["list_suggested_blocks", "inject_block", "submit_candidate"]
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_log_tool_call_meta_persisted(tmp_path: Path) -> None:
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_tool_call("submit_candidate", {"block_id": "x"}, "ok", meta={"auto_approve": True, "block_id": "x"})
+        entry = json.loads((tmp_path / "tool_call_log.jsonl").read_text().strip())
+        assert entry["auto_approve"] is True
+        assert entry["block_id"] == "x"
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_log_tool_call_token_estimate_scales_with_payload(tmp_path: Path) -> None:
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        short_out = "short"
+        long_out = "x" * 4000
+        _log_tool_call("inject_block", {}, short_out)
+        _log_tool_call("inject_block", {}, long_out)
+        lines = (tmp_path / "tool_call_log.jsonl").read_text().strip().splitlines()
+        e_short = json.loads(lines[0])
+        e_long = json.loads(lines[1])
+        assert e_long["tokens_out"] > e_short["tokens_out"]
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_get_stats_includes_tool_call_counts(tmp_path: Path) -> None:
+    from turnzero.mcp_server import get_stats
+
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_tool_call("list_suggested_blocks", {"prompt": "test"}, [])
+        _log_tool_call("inject_block", {"block_id": "b"}, "text")
+        result = get_stats()
+        assert "tool_calls" in result
+        assert result["tool_calls"]["total"] >= 2
+        assert "list_suggested_blocks" in result["tool_calls"]["by_tool"]
+        assert "inject_block" in result["tool_calls"]["by_tool"]
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_get_stats_includes_token_cost(tmp_path: Path) -> None:
+    from turnzero.mcp_server import get_stats
+
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_tool_call("inject_block", {"block_id": "b"}, "some output text here")
+        _log_tool_call("submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True})
+        result = get_stats()
+        assert "token_cost" in result
+        assert result["token_cost"]["total"] > 0
+        assert result["token_cost"]["submit_candidate_total"] > 0
+        assert result["token_cost"]["total_in"] >= 0
+        assert result["token_cost"]["total_out"] >= 0
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]

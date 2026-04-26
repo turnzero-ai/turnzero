@@ -219,6 +219,38 @@ def _log_mcp_injection(block_ids: list[str], domains: list[str], prompt_words: i
         pass
 
 
+def _log_tool_call(
+    tool: str,
+    input_obj: Any,
+    output_obj: Any,
+    meta: dict[str, Any] | None = None,
+) -> None:
+    """Append one entry to tool_call_log.jsonl tracking per-tool call counts and token cost.
+
+    Token counts are estimated from JSON-serialised size (chars / 4) — accurate enough
+    for trend monitoring without adding a tokenizer dependency.
+    """
+    import json
+    import time
+
+    try:
+        tokens_in = len(json.dumps(input_obj)) // 4
+        tokens_out = len(json.dumps(output_obj)) // 4
+        entry = json.dumps({
+            "ts": time.time(),
+            "tool": tool,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            **(meta or {}),
+        })
+        log_path = _data_dir() / "tool_call_log.jsonl"
+        _data_dir().mkdir(parents=True, exist_ok=True)
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(entry + "\n")
+    except Exception:
+        pass
+
+
 @mcp.tool()
 def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
     """Suggest Expert Priors relevant to an opening developer prompt.
@@ -244,9 +276,10 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
                 domains=list({s["domain"] for s in suggestions}),
                 prompt_words=len(prompt.split()),
             )
+        _log_tool_call("list_suggested_blocks", {"prompt": prompt}, suggestions)
         return suggestions
     except RuntimeError as e:
-        return [{
+        result = [{
             "error": "no_embedding_backend",
             "message": str(e),
             "action": (
@@ -258,6 +291,8 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
                 "Then restart your AI session."
             ),
         }]
+        _log_tool_call("list_suggested_blocks", {"prompt": prompt}, result)
+        return result
 
 
 @mcp.tool()
@@ -274,7 +309,9 @@ def get_block(block_id: str) -> dict[str, Any]:
         Full Expert Prior data including all constraints, anti-patterns,
         doc anchors, version, staleness status, and context weight.
     """
-    return _get_block(block_id)
+    result = _get_block(block_id)
+    _log_tool_call("get_block", {"block_id": block_id}, result)
+    return result
 
 
 @mcp.tool()
@@ -292,7 +329,9 @@ def inject_block(block_id: str) -> str:
         Formatted markdown Expert Prior, ready to inject before the
         first AI response.
     """
-    return _inject_block(block_id)
+    result = _inject_block(block_id)
+    _log_tool_call("inject_block", {"block_id": block_id}, result)
+    return result
 
 
 @mcp.tool()
@@ -346,7 +385,36 @@ def get_stats() -> dict[str, Any]:
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
     candidates = list((_data_dir() / "candidates").glob("*.yaml")) if (_data_dir() / "candidates").exists() else []
 
-    return {
+    # ── Tool call log ──────────────────────────────────────────────────────
+    tool_log_path = data_dir / "tool_call_log.jsonl"
+    tool_entries: list[dict[str, Any]] = []
+    if tool_log_path.exists():
+        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                tool_entries.append(json.loads(line))
+
+    tool_calls_total = len(tool_entries)
+    tool_calls_week = sum(1 for e in tool_entries if e.get("ts", 0) >= week_ago)
+
+    by_tool: Counter[str] = Counter()
+    tokens_in_total = 0
+    tokens_out_total = 0
+    tokens_in_week = 0
+    tokens_out_week = 0
+    submit_tokens_total = 0
+    for e in tool_entries:
+        by_tool[e.get("tool", "unknown")] += 1
+        tin = e.get("tokens_in", 0)
+        tout = e.get("tokens_out", 0)
+        tokens_in_total += tin
+        tokens_out_total += tout
+        if e.get("ts", 0) >= week_ago:
+            tokens_in_week += tin
+            tokens_out_week += tout
+        if e.get("tool") == "submit_candidate":
+            submit_tokens_total += tin + tout
+
+    result: dict[str, Any] = {
         "sessions": {"total": sessions_total, "this_week": sessions_week},
         "priors_injected": {"total": priors_total, "this_week": priors_week},
         "estimated_turns_saved": est_turns,
@@ -358,7 +426,21 @@ def get_stats() -> dict[str, Any]:
             "stale_blocks": stale_count,
             "candidates_pending_review": len(candidates),
         },
+        "tool_calls": {
+            "total": tool_calls_total,
+            "this_week": tool_calls_week,
+            "by_tool": dict(by_tool.most_common()),
+        },
+        "token_cost": {
+            "total_in": tokens_in_total,
+            "total_out": tokens_out_total,
+            "total": tokens_in_total + tokens_out_total,
+            "this_week": tokens_in_week + tokens_out_week,
+            "submit_candidate_total": submit_tokens_total,
+        },
     }
+    _log_tool_call("get_stats", {}, result)
+    return result
 
 
 def _compute_confidence(
@@ -451,6 +533,12 @@ def submit_candidate(
         "archived": False,
     }
 
+    input_snapshot = {
+        "block_id": block_id, "domain": domain, "intent": intent,
+        "constraints": constraints, "anti_patterns": anti_patterns or [],
+        "tags": tags or [], "doc_anchors": doc_anchors or [],
+        "reason": reason, "auto_approve": auto_approve,
+    }
     if auto_approve:
         dest_dir = _blocks_dir() / "local" / domain
         dest_dir.mkdir(parents=True, exist_ok=True)
@@ -460,7 +548,7 @@ def submit_candidate(
         # Rebuild index
         from turnzero.index import build as build_index
         build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
-        return (
+        result = (
             f"✓ Expert Prior '{block_id}' added to library and index rebuilt. "
             f"It will be injected in future sessions matching this domain."
             + (f" Reason: {reason}" if reason else "")
@@ -471,11 +559,16 @@ def submit_candidate(
         candidate_path = candidates_dir / f"{block_id}.yaml"
         with open(candidate_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-        return (
+        result = (
             f"✓ Candidate '{block_id}' queued for review. "
             f"Run `turnzero review` to approve it into the library."
             + (f" Reason: {reason}" if reason else "")
         )
+    _log_tool_call(
+        "submit_candidate", input_snapshot, result,
+        meta={"auto_approve": auto_approve, "block_id": block_id},
+    )
+    return result
 
 
 @mcp.tool()
