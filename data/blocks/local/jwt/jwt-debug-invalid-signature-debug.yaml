@@ -1,0 +1,29 @@
+slug: jwt-debug-invalid-signature-debug
+id: jwt-debug-invalid-signature-debug
+version: 1.0.0
+domain: jwt
+intent: debug
+last_verified: '2026-04-26'
+tags:
+- jwt
+- security
+- debug
+- signature
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Invalid signature usually means wrong secret, wrong algorithm, or token tampered
+  in transit
+- Check alg header matches what the verifier expects — attackers switch to HS256 when
+  RS256 expected
+- '''jwt expired'' means exp claim is in the past — check server clock skew first'
+- Use jwt.io to inspect payload without verifying — useful for debugging claims, never
+  for auth
+anti_patterns:
+- Do not disable signature verification to fix 'invalid signature' errors
+- Do not log full JWT tokens — they are bearer credentials
+- Do not silently ignore exp, nbf, or iss validation failures
+doc_anchors: []
+archived: false

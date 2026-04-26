@@ -1,0 +1,29 @@
+slug: rails-n-plus-one-debug
+id: rails-n-plus-one-debug
+version: 1.0.0
+domain: rails
+intent: debug
+last_verified: '2026-04-26'
+tags:
+- rails
+- activerecord
+- n+1
+- performance
+- eager-loading
+context_weight: 288
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use includes() or eager_load() to eager-load associations accessed in loops
+- Use bullet gem in development to detect N+1 queries automatically
+- Use select() to load only needed columns when fetching large collections
+anti_patterns:
+- Do not call association methods inside a loop without eager loading
+- Do not use joins() when you need to access association data — use includes() or
+  eager_load()
+- Do not ignore Bullet warnings — each one is a real N+1 in production
+doc_anchors:
+- url: https://guides.rubyonrails.org/active_record_querying.html#eager-loading-associations
+  verified: '2026-04-26'
+archived: false

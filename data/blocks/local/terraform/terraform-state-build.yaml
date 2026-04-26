@@ -1,0 +1,31 @@
+slug: terraform-state-build
+id: terraform-state-build
+version: 1.0.0
+domain: terraform
+intent: build
+last_verified: '2026-04-26'
+tags:
+- terraform
+- state
+- remote-state
+- s3
+- locking
+context_weight: 352
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use remote state backend (S3 + DynamoDB, GCS, Terraform Cloud) — never commit terraform.tfstate
+  to git
+- Enable state locking — DynamoDB table for S3 backend prevents concurrent apply corruption
+- Use separate state files per environment (dev/staging/prod) — one corrupted state
+  should not affect others
+- Use terraform state mv carefully — always backup state before manual state manipulation
+anti_patterns:
+- Do not commit .tfstate or .tfstate.backup files — they contain secrets in plaintext
+- Do not share one state file across all environments
+- Do not run terraform apply concurrently without state locking
+doc_anchors:
+- url: https://developer.hashicorp.com/terraform/language/settings/backends/configuration
+  verified: '2026-04-26'
+archived: false

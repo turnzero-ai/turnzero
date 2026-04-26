@@ -1,0 +1,32 @@
+slug: nginx-proxy-build
+id: nginx-proxy-build
+version: 1.0.0
+domain: nginx
+intent: build
+last_verified: '2026-04-26'
+tags:
+- nginx
+- reverse-proxy
+- upstream
+- load-balancing
+- caching
+context_weight: 320
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Set proxy_set_header Host $host and proxy_set_header X-Real-IP $remote_addr for
+  upstream apps
+- Use upstream block with keepalive for connection reuse to backends
+- Set proxy_read_timeout, proxy_connect_timeout, proxy_send_timeout — defaults are
+  too long for APIs
+- Use proxy_cache_bypass $http_pragma for cache debugging without restarting nginx
+anti_patterns:
+- Do not set proxy_pass without trailing slash inconsistency — always be explicit
+- Do not forget to set proxy_http_version 1.1 and proxy_set_header Connection '' for
+  keepalive upstream
+- Do not cache POST responses or authenticated content without careful cache key configuration
+doc_anchors:
+- url: https://nginx.org/en/docs/http/ngx_http_proxy_module.html
+  verified: '2026-04-26'
+archived: false

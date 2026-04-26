@@ -1,0 +1,30 @@
+slug: prisma-migrations-build
+id: prisma-migrations-build
+version: 1.0.0
+domain: prisma
+intent: build
+last_verified: '2026-04-26'
+tags:
+- prisma
+- migrations
+- schema
+- database
+context_weight: 348
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Run prisma migrate dev in development — creates migration files and applies them
+- Run prisma migrate deploy in production CI — applies pending migrations without
+  generating new ones
+- Never edit migration files after they have been applied — create a new migration
+  instead
+- Use prisma migrate reset only in development — it drops the database
+anti_patterns:
+- Do not run prisma db push in production — it bypasses migration history
+- Do not commit prisma/migrations without reviewing the generated SQL
+- Do not manually alter database schema outside of Prisma migrations
+doc_anchors:
+- url: https://www.prisma.io/docs/orm/prisma-migrate
+  verified: '2026-04-26'
+archived: false

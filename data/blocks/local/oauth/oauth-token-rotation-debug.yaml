@@ -1,0 +1,28 @@
+slug: oauth-token-rotation-debug
+id: oauth-token-rotation-debug
+version: 1.0.0
+domain: oauth
+intent: debug
+last_verified: '2026-04-26'
+tags:
+- oauth
+- refresh-token
+- rotation
+- security
+context_weight: 320
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Refresh token rotation: each use of a refresh token issues a new one and invalidates
+  the old'
+- If a rotated refresh token is replayed (stolen + used), revoke the entire token
+  family
+- Store refresh token family ID server-side to detect replay — stateless refresh tokens
+  cannot do this
+anti_patterns:
+- Do not reuse refresh tokens without rotation — stolen token grants indefinite access
+- Do not store refresh tokens in localStorage
+- Do not skip replay detection — rotation without detection gives false security
+doc_anchors: []
+archived: false

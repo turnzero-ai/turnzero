@@ -1,0 +1,29 @@
+slug: rails-strong-params-review
+id: rails-strong-params-review
+version: 1.0.0
+domain: rails
+intent: review
+last_verified: '2026-04-26'
+tags:
+- rails
+- strong-params
+- security
+- mass-assignment
+context_weight: 324
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Always use strong parameters (params.require().permit()) in controller actions that
+  write to the database
+- Permit only the specific attributes needed for each action — different permit lists
+  for create vs update
+- Never permit :admin, :role, or :id through strong params in user-facing forms
+anti_patterns:
+- Do not use params.permit! — it allows all attributes and is equivalent to no protection
+- Do not pass raw params hash to ActiveRecord methods
+- Do not share the same permit list for create and update when they should differ
+doc_anchors:
+- url: https://guides.rubyonrails.org/action_controller_overview.html#strong-parameters
+  verified: '2026-04-26'
+archived: false

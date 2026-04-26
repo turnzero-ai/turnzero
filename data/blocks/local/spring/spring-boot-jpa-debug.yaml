@@ -1,0 +1,34 @@
+slug: spring-boot-jpa-debug
+id: spring-boot-jpa-debug
+version: 1.0.0
+domain: spring
+intent: debug
+last_verified: '2026-04-26'
+tags:
+- spring
+- jpa
+- hibernate
+- n+1
+- lazy-loading
+- transactions
+context_weight: 368
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Enable spring.jpa.show-sql=true and spring.jpa.properties.hibernate.format_sql=true
+  to see queries in dev
+- Use @Transactional at service layer — required for lazy loading to work outside
+  the initial query
+- Use JOIN FETCH in JPQL or EntityGraph to avoid N+1 on lazy collections
+- Use Hibernate Statistics or p6spy to count queries per request and detect N+1
+anti_patterns:
+- Do not use FetchType.EAGER globally — it forces joins on every query even when not
+  needed
+- Do not access lazy collections outside a transaction — LazyInitializationException
+- Do not use @Transactional on repository methods you're calling inside another @Transactional
+  — check propagation
+doc_anchors:
+- url: https://docs.spring.io/spring-data/jpa/reference/
+  verified: '2026-04-26'
+archived: false

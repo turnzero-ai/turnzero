@@ -1,0 +1,33 @@
+slug: go-goroutines-debug
+id: go-goroutines-debug
+version: 1.0.0
+domain: go
+intent: debug
+last_verified: '2026-04-26'
+tags:
+- go
+- goroutines
+- leaks
+- sync
+- waitgroup
+- channel
+context_weight: 400
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Every goroutine needs a way to exit — via context cancellation, channel close, or
+  done signal
+- Use sync.WaitGroup to wait for all goroutines to finish before returning
+- Use goleak in tests to detect goroutine leaks
+- Buffered channels prevent sender blocking when receiver is slow — size the buffer
+  to match burst
+anti_patterns:
+- Do not start goroutines in library code without giving callers a way to stop them
+- Do not close a channel from the receiver side — only the sender should close
+- Do not use goroutines for tasks that must maintain order — use a single goroutine
+  with a queue instead
+doc_anchors:
+- url: https://pkg.go.dev/sync
+  verified: '2026-04-26'
+archived: false

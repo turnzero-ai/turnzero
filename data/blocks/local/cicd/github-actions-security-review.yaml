@@ -1,0 +1,32 @@
+slug: github-actions-security-review
+id: github-actions-security-review
+version: 1.0.0
+domain: cicd
+intent: review
+last_verified: '2026-04-26'
+tags:
+- github-actions
+- security
+- oidc
+- secrets
+- permissions
+context_weight: 380
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Pin actions to full commit SHA not tags — tags are mutable and can be hijacked
+- 'Set minimum permissions: permissions: contents: read at workflow level, override
+  per job'
+- Use OIDC for cloud auth (aws-actions/configure-aws-credentials with role-to-assume)
+  — no long-lived secrets
+- Avoid using pull_request_target with code from forks — it has write permissions
+  and is dangerous
+anti_patterns:
+- Do not use secrets in environment variables when OIDC can replace them
+- Do not use actions/checkout@v3 style pinning — pin to SHA
+- Do not echo secrets in run steps — they leak in logs even if GitHub masks them partially
+doc_anchors:
+- url: https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+  verified: '2026-04-26'
+archived: false

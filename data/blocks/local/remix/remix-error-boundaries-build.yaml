@@ -1,0 +1,30 @@
+slug: remix-error-boundaries-build
+id: remix-error-boundaries-build
+version: 1.0.0
+domain: remix
+intent: build
+last_verified: '2026-04-26'
+tags:
+- remix
+- error-boundary
+- catch-boundary
+- error-handling
+context_weight: 388
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Export ErrorBoundary from route files to handle errors scoped to that route's UI
+- 'Throw Response objects (new Response(''Not Found'', {status: 404})) from loaders
+  for HTTP errors'
+- Use useRouteError() inside ErrorBoundary to access the thrown error or Response
+- Root error boundary catches all unhandled errors — always define one in root.tsx
+anti_patterns:
+- Do not let unhandled loader errors bubble to the root without a route-level boundary
+- Do not throw plain Error objects when you mean an HTTP error — throw Response for
+  proper status codes
+- Do not return error data from loaders — throw to trigger the error boundary
+doc_anchors:
+- url: https://remix.run/docs/en/main/route/error-boundary
+  verified: '2026-04-26'
+archived: false

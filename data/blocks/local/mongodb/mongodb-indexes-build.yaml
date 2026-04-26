@@ -1,0 +1,30 @@
+slug: mongodb-indexes-build
+id: mongodb-indexes-build
+version: 1.0.0
+domain: mongodb
+intent: build
+last_verified: '2026-04-26'
+tags:
+- mongodb
+- indexes
+- performance
+- explain
+- compound
+context_weight: 388
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Create indexes on all fields used in query filters and sort operations
+- Compound indexes follow prefix rule — index on {a,b,c} covers queries on a, a+b,
+  a+b+c but not b or c alone
+- Use explain('executionStats') to verify queries use indexes (IXSCAN not COLLSCAN)
+- Use sparse indexes for fields that are often absent — avoids indexing null entries
+anti_patterns:
+- Do not create an index on every field — write overhead and memory cost
+- Do not query large collections without indexes in production — COLLSCAN kills performance
+- Do not put high-cardinality fields last in compound indexes — put them first
+doc_anchors:
+- url: https://www.mongodb.com/docs/manual/indexes/
+  verified: '2026-04-26'
+archived: false

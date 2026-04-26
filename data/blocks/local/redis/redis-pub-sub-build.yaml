@@ -1,0 +1,28 @@
+slug: redis-pub-sub-build
+id: redis-pub-sub-build
+version: 1.0.0
+domain: redis
+intent: build
+last_verified: '2026-04-26'
+tags:
+- redis
+- pubsub
+- channels
+- realtime
+context_weight: 300
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use dedicated Redis connections for pub/sub — a subscribed connection cannot execute
+  other commands
+- Implement reconnection logic with exponential backoff for subscriber connections
+- For reliable messaging (guaranteed delivery), use Redis Streams not pub/sub — pub/sub
+  is fire-and-forget
+anti_patterns:
+- Do not reuse the same Redis connection for pub/sub and regular commands
+- Do not rely on pub/sub for critical messages — missed if subscriber is disconnected
+- Do not subscribe to patterns (psubscribe) with broad wildcards in high-throughput
+  systems
+doc_anchors: []
+archived: false

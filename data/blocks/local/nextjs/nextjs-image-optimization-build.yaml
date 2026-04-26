@@ -1,0 +1,31 @@
+slug: nextjs-image-optimization-build
+id: nextjs-image-optimization-build
+version: 1.0.0
+domain: nextjs
+intent: build
+last_verified: '2026-04-26'
+tags:
+- nextjs
+- image
+- optimization
+- next-image
+- performance
+context_weight: 352
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use next/image for all images — automatic WebP/AVIF conversion, lazy loading, size
+  optimization
+- Always provide width and height props (or fill prop with a sized parent) to prevent
+  layout shift
+- Add external image domains/patterns to next.config.js images.remotePatterns
+- Use priority prop on above-the-fold images (hero, LCP candidate) to preload them
+anti_patterns:
+- Do not use <img> tag for images that go through Next.js — loses all optimization
+- Do not use fill without a positioned parent container with explicit dimensions
+- Do not add * to remotePatterns without restricting hostname — security risk
+doc_anchors:
+- url: https://nextjs.org/docs/app/building-your-application/optimizing/images
+  verified: '2026-04-26'
+archived: false

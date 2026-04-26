@@ -1,0 +1,31 @@
+slug: dotnet-ef-core-build
+id: dotnet-ef-core-build
+version: 1.0.0
+domain: dotnet
+intent: build
+last_verified: '2026-04-26'
+tags:
+- dotnet
+- ef-core
+- entityframework
+- migrations
+- queries
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use AsNoTracking() for read-only queries — significant performance improvement
+- Use Include() to eager-load navigation properties needed in the current query
+- Apply migrations in CI via dotnet ef database update — never auto-migrate in production
+  startup
+- Use IQueryable to compose queries before executing — avoids loading full collections
+  into memory
+anti_patterns:
+- Do not use lazy loading in APIs — causes N+1 queries silently
+- Do not call SaveChangesAsync inside a loop — batch changes and save once
+- Do not load the full entity when you only need specific columns — use Select() projection
+doc_anchors:
+- url: https://learn.microsoft.com/en-us/ef/core/
+  verified: '2026-04-26'
+archived: false

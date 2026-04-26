@@ -1,0 +1,30 @@
+slug: fastapi-dependency-injection-build
+id: fastapi-dependency-injection-build
+version: 1.0.0
+domain: fastapi
+intent: build
+last_verified: '2026-04-26'
+tags:
+- fastapi
+- dependency-injection
+- depends
+- lifespan
+context_weight: 304
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use Depends() for shared resources (DB sessions, auth, config) — FastAPI manages
+  lifecycle
+- Use lifespan context manager (not @app.on_event deprecated) for startup/shutdown
+  resources
+- 'Yield in a dependency to handle cleanup: yield db finally: db.close()'
+- 'Use get_db() pattern: session-per-request dependency that closes after each request'
+anti_patterns:
+- Do not create DB connections at module level — use Depends() for per-request scope
+- Do not use @app.on_event('startup') — deprecated; use lifespan
+- Do not share mutable state between requests in module-level variables
+doc_anchors:
+- url: https://fastapi.tiangolo.com/tutorial/dependencies/
+  verified: '2026-04-26'
+archived: false

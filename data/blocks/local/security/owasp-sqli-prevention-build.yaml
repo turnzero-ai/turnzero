@@ -1,0 +1,31 @@
+slug: owasp-sqli-prevention-build
+id: owasp-sqli-prevention-build
+version: 1.0.0
+domain: security
+intent: build
+last_verified: '2026-04-26'
+tags:
+- sqli
+- owasp
+- security
+- parameterized-queries
+context_weight: 352
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Always use parameterized queries or prepared statements — never string-concatenate
+  user input into SQL
+- Use an ORM query builder for dynamic queries; drop to raw SQL only when necessary
+  with named params
+- Validate and whitelist column/table names if they must be dynamic — parameterization
+  does not cover identifiers
+anti_patterns:
+- Do not use string formatting or f-strings to build SQL queries
+- Do not rely on input escaping as the primary SQLi defense — parameterization is
+  the fix
+- Do not give DB user more privileges than needed — limit blast radius
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
+  verified: '2026-04-26'
+archived: false

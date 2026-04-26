@@ -1,0 +1,32 @@
+slug: graphql-n-plus-one-build
+id: graphql-n-plus-one-build
+version: 1.0.0
+domain: graphql
+intent: build
+last_verified: '2026-04-26'
+tags:
+- graphql
+- dataloader
+- n+1
+- performance
+- batching
+context_weight: 372
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use DataLoader for all relation resolvers — batches N individual DB calls into one
+  query per request
+- DataLoader caches within a single request; create a new DataLoader instance per
+  request, not per server
+- For Relay-style connections, batch the count query alongside the items query
+anti_patterns:
+- Do not resolve nested relations with individual DB calls per parent — this is the
+  GraphQL N+1 problem
+- Do not share a DataLoader instance across requests — cache leaks between users
+- Do not skip batching for 'just a few' relations — at scale it will be thousands
+  of queries
+doc_anchors:
+- url: https://github.com/graphql/dataloader
+  verified: '2026-04-26'
+archived: false

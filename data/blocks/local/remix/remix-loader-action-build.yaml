@@ -1,0 +1,32 @@
+slug: remix-loader-action-build
+id: remix-loader-action-build
+version: 1.0.0
+domain: remix
+intent: build
+last_verified: '2026-04-26'
+tags:
+- remix
+- loader
+- action
+- data-fetching
+- mutations
+context_weight: 376
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- loader() runs on server for GET — return json(data) or redirect()
+- action() runs on server for POST/PUT/DELETE — handle form submissions, return json()
+  or redirect()
+- Use useLoaderData() typed with typeof loader for full type inference
+- Throw redirect() or Response from loader/action to exit early — do not return and
+  then redirect
+anti_patterns:
+- Do not access process.env or database in component code — only in loader/action
+- Do not use useEffect for data fetching — use loaders; effects run after hydration
+  and cause flicker
+- Do not forget that loaders re-run on every navigation — cache expensive operations
+doc_anchors:
+- url: https://remix.run/docs/en/main/route/loader
+  verified: '2026-04-26'
+archived: false

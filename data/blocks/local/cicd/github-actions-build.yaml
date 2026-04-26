@@ -1,0 +1,30 @@
+slug: github-actions-build
+id: github-actions-build
+version: 1.0.0
+domain: cicd
+intent: build
+last_verified: '2026-04-26'
+tags:
+- github-actions
+- workflow
+- ci
+- caching
+- matrix
+context_weight: 364
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use actions/cache for dependency caches (npm, pip, maven) — key on lockfile hash
+- Use matrix strategy for cross-platform or multi-version testing
+- Use concurrency groups to cancel in-progress runs on new push to same branch
+- Use job outputs to pass data between jobs instead of writing to files
+anti_patterns:
+- Do not use actions/cache without a restore-keys fallback — cold cache stalls builds
+- Do not run all tests in one massive job — parallelize with matrix or split jobs
+- Do not hardcode runner OS — use ubuntu-latest but pin for reproducibility in release
+  workflows
+doc_anchors:
+- url: https://docs.github.com/en/actions/writing-workflows
+  verified: '2026-04-26'
+archived: false

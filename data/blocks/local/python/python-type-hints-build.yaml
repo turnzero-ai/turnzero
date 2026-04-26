@@ -1,0 +1,31 @@
+slug: python-type-hints-build
+id: python-type-hints-build
+version: 1.0.0
+domain: python
+intent: build
+last_verified: '2026-04-26'
+tags:
+- python
+- type-hints
+- mypy
+- typing
+- annotations
+context_weight: 380
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use X | Y union syntax (Python 3.10+) over Union[X, Y]; use X | None over Optional[X]
+- Add from __future__ import annotations at top of file to enable postponed evaluation
+  of annotations
+- Use TypedDict for dict shapes; dataclasses or Pydantic for structured data
+- Run mypy --strict in CI — catches bugs before runtime
+anti_patterns:
+- Do not use Any without a comment explaining why narrowing is impossible
+- 'Do not ignore mypy errors with # type: ignore without a reason on the same line'
+- Do not mix old-style (List[str]) and new-style (list[str]) type hints in the same
+  file
+doc_anchors:
+- url: https://mypy.readthedocs.io/en/stable/
+  verified: '2026-04-26'
+archived: false

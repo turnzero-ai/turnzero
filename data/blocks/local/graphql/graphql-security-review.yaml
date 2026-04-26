@@ -1,0 +1,30 @@
+slug: graphql-security-review
+id: graphql-security-review
+version: 1.0.0
+domain: graphql
+intent: review
+last_verified: '2026-04-26'
+tags:
+- graphql
+- security
+- introspection
+- depth-limiting
+- auth
+context_weight: 336
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Disable introspection in production — it gives attackers a complete schema map
+- Implement query depth limiting and complexity analysis — unbounded queries can DoS
+  the server
+- Apply field-level authorization in resolvers, not just at the route level
+- Rate-limit by query complexity not just by request count
+anti_patterns:
+- Do not expose error stack traces in GraphQL errors in production — use generic messages
+- Do not apply auth only at the top-level query — nested resolvers can bypass it
+- Do not allow arbitrary query batching without limits
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html
+  verified: '2026-04-26'
+archived: false

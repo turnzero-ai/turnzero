@@ -1,0 +1,36 @@
+slug: grpc-patterns-build
+id: grpc-patterns-build
+version: 1.0.0
+domain: grpc
+intent: build
+last_verified: '2026-04-26'
+tags:
+- grpc
+- protobuf
+- streaming
+- deadlines
+- errors
+context_weight: 416
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Always set deadlines on client calls — gRPC calls without deadlines can hang indefinitely
+- 'Use status codes correctly: NOT_FOUND for missing resources, INVALID_ARGUMENT for
+  bad input, INTERNAL for server errors'
+- Use server streaming for large responses; client streaming for large uploads; bidirectional
+  for real-time
+- Version proto files carefully — field numbers are permanent; removing or renumbering
+  breaks compatibility
+anti_patterns:
+- Do not remove or reuse proto field numbers — breaking change that corrupts serialized
+  data
+- Do not use gRPC without TLS in production — all traffic is plaintext without it
+- Do not skip deadline propagation through the call chain — child RPCs need their
+  own deadlines
+doc_anchors:
+- url: https://grpc.io/docs/guides/error/
+  verified: '2026-04-26'
+- url: https://protobuf.dev/programming-guides/dos-donts/
+  verified: '2026-04-26'
+archived: false

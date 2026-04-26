@@ -1,0 +1,31 @@
+slug: postgresql-full-text-search-build
+id: postgresql-full-text-search-build
+version: 1.0.0
+domain: postgresql
+intent: build
+last_verified: '2026-04-26'
+tags:
+- postgresql
+- full-text-search
+- tsvector
+- gin-index
+context_weight: 388
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use tsvector + GIN index for full-text search — orders of magnitude faster than
+  LIKE '%query%'
+- 'Create a generated column: ALTER TABLE t ADD COLUMN fts tsvector GENERATED ALWAYS
+  AS (to_tsvector(''english'', body)) STORED'
+- Use plainto_tsquery for user input (safe); to_tsquery for structured queries
+- Use ts_rank or ts_rank_cd to order results by relevance
+anti_patterns:
+- Do not use LIKE '%keyword%' on large tables — forces full table scan
+- Do not use ILIKE for case-insensitive search at scale — use full-text search with
+  proper config
+- Do not forget to create the GIN index — tsvector without GIN is slower than LIKE
+doc_anchors:
+- url: https://www.postgresql.org/docs/current/textsearch.html
+  verified: '2026-04-26'
+archived: false

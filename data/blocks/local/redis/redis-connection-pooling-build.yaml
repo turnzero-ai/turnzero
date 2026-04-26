@@ -1,0 +1,29 @@
+slug: redis-connection-pooling-build
+id: redis-connection-pooling-build
+version: 1.0.0
+domain: redis
+intent: build
+last_verified: '2026-04-26'
+tags:
+- redis
+- connection-pool
+- performance
+- ioredis
+- redis-py
+context_weight: 316
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use a connection pool — never create a new Redis connection per request
+- Set maxRetriesPerRequest and connectTimeout to avoid hanging on Redis downtime
+- Use a single shared client instance; lazy-initialize it on first use, not at module
+  load time
+anti_patterns:
+- Do not create a new Redis connection per request or per lambda invocation
+- Do not block on Redis operations in the main event loop — use async clients
+- Do not set pool size higher than your Redis server's maxclients limit
+doc_anchors:
+- url: https://redis.io/docs/manual/clients/
+  verified: '2026-04-26'
+archived: false

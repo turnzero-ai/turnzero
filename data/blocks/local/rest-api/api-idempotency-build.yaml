@@ -1,0 +1,32 @@
+slug: api-idempotency-build
+id: api-idempotency-build
+version: 1.0.0
+domain: rest-api
+intent: build
+last_verified: '2026-04-26'
+tags:
+- rest-api
+- idempotency
+- retry
+- payment
+- api-design
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Accept an Idempotency-Key header on state-changing POST endpoints (payments, email
+  sends)
+- Store the idempotency key and response for 24-48h — return cached response on duplicate
+- PUT and DELETE should be naturally idempotent — same request twice = same result
+- Use UUID v4 for idempotency keys — clients generate them before sending
+anti_patterns:
+- Do not allow POSTs to charge a card or send an email twice on network retry without
+  idempotency keys
+- Do not use timestamp-based idempotency keys — clock skew causes false uniqueness
+- Do not store idempotency keys in application memory — use Redis or DB for distributed
+  systems
+doc_anchors:
+- url: https://stripe.com/docs/api/idempotent_requests
+  verified: '2026-04-26'
+archived: false

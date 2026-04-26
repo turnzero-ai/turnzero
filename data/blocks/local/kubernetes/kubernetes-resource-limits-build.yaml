@@ -1,0 +1,32 @@
+slug: kubernetes-resource-limits-build
+id: kubernetes-resource-limits-build
+version: 1.0.0
+domain: kubernetes
+intent: build
+last_verified: '2026-04-26'
+tags:
+- kubernetes
+- resources
+- limits
+- requests
+- oom
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Always set both resources.requests and resources.limits on every container
+- CPU limit throttles; memory limit OOMKills — set memory limit = request for predictable
+  scheduling
+- 'Start with requests: cpu 100m, memory 128Mi then tune from actual usage metrics'
+- Set QoS class Guaranteed (limits == requests) for critical pods to avoid eviction
+anti_patterns:
+- Do not omit resource requests — pod gets scheduled on any node and starves others
+- Do not set CPU limits much higher than requests — causes CPU throttling even under
+  normal load
+- Do not set memory limits lower than actual peak usage — OOMKill will restart pod
+  silently
+doc_anchors:
+- url: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  verified: '2026-04-26'
+archived: false

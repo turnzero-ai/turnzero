@@ -1,0 +1,31 @@
+slug: owasp-idor-prevention-build
+id: owasp-idor-prevention-build
+version: 1.0.0
+domain: security
+intent: review
+last_verified: '2026-04-26'
+tags:
+- idor
+- owasp
+- security
+- authorization
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Check object-level authorization on every resource fetch — verify the requesting
+  user owns or has access to the resource
+- Use indirect references (UUIDs, opaque tokens) rather than sequential IDs in URLs
+  where possible
+- Apply authorization checks in the service layer, not just the route handler — prevents
+  bypass via internal calls
+anti_patterns:
+- Do not assume that knowing an ID is sufficient authorization
+- Do not rely on obscurity (non-sequential IDs) as the only access control
+- Do not skip auth checks on 'internal' endpoints — they are often exposed via SSRF
+  or misconfiguration
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html
+  verified: '2026-04-26'
+archived: false

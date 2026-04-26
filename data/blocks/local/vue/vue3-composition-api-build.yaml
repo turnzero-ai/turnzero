@@ -1,0 +1,34 @@
+slug: vue3-composition-api-build
+id: vue3-composition-api-build
+version: 1.0.0
+domain: vue
+intent: build
+last_verified: '2026-04-26'
+tags:
+- vue3
+- composition-api
+- reactivity
+- ref
+- reactive
+context_weight: 396
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use ref() for primitives and reactive() for objects; always access ref values via
+  .value in script
+- Template refs auto-unwrap; script refs require .value — this is the most common
+  confusion point
+- Use computed() for derived state; it caches and only recomputes when dependencies
+  change
+- Use watchEffect() for side effects that depend on reactive state; use watch() when
+  you need old/new values
+anti_patterns:
+- Do not destructure reactive() objects — you lose reactivity; use toRefs() if you
+  need destructuring
+- Do not mutate props directly — emit events to parent or use v-model
+- Do not use reactive() on primitives — use ref() instead
+doc_anchors:
+- url: https://vuejs.org/guide/extras/composition-api-faq.html
+  verified: '2026-04-26'
+archived: false

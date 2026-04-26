@@ -1,0 +1,31 @@
+slug: go-error-handling-build
+id: go-error-handling-build
+version: 1.0.0
+domain: go
+intent: build
+last_verified: '2026-04-26'
+tags:
+- go
+- errors
+- wrapping
+- sentinel
+- fmt.errorf
+context_weight: 364
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Wrap errors with context using fmt.Errorf(''doing X: %w'', err) — preserves the
+  original for errors.Is/As'
+- Use errors.Is() for sentinel error comparison; errors.As() to extract a typed error
+  from the chain
+- Define sentinel errors as var ErrNotFound = errors.New('not found') at package level
+- Return errors to callers; only log at the top level where you handle them
+anti_patterns:
+- Do not use fmt.Errorf without %w when you need callers to unwrap the error
+- Do not swallow errors with _ — at minimum log them
+- Do not panic for recoverable errors — return error instead
+doc_anchors:
+- url: https://go.dev/blog/error-handling-and-go
+  verified: '2026-04-26'
+archived: false

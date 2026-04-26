@@ -1,0 +1,29 @@
+slug: terraform-modules-build
+id: terraform-modules-build
+version: 1.0.0
+domain: terraform
+intent: build
+last_verified: '2026-04-26'
+tags:
+- terraform
+- modules
+- versioning
+- reuse
+context_weight: 348
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Pin module versions with version = '~> x.y' — unpinned modules break on upstream
+  changes
+- Use terraform.tfvars for variable values; never hardcode in module calls
+- 'Structure: root module calls child modules; child modules are reusable and version-pinned'
+- Output only what callers need — avoid exposing internal resource attributes as outputs
+anti_patterns:
+- Do not use latest or no version constraint on remote modules
+- Do not duplicate infrastructure code — extract into a module after the second copy
+- Do not put provider configuration inside reusable modules — pass via required_providers
+doc_anchors:
+- url: https://developer.hashicorp.com/terraform/language/modules/develop
+  verified: '2026-04-26'
+archived: false

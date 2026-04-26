@@ -1,0 +1,33 @@
+slug: owasp-xss-prevention-build
+id: owasp-xss-prevention-build
+version: 1.0.0
+domain: security
+intent: build
+last_verified: '2026-04-26'
+tags:
+- xss
+- owasp
+- security
+- csp
+- sanitization
+context_weight: 396
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Escape all user-supplied data in HTML context: use template engine auto-escaping,
+  never manual string concat'
+- Set Content-Security-Policy header to restrict script sources; start with strict-dynamic
+  + nonces
+- Use DOMPurify for any case where you must render user HTML (rich text editors etc.)
+- 'Set X-Content-Type-Options: nosniff and X-Frame-Options: DENY on all responses'
+anti_patterns:
+- Do not use innerHTML with user data — use textContent or createElement
+- Do not trust client-side sanitization alone — sanitize on server too
+- Do not set CSP to 'unsafe-inline' — it defeats the entire purpose
+- 'Do not render user-supplied URLs in href/src without validation — javascript: protocol
+  attacks'
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
+  verified: '2026-04-26'
+archived: false

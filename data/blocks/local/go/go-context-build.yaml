@@ -1,0 +1,31 @@
+slug: go-context-build
+id: go-context-build
+version: 1.0.0
+domain: go
+intent: build
+last_verified: '2026-04-26'
+tags:
+- go
+- context
+- cancellation
+- timeout
+- deadline
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Pass context.Context as first argument to every function that does I/O or can block
+- Use context.WithTimeout or context.WithDeadline for all external calls (HTTP, DB,
+  gRPC)
+- Check ctx.Err() or select on ctx.Done() in long loops to respect cancellation
+- Never store a context in a struct — pass it through the call chain
+anti_patterns:
+- Do not use context.Background() in library functions — accept context from caller
+- Do not ignore context cancellation — leaked goroutines accumulate if you do not
+  check
+- Do not pass nil context — pass context.TODO() as a placeholder if unsure
+doc_anchors:
+- url: https://pkg.go.dev/context
+  verified: '2026-04-26'
+archived: false

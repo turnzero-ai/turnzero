@@ -1,0 +1,33 @@
+slug: kubernetes-probes-build
+id: kubernetes-probes-build
+version: 1.0.0
+domain: kubernetes
+intent: build
+last_verified: '2026-04-26'
+tags:
+- kubernetes
+- liveness
+- readiness
+- startup
+- probes
+context_weight: 376
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Liveness probe: checks if container needs restart (deadlock, infinite loop) — should
+  be lightweight'
+- 'Readiness probe: checks if container should receive traffic — check DB/cache connectivity
+  here'
+- 'Startup probe: for slow-starting containers — disables liveness during startup
+  to prevent premature restarts'
+- Set initialDelaySeconds generously for readiness — prevents traffic during app boot
+anti_patterns:
+- Do not use the same endpoint for liveness and readiness — they have different purposes
+- Do not make liveness probe check external dependencies — flaky dependency causes
+  restart loop
+- Do not set failureThreshold too low — transient errors will cause unnecessary restarts
+doc_anchors:
+- url: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+  verified: '2026-04-26'
+archived: false

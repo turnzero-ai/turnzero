@@ -1,0 +1,28 @@
+slug: owasp-rate-limiting-build
+id: owasp-rate-limiting-build
+version: 1.0.0
+domain: security
+intent: build
+last_verified: '2026-04-26'
+tags:
+- rate-limiting
+- owasp
+- security
+- brute-force
+context_weight: 364
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Rate-limit authentication endpoints (login, password reset, OTP) by IP and by account
+- Use exponential backoff + lockout after N failed attempts; alert on anomalous failure
+  spikes
+- Implement rate limiting at the edge (CDN/load balancer) not only in application
+  code — app-level alone is bypassable
+anti_patterns:
+- Do not return different error messages for 'user not found' vs 'wrong password'
+  — enables user enumeration
+- Do not rate-limit only by IP — attackers distribute across IPs; also limit by account/email
+- Do not skip rate limiting on API key endpoints — credential stuffing hits APIs too
+doc_anchors: []
+archived: false

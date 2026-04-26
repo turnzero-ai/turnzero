@@ -1,0 +1,30 @@
+slug: nginx-security-build
+id: nginx-security-build
+version: 1.0.0
+domain: nginx
+intent: build
+last_verified: '2026-04-26'
+tags:
+- nginx
+- security
+- headers
+- tls
+- reverse-proxy
+context_weight: 308
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Add security headers: X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+  Permissions-Policy'
+- Use ssl_protocols TLSv1.2 TLSv1.3 only — disable SSLv3, TLSv1.0, TLSv1.1
+- Set client_max_body_size to limit upload size; set limit_req_zone for rate limiting
+- Use proxy_hide_header to remove upstream Server and X-Powered-By headers
+anti_patterns:
+- Do not expose nginx version in error pages — use server_tokens off
+- Do not forward all headers from upstream to client — whitelist with proxy_hide_header
+- Do not use self-signed certs in production — use Let's Encrypt or an internal CA
+doc_anchors:
+- url: https://nginx.org/en/docs/http/ngx_http_headers_module.html
+  verified: '2026-04-26'
+archived: false

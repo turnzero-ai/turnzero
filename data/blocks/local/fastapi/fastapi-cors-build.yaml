@@ -1,0 +1,31 @@
+slug: fastapi-cors-build
+id: fastapi-cors-build
+version: 1.0.0
+domain: fastapi
+intent: build
+last_verified: '2026-04-26'
+tags:
+- fastapi
+- cors
+- middleware
+- security
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Add CORSMiddleware with explicit allow_origins list — never use allow_origins=['*']
+  in production with credentials
+- Set allow_credentials=True only when cookies or Authorization headers are needed
+  cross-origin
+- Specify allow_methods and allow_headers explicitly — avoid wildcards
+- CORS errors are browser-enforced — the API still receives the request; CORS is not
+  a security boundary alone
+anti_patterns:
+- Do not use allow_origins=['*'] with allow_credentials=True — browsers reject this
+- Do not rely on CORS as the only security measure — validate auth on every request
+- Do not add CORS headers manually in route handlers — always use CORSMiddleware
+doc_anchors:
+- url: https://fastapi.tiangolo.com/tutorial/cors/
+  verified: '2026-04-26'
+archived: false

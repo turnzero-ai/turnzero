@@ -1,0 +1,32 @@
+slug: prisma-relations-build
+id: prisma-relations-build
+version: 1.0.0
+domain: prisma
+intent: build
+last_verified: '2026-04-26'
+tags:
+- prisma
+- relations
+- include
+- select
+- n+1
+context_weight: 372
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use include to eager-load relations; use select to limit fields — never both on
+  the same level
+- Prisma does not have lazy loading — every relation access without include returns
+  undefined
+- Use findMany with include for one-to-many; avoid select inside include for deep
+  nested selects (use separate queries)
+anti_patterns:
+- Do not access relation fields without including them — they will be undefined not
+  null
+- Do not use include and select at the same nesting level — Prisma throws at runtime
+- Do not fetch entire records when only one field is needed — always select
+doc_anchors:
+- url: https://www.prisma.io/docs/orm/prisma-client/queries/relation-queries
+  verified: '2026-04-26'
+archived: false

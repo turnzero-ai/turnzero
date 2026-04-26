@@ -1,0 +1,31 @@
+slug: supabase-realtime-build
+id: supabase-realtime-build
+version: 1.0.0
+domain: supabase
+intent: build
+last_verified: '2026-04-26'
+tags:
+- supabase
+- realtime
+- websocket
+- subscriptions
+- broadcast
+context_weight: 348
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Enable replication on tables you want to subscribe to: supabase realtime enable
+  --table tablename'
+- Use channel.on('postgres_changes', ...) for database change subscriptions
+- Always unsubscribe/remove channels in cleanup (useEffect return, component unmount)
+- Use Broadcast for ephemeral messages between users; Presence for online status tracking
+anti_patterns:
+- Do not subscribe to realtime changes on tables without RLS — all users see all rows
+- Do not create multiple channels for the same table — reuse one channel with multiple
+  listeners
+- Do not forget to handle reconnection — realtime connection drops on network issues
+doc_anchors:
+- url: https://supabase.com/docs/guides/realtime
+  verified: '2026-04-26'
+archived: false

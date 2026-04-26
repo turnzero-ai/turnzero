@@ -1,0 +1,34 @@
+slug: mongodb-schema-build
+id: mongodb-schema-build
+version: 1.0.0
+domain: mongodb
+intent: build
+last_verified: '2026-04-26'
+tags:
+- mongodb
+- schema
+- embedding
+- references
+- data-modeling
+context_weight: 408
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Embed documents when data is accessed together and the embedded array is bounded
+  in size
+- Use references (ObjectId) when embedded documents would grow unboundedly or need
+  independent access
+- Avoid deeply nested documents — MongoDB has 100-level nesting limit and deep nesting
+  kills readability
+- Design schema for query patterns first — MongoDB schema design is query-driven not
+  normalization-driven
+anti_patterns:
+- Do not embed arrays that grow without bound — document size limit is 16MB
+- Do not use MongoDB like a relational DB with many joins ($lookup) — denormalize
+  for read performance
+- Do not use sequential integer IDs — use ObjectId unless you need custom IDs
+doc_anchors:
+- url: https://www.mongodb.com/docs/manual/data-modeling/
+  verified: '2026-04-26'
+archived: false

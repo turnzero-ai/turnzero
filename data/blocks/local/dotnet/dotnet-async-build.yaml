@@ -1,0 +1,32 @@
+slug: dotnet-async-build
+id: dotnet-async-build
+version: 1.0.0
+domain: dotnet
+intent: build
+last_verified: '2026-04-26'
+tags:
+- dotnet
+- async
+- await
+- tasks
+- deadlock
+context_weight: 380
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Mark all async methods async Task or async Task<T> — avoid async void except for
+  event handlers
+- Use await throughout the call chain — mixing .Result or .Wait() with async causes
+  deadlocks in ASP.NET
+- Use ConfigureAwait(false) in library code to avoid capturing the synchronization
+  context
+- Use CancellationToken parameters in all async methods that do I/O
+anti_patterns:
+- Do not call .Result or .Wait() on a Task in ASP.NET context — causes deadlock
+- Do not use async void except for event handlers — exceptions are unobservable
+- Do not mix sync and async code in the same call chain
+doc_anchors:
+- url: https://learn.microsoft.com/en-us/dotnet/csharp/asynchronous-programming/
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,33 @@
+slug: spring-boot-security-build
+id: spring-boot-security-build
+version: 1.0.0
+domain: spring
+intent: build
+last_verified: '2026-04-26'
+tags:
+- spring
+- spring-security
+- auth
+- jwt
+- cors
+context_weight: 336
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Configure CORS explicitly in SecurityFilterChain — do not rely on @CrossOrigin in
+  production
+- Disable CSRF for stateless REST APIs that use JWT; keep enabled for session-based
+  apps
+- Use method security (@PreAuthorize) for fine-grained endpoint authorization
+- Store passwords with BCryptPasswordEncoder — minimum strength 10 rounds
+anti_patterns:
+- Do not permit all requests by default (permitAll()) and then restrict — deny-first
+  is safer
+- Do not expose actuator endpoints (health, metrics, env) publicly without authentication
+- Do not return stack traces in REST error responses — use @ControllerAdvice with
+  ProblemDetail
+doc_anchors:
+- url: https://docs.spring.io/spring-security/reference/
+  verified: '2026-04-26'
+archived: false

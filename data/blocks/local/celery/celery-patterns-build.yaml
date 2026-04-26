@@ -1,0 +1,34 @@
+slug: celery-patterns-build
+id: celery-patterns-build
+version: 1.0.0
+domain: celery
+intent: build
+last_verified: '2026-04-26'
+tags:
+- celery
+- tasks
+- redis
+- broker
+- workers
+- django
+context_weight: 400
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use bind=True and self.retry() for retryable tasks with exponential backoff
+- Set task_acks_late=True so tasks are only acknowledged after completion, not on
+  receipt — prevents loss on worker crash
+- Always set task time limits (time_limit, soft_time_limit) — hung tasks block worker
+  slots
+- Use task routing to direct heavy tasks to dedicated queues/workers
+anti_patterns:
+- Do not pass Django model instances to tasks — pass PKs and re-fetch inside the task
+- Do not put database transactions around celery task dispatch — task may run before
+  transaction commits
+- Do not use Celery without a result backend if you need task results — default drops
+  them
+doc_anchors:
+- url: https://docs.celeryq.dev/en/stable/userguide/tasks.html
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,33 @@
+slug: postgresql-partitioning-build
+id: postgresql-partitioning-build
+version: 1.0.0
+domain: postgresql
+intent: build
+last_verified: '2026-04-26'
+tags:
+- postgresql
+- partitioning
+- range
+- time-series
+- performance
+context_weight: 368
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use range partitioning by date for time-series data — dramatically speeds up date-range
+  queries
+- Create partitions in advance — pg_partman automates partition maintenance
+- Always include the partition key in WHERE clauses to enable partition pruning
+- Use pg_partman retention policies to drop old partitions instead of DELETE
+anti_patterns:
+- Do not use table inheritance partitioning (old method) — use declarative partitioning
+  (PostgreSQL 10+)
+- Do not create a unique index on a partitioned table without including the partition
+  key
+- Do not query partitioned tables without partition key in WHERE — causes full scan
+  of all partitions
+doc_anchors:
+- url: https://www.postgresql.org/docs/current/ddl-partitioning.html
+  verified: '2026-04-26'
+archived: false

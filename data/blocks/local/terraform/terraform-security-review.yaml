@@ -1,0 +1,32 @@
+slug: terraform-security-review
+id: terraform-security-review
+version: 1.0.0
+domain: terraform
+intent: review
+last_verified: '2026-04-26'
+tags:
+- terraform
+- security
+- iam
+- least-privilege
+- tfsec
+context_weight: 376
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Run tfsec or checkov on terraform before apply — catches public S3 buckets, open
+  security groups, missing encryption
+- Never use 0.0.0.0/0 in security group ingress without explicit justification
+- Enable versioning and encryption on all S3 buckets by default
+- Use data sources to reference existing IAM policies rather than inline wildcard
+  policies
+anti_patterns:
+- 'Do not create IAM roles with Action: ''*'' or Resource: ''*'' except for break-glass
+  accounts'
+- Do not hardcode AWS account IDs or ARNs — use data.aws_caller_identity and variables
+- Do not skip terraform plan review — always read the plan before apply in production
+doc_anchors:
+- url: https://aquasecurity.github.io/tfsec/
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,33 @@
+slug: swift-concurrency-build
+id: swift-concurrency-build
+version: 1.0.0
+domain: ios
+intent: build
+last_verified: '2026-04-26'
+tags:
+- swift
+- async-await
+- concurrency
+- mainactor
+- task
+context_weight: 396
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Mark UI-updating code with @MainActor — all UIKit/SwiftUI updates must happen on
+  main thread
+- Use async/await over completion handlers for all new async code in Swift 5.5+
+- Use Task { } to call async code from sync context; use Task.detached only when you
+  need no actor inheritance
+- Use withTaskGroup for structured parallelism — prefer over DispatchGroup for async
+  work
+anti_patterns:
+- Do not update UI from a background thread — use await MainActor.run { } or @MainActor
+  annotation
+- Do not use DispatchQueue.main.async in new Swift concurrency code — use @MainActor
+- Do not ignore Task cancellation — check Task.isCancelled in long-running loops
+doc_anchors:
+- url: https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/
+  verified: '2026-04-26'
+archived: false

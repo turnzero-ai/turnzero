@@ -1,0 +1,31 @@
+slug: prisma-transactions-build
+id: prisma-transactions-build
+version: 1.0.0
+domain: prisma
+intent: build
+last_verified: '2026-04-26'
+tags:
+- prisma
+- transactions
+- atomic
+- database
+context_weight: 348
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use prisma.$transaction([...]) for sequential operations that must be atomic
+- Use interactive transactions (prisma.$transaction(async (tx) => {...})) when you
+  need query results to inform later queries in the same transaction
+- Set maxWait and timeout options on transactions that touch contended tables
+anti_patterns:
+- Do not run multiple dependent writes outside a transaction — partial failure leaves
+  data inconsistent
+- Do not use interactive transactions for read-heavy operations — they hold locks
+  longer
+- Do not throw inside a transaction without handling rollback — Prisma auto-rolls
+  back on throw but ensure errors surface
+doc_anchors:
+- url: https://www.prisma.io/docs/orm/prisma-client/queries/transactions
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,30 @@
+slug: graphql-schema-build
+id: graphql-schema-build
+version: 1.0.0
+domain: graphql
+intent: build
+last_verified: '2026-04-26'
+tags:
+- graphql
+- schema
+- types
+- nullability
+- design
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Make fields non-null (!) only when the server guarantees they are always present
+  — prefer nullable over crashing clients
+- Use input types for mutations, not individual scalar arguments beyond 2-3 fields
+- Paginate list fields with Relay cursor connections or limit/offset — never return
+  unbounded lists
+- Version mutations by adding new fields; never remove or change types of existing
+  fields
+anti_patterns:
+- Do not return arrays of non-null items if any element could legitimately be null
+- Do not put business logic in schema definitions — keep it in resolvers/services
+- Do not expose internal database IDs directly — use opaque global IDs
+doc_anchors: []
+archived: false

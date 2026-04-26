@@ -1,0 +1,32 @@
+slug: swiftui-state-build
+id: swiftui-state-build
+version: 1.0.0
+domain: ios
+intent: build
+last_verified: '2026-04-26'
+tags:
+- swiftui
+- state
+- binding
+- observableobject
+- observation
+context_weight: 384
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use @State for local view-owned state; @Binding to share state with child views
+- Use @Observable (Swift 5.9+/iOS 17+) or @ObservableObject + @StateObject for reference-type
+  models
+- Use @StateObject (not @ObservedObject) to own a model in the view that creates it
+- Use @EnvironmentObject to pass models deep in the hierarchy without prop drilling
+anti_patterns:
+- Do not use @ObservedObject to create the object — use @StateObject; @ObservedObject
+  is for objects passed in
+- Do not mutate @State from outside the view — pass a @Binding instead
+- Do not put heavy business logic in views — move to @Observable or @ObservableObject
+  models
+doc_anchors:
+- url: https://developer.apple.com/documentation/swiftui/state-and-data-flow
+  verified: '2026-04-26'
+archived: false

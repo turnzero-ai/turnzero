@@ -1,0 +1,29 @@
+slug: owasp-csrf-prevention-build
+id: owasp-csrf-prevention-build
+version: 1.0.0
+domain: security
+intent: build
+last_verified: '2026-04-26'
+tags:
+- csrf
+- owasp
+- security
+- samesite
+context_weight: 312
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use SameSite=Strict or SameSite=Lax on session cookies to block CSRF for most cases
+- For APIs used by third-party frontends, use CSRF tokens (synchronizer token pattern)
+  or verify Origin/Referer header
+- 'Double-submit cookie pattern: send CSRF token in both cookie and request header,
+  verify they match server-side'
+anti_patterns:
+- Do not rely on secret URLs or POST-only endpoints as CSRF protection
+- Do not skip CSRF protection for state-changing endpoints just because they use JSON
+- Do not set SameSite=None without also setting Secure
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+  verified: '2026-04-26'
+archived: false

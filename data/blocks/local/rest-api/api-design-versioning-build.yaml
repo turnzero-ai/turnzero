@@ -1,0 +1,29 @@
+slug: api-design-versioning-build
+id: api-design-versioning-build
+version: 1.0.0
+domain: rest-api
+intent: build
+last_verified: '2026-04-26'
+tags:
+- rest-api
+- versioning
+- api-design
+- breaking-changes
+context_weight: 364
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Version APIs in the URL path (/v1/) or Accept header — choose one and be consistent
+- Adding optional fields, new endpoints, and new enum values are non-breaking changes
+- Removing fields, changing field types, changing semantics of existing fields are
+  breaking changes
+- Maintain at least the previous major version for 6-12 months after deprecating it
+anti_patterns:
+- Do not version query parameters (?version=1) — hard to route and cache
+- Do not make breaking changes without a new major version number
+- Do not deprecate without a sunset date in the Deprecation and Sunset HTTP headers
+doc_anchors:
+- url: https://www.rfc-editor.org/rfc/rfc8594
+  verified: '2026-04-26'
+archived: false

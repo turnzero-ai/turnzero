@@ -1,0 +1,32 @@
+slug: nextjs-middleware-build
+id: nextjs-middleware-build
+version: 1.0.0
+domain: nextjs
+intent: build
+last_verified: '2026-04-26'
+tags:
+- nextjs
+- middleware
+- edge
+- auth
+- routing
+context_weight: 372
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Middleware runs on Edge Runtime — only Web APIs available, no Node.js built-ins
+- Use middleware for auth checks, redirects, rewrites, and request header manipulation
+- Return NextResponse.next() to continue, NextResponse.redirect() to redirect, NextResponse.rewrite()
+  to proxy
+- Use matcher config to restrict middleware to specific paths — avoid running on _next/static,
+  images
+anti_patterns:
+- Do not import Node.js modules in middleware — use Edge-compatible alternatives
+- Do not do heavy computation in middleware — it runs on every matched request
+- Do not trust middleware as the sole auth guard — verify auth in server components
+  and API routes too
+doc_anchors:
+- url: https://nextjs.org/docs/app/building-your-application/routing/middleware
+  verified: '2026-04-26'
+archived: false

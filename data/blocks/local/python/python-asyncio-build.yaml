@@ -1,0 +1,32 @@
+slug: python-asyncio-build
+id: python-asyncio-build
+version: 1.0.0
+domain: python
+intent: build
+last_verified: '2026-04-26'
+tags:
+- python
+- asyncio
+- async
+- await
+- event-loop
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use asyncio.gather() for concurrent async tasks — runs them in parallel within one
+  event loop
+- Use async with for async context managers (aiohttp sessions, async DB connections)
+- Use asyncio.run() as the entry point — creates a new event loop and runs the coroutine
+- For CPU-bound work in async code, use asyncio.run_in_executor() with ProcessPoolExecutor
+anti_patterns:
+- Do not use time.sleep() in async code — use await asyncio.sleep()
+- Do not call blocking I/O (requests, open()) in async functions — blocks the entire
+  event loop
+- Do not create a new event loop manually unless you know what you are doing — use
+  asyncio.run()
+doc_anchors:
+- url: https://docs.python.org/3/library/asyncio.html
+  verified: '2026-04-26'
+archived: false

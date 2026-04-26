@@ -1,0 +1,32 @@
+slug: sveltekit-form-actions-build
+id: sveltekit-form-actions-build
+version: 1.0.0
+domain: svelte
+intent: build
+last_verified: '2026-04-26'
+tags:
+- sveltekit
+- form-actions
+- progressive-enhancement
+- validation
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use +page.server.js actions for form handling — they work without JavaScript (progressive
+  enhancement)
+- Return { fail, data } from actions for validation errors; return redirect() for
+  success
+- Use enhance action on <form> for client-side interception without full page reload
+- Validate all inputs server-side in actions regardless of client-side validation
+anti_patterns:
+- Do not put business logic in +page.js — it runs on client and is not secure for
+  sensitive operations
+- Do not redirect from within a try/catch block — throw redirect() instead of return
+- Do not skip CSRF protection — SvelteKit checks Origin header by default; do not
+  disable it
+doc_anchors:
+- url: https://kit.svelte.dev/docs/form-actions
+  verified: '2026-04-26'
+archived: false

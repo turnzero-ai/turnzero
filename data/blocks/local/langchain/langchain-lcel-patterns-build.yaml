@@ -1,0 +1,29 @@
+slug: langchain-lcel-patterns-build
+id: langchain-lcel-patterns-build
+version: 1.0.0
+domain: langchain
+intent: build
+last_verified: '2026-04-26'
+tags:
+- langchain
+- lcel
+- chains
+- runnables
+- streaming
+context_weight: 328
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Use LCEL (pipe operator |) to compose chains: prompt | model | parser'
+- Use RunnableParallel to run multiple chain branches simultaneously
+- Use .stream() for streaming responses to users — do not buffer large LLM responses
+- Use RunnableLambda to wrap plain Python functions into the chain
+anti_patterns:
+- Do not use legacy LLMChain or SequentialChain — use LCEL equivalents
+- Do not block on .invoke() when streaming is available — degrades user experience
+- Do not put retrieval logic directly in chains — use dedicated retriever runnables
+doc_anchors:
+- url: https://python.langchain.com/docs/concepts/lcel/
+  verified: '2026-04-26'
+archived: false

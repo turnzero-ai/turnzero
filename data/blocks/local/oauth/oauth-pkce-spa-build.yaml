@@ -1,0 +1,34 @@
+slug: oauth-pkce-spa-build
+id: oauth-pkce-spa-build
+version: 1.0.0
+domain: oauth
+intent: build
+last_verified: '2026-04-26'
+tags:
+- oauth
+- pkce
+- spa
+- security
+- auth
+context_weight: 416
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use PKCE (Proof Key for Code Exchange) for all SPA and mobile OAuth flows — no client_secret
+  in frontend
+- Always validate the state parameter on callback to prevent CSRF attacks
+- Store tokens in memory (JS variable) for SPAs, not localStorage; use httpOnly cookie
+  for refresh token
+- Use authorization code flow + PKCE, never implicit flow (deprecated in OAuth 2.1)
+anti_patterns:
+- Do not use implicit flow — it exposes tokens in URL fragments and is deprecated
+- Do not store client_secret in frontend code or mobile app binaries
+- Do not skip state parameter validation on the OAuth callback
+- Do not request more scopes than the feature needs
+doc_anchors:
+- url: https://oauth.net/2/pkce/
+  verified: '2026-04-26'
+- url: https://datatracker.ietf.org/doc/html/rfc7636
+  verified: '2026-04-26'
+archived: false

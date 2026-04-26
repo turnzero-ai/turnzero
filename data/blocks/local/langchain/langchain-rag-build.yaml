@@ -1,0 +1,33 @@
+slug: langchain-rag-build
+id: langchain-rag-build
+version: 1.0.0
+domain: langchain
+intent: build
+last_verified: '2026-04-26'
+tags:
+- langchain
+- rag
+- retrieval
+- vectorstore
+- embeddings
+context_weight: 360
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Chunk documents at semantic boundaries (paragraphs, sections) not fixed character
+  counts
+- Use a chunk overlap of 10-20% to preserve context across chunk boundaries
+- Always store metadata (source, page, date) with chunks — needed for citation and
+  filtering
+- Re-rank retrieved documents with a cross-encoder before passing to LLM — improves
+  answer quality
+anti_patterns:
+- Do not use a single large document as context — chunk and retrieve relevant sections
+- Do not embed and retrieve without filtering by metadata when documents span different
+  domains
+- Do not skip evaluation — measure retrieval precision@k before shipping
+doc_anchors:
+- url: https://python.langchain.com/docs/concepts/rag/
+  verified: '2026-04-26'
+archived: false

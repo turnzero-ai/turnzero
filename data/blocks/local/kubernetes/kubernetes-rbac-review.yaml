@@ -1,0 +1,30 @@
+slug: kubernetes-rbac-review
+id: kubernetes-rbac-review
+version: 1.0.0
+domain: kubernetes
+intent: review
+last_verified: '2026-04-26'
+tags:
+- kubernetes
+- rbac
+- security
+- serviceaccount
+context_weight: 348
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Use namespaced Roles over ClusterRoles unless the workload genuinely needs cluster-wide
+  access
+- Bind service accounts to the minimum required permissions — audit with kubectl auth
+  can-i
+- Disable automountServiceAccountToken on pods that don't need API access
+- Separate service accounts per workload — never share the default service account
+anti_patterns:
+- Do not grant cluster-admin to service accounts — it bypasses all RBAC
+- Do not use wildcards (*) in verbs or resources in production RBAC rules
+- Do not forget that RBAC is allow-only — absence of a rule denies, not allows
+doc_anchors:
+- url: https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+  verified: '2026-04-26'
+archived: false

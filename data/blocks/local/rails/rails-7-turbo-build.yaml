@@ -1,0 +1,34 @@
+slug: rails-7-turbo-build
+id: rails-7-turbo-build
+version: 1.0.0
+domain: rails
+intent: build
+last_verified: '2026-04-26'
+tags:
+- rails
+- turbo
+- hotwire
+- turboframes
+- turbostreams
+context_weight: 420
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Turbo Frames: wrap partial page regions in <turbo-frame id=''...''> — only that
+  frame updates on navigation'
+- 'Turbo Streams: respond with turbo_stream format to push DOM updates from server
+  actions'
+- Set data-turbo-frame='_top' on links that should break out of a Turbo Frame and
+  do full navigation
+- Broadcast Turbo Streams from models via broadcasts_to for real-time updates without
+  writing JavaScript
+anti_patterns:
+- Do not mix Turbo Drive with pages that have conflicting JS initialisation — use
+  data-turbo='false' to opt out
+- Do not forget to handle turbo:frame-missing for frames that fail to load
+- Do not respond with a full page layout when a Turbo Stream is expected — check request.format
+doc_anchors:
+- url: https://turbo.hotwired.dev/handbook/introduction
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,33 @@
+slug: redis-cache-patterns-build
+id: redis-cache-patterns-build
+version: 1.0.0
+domain: redis
+intent: build
+last_verified: '2026-04-26'
+tags:
+- redis
+- caching
+- ttl
+- cache-aside
+- invalidation
+context_weight: 392
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- 'Use cache-aside pattern: check cache → miss → fetch from DB → write to cache with
+  TTL'
+- Always set TTL on cached keys — never cache without expiry in production
+- Use key namespacing (user:{id}:profile) to avoid collisions and enable targeted
+  invalidation
+- For cache stampede protection on hot keys, use probabilistic early expiration or
+  a lock
+anti_patterns:
+- Do not cache without TTL — stale data accumulates and Redis runs OOM
+- Do not use Redis as primary data store unless you accept data loss on restart without
+  persistence config
+- Do not invalidate cache by flushing the entire DB (FLUSHALL) in production
+doc_anchors:
+- url: https://redis.io/docs/manual/patterns/
+  verified: '2026-04-26'
+archived: false

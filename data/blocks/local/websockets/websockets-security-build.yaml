@@ -1,0 +1,33 @@
+slug: websockets-security-build
+id: websockets-security-build
+version: 1.0.0
+domain: websockets
+intent: build
+last_verified: '2026-04-26'
+tags:
+- websockets
+- security
+- auth
+- origin
+- rate-limiting
+context_weight: 384
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Validate Origin header on WebSocket upgrade request to prevent cross-site WebSocket
+  hijacking
+- Authenticate on connect (send token in first message or via query param) — HTTP
+  auth headers not available after upgrade
+- Implement per-connection rate limiting and message size limits — WebSocket clients
+  can spam servers
+- Close connections with appropriate close codes (1008 for policy violation) rather
+  than just dropping
+anti_patterns:
+- Do not trust any data from WebSocket clients without validation — same as HTTP input
+- Do not broadcast to all connections without authorization checks
+- Do not use ws:// in production — always wss:// (WebSocket over TLS)
+doc_anchors:
+- url: https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html#websockets
+  verified: '2026-04-26'
+archived: false

@@ -1,0 +1,33 @@
+slug: supabase-rls-build
+id: supabase-rls-build
+version: 1.0.0
+domain: supabase
+intent: build
+last_verified: '2026-04-26'
+tags:
+- supabase
+- rls
+- row-level-security
+- policies
+- security
+context_weight: 404
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Enable RLS on every table — tables without RLS are publicly readable/writable via
+  anon key
+- Use auth.uid() in policies to restrict rows to the authenticated user
+- Test policies with supabase inspect db or by calling the API with different user
+  tokens
+- Use service_role key only in server-side code — it bypasses RLS
+anti_patterns:
+- Do not use anon key in server-side code for admin operations — use service_role
+- Do not forget to enable RLS after creating a new table — Supabase creates tables
+  with RLS disabled
+- Do not write policies that reference auth.uid() without handling the case where
+  the user is not authenticated
+doc_anchors:
+- url: https://supabase.com/docs/guides/database/postgres/row-level-security
+  verified: '2026-04-26'
+archived: false

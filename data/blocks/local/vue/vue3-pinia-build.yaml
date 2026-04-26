@@ -1,0 +1,31 @@
+slug: vue3-pinia-build
+id: vue3-pinia-build
+version: 1.0.0
+domain: vue
+intent: build
+last_verified: '2026-04-26'
+tags:
+- vue3
+- pinia
+- state-management
+- store
+context_weight: 340
+confidence: 1.0
+conflicts_with: []
+requires: []
+constraints:
+- Define stores with defineStore(); use setup stores (function syntax) for full TypeScript
+  inference
+- Access store state directly (store.count) — Pinia state is reactive without extra
+  wrappers
+- Use storeToRefs() to destructure store state reactively in components
+- Stores are singletons per Pinia instance — safe to call defineStore multiple times,
+  returns same store
+anti_patterns:
+- Do not destructure store state without storeToRefs() — loses reactivity
+- Do not mutate store state outside of actions in strict mode
+- Do not use Vuex patterns in Pinia — no mutations, no namespacing needed
+doc_anchors:
+- url: https://pinia.vuejs.org/core-concepts/
+  verified: '2026-04-26'
+archived: false
