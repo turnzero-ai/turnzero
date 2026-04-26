@@ -24,7 +24,7 @@ Raw prompt text is **never stored** — only embeddings. Injection is always cli
 
 ## Tech Stack
 
-- **Language**: Python 3.12-3.13
+- **Language**: Python 3.12+
 - **Retrieval Engine**: Hybrid vector + heuristic similarity
 - **CLI framework**: Typer
 - **Integration**: MCP-native architecture
@@ -100,7 +100,7 @@ State what will be pushed and where, then wait for a yes. This applies even when
 ## Coding Standards
 
 ### Python style
-- Python 3.12-3.13 — use native syntax (`X | Y`, `match`, f-strings)
+- Python 3.12+ — use native syntax (`X | Y`, `match`, f-strings)
 - `from __future__ import annotations` at the top of every module
 - Types: `list[str]` not `List[str]`; `X | None` not `Optional[X]`; use `Any` only where the type genuinely can't be narrowed at the call site (e.g. `yaml.safe_load()` return) — add an inline comment explaining why
 - mypy strict — zero errors; no `# type: ignore` without a reason on the same line

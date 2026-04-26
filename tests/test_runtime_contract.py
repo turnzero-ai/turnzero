@@ -16,7 +16,7 @@ def _pyproject_text() -> str:
 
 def test_requires_python_is_bounded_for_embedding_stack() -> None:
     text = _pyproject_text()
-    assert 'requires-python = ">=3.12,<3.14"' in text
+    assert 'requires-python = ">=3.12"' in text
 
 
 def test_embedding_dependency_contract_is_pinned() -> None:

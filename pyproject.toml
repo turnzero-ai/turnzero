@@ -1,9 +1,9 @@
 [project]
 name = "turnzero"
-version = "0.3.1"
+version = "0.3.2"
 description = "Expert Prior injection for AI sessions — eliminates cold-start friction at Turn 0 for any domain"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "TurnZero", email = "hello@turnzero.dev"},
