@@ -102,5 +102,26 @@
   "TypeScriptに移行中ですがstrictモードの設定方法がわかりません",
   "Next.js 15のApp RouterでServer Componentsを使っています。データ取得の方法は？",
   "PostgreSQL с JSONB полями — как правильно строить индексы?",
-  "Construindo um app React Native com Expo, a lista de 1000 itens está lenta"
+  "Construindo um app React Native com Expo, a lista de 1000 itens está lenta",
+
+  "what is OAuth and how does it work in general",
+  "explain JWT to me like I'm five",
+  "what is Kubernetes and why do people use it",
+  "what is Terraform and is it worth learning",
+  "can you explain what Redis is used for",
+  "what is the difference between SQL and NoSQL",
+  "explain what a CDN is",
+  "what is GraphQL and when should I use it over REST",
+  "tell me about the history of Docker and containerization",
+  "I read an article about OWASP top 10 but I don't understand what it means",
+  "is Kubernetes overkill for a small startup with one server",
+  "what are the pros and cons of microservices vs monolith",
+  "should I learn Terraform or Pulumi for infrastructure as code",
+  "explain the CAP theorem in distributed systems",
+  "what is a JWT refresh token and how is it different from an access token",
+  "I'm curious about OAuth — what's the difference between OAuth 1.0 and 2.0",
+  "can you explain how Kubernetes works at a high level",
+  "what security vulnerabilities should I know about as a developer",
+  "is Redis better than Memcached and why",
+  "what does PKCE stand for and why was it introduced"
 ]

@@ -2,7 +2,7 @@ slug: jwt-storage-security-build
 id: jwt-storage-security-build
 version: 1.0.0
 domain: jwt
-intent: build
+intent: review
 last_verified: '2026-04-26'
 tags:
 - jwt

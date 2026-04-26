@@ -119,7 +119,7 @@ def _load_active_index() -> list[IndexEntry]:
 def _list_suggested_blocks(
     prompt: str,
     top_k: int = 3,
-    threshold: float = 0.75,
+    threshold: float = 0.70,
     context_weight: int = 4000,
     strict_intent: bool = True,
     project_root: Path | None = None,

@@ -54,5 +54,57 @@
   {
     "prompt": "I think my AWS access key was accidentally committed to a public git repo — how do I rotate credentials",
     "relevant_block_ids": ["security-credential-rotation-debug"]
+  },
+  {
+    "prompt": "My Rails app has N+1 queries slowing down the index action — ActiveRecord associations loading in a loop",
+    "relevant_block_ids": ["rails-n-plus-one-debug"]
+  },
+  {
+    "prompt": "Is it safe to store JWT tokens in localStorage or should I use cookies?",
+    "relevant_block_ids": ["jwt-storage-security-build"]
+  },
+  {
+    "prompt": "Setting up Kubernetes resource limits and liveness probes for my deployment",
+    "relevant_block_ids": ["kubernetes-resource-limits-build", "kubernetes-probes-build"]
+  },
+  {
+    "prompt": "Implementing OAuth PKCE flow for my React single page application",
+    "relevant_block_ids": ["oauth-pkce-spa-build"]
+  },
+  {
+    "prompt": "My Prisma migrations are out of sync between dev and production environments",
+    "relevant_block_ids": ["prisma-migrations-build"]
+  },
+  {
+    "prompt": "Setting up Redis connection pooling for my Node.js API to avoid creating new connections per request",
+    "relevant_block_ids": ["redis-connection-pooling-build"]
+  },
+  {
+    "prompt": "Building a Vue 3 component with Composition API and reactive state management",
+    "relevant_block_ids": ["vue3-composition-api-build"]
+  },
+  {
+    "prompt": "Setting up MongoDB indexes for a collection that gets slow queries on user lookups",
+    "relevant_block_ids": ["mongodb-indexes-build"]
+  },
+  {
+    "prompt": "Swift concurrency warning: call to main actor isolated function in async context",
+    "relevant_block_ids": ["swift-concurrency-build"]
+  },
+  {
+    "prompt": "Preventing XSS attacks in my web application — user-generated content rendered in the DOM",
+    "relevant_block_ids": ["owasp-xss-prevention-build"]
+  },
+  {
+    "prompt": "Spring Boot JPA LazyInitializationException when accessing collection outside transaction",
+    "relevant_block_ids": ["spring-boot-jpa-debug"]
+  },
+  {
+    "prompt": "Go context cancellation not propagating through my HTTP handlers and database calls",
+    "relevant_block_ids": ["go-context-build"]
+  },
+  {
+    "prompt": "Setting up GitHub Actions workflow with OIDC authentication to deploy to AWS without storing secrets",
+    "relevant_block_ids": ["github-actions-security-review"]
   }
 ]

@@ -96,7 +96,7 @@ def _index_path() -> Path:
 def preview(
     prompt: str = typer.Argument(..., help="Opening prompt to preview injection for."),
     top_k: int = typer.Option(3, "--top-k", "-k", help="Max blocks to show."),
-    threshold: float = typer.Option(0.75, "--threshold", "-t", help="Minimum similarity score."),
+    threshold: float = typer.Option(0.70, "--threshold", "-t", help="Minimum similarity score."),
 ) -> None:
     """Preview which Expert Priors would be injected for a prompt.
 
@@ -260,7 +260,7 @@ try:
     index = load_index(DATA_DIR / "index.jsonl")
     results = _query(
         prompt, index, blocks,
-        top_k=3, threshold=0.75, context_weight=4000, strict_intent=True,
+        top_k=3, threshold=0.70, context_weight=4000, strict_intent=True,
     )
 
     if not results:
@@ -733,7 +733,7 @@ def setup(
 def query(
     prompt: str = typer.Argument(..., help="Opening prompt to find blocks for."),
     top_k: int = typer.Option(3, "--top-k", "-k", help="Maximum blocks to return."),
-    threshold: float = typer.Option(0.75, "--threshold", "-t", help="Minimum cosine similarity."),
+    threshold: float = typer.Option(0.70, "--threshold", "-t", help="Minimum cosine similarity."),
     context_weight: int = typer.Option(4000, "--weight", help="Max total weight across injected blocks."),
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Confirm each block before including."),
     strict_intent: bool = typer.Option(True, "--strict/--no-strict", help="Only return blocks matching detected intent."),
@@ -1411,7 +1411,7 @@ def validate(
         help="Path to validation set JSON file.",
     ),
     top_k: int = typer.Option(3, "--top-k", "-k", help="K for Hit Rate@K."),
-    threshold: float = typer.Option(0.75, "--threshold", "-t", help="Minimum cosine similarity."),
+    threshold: float = typer.Option(0.70, "--threshold", "-t", help="Minimum cosine similarity."),
     context_weight: int = typer.Option(4000, "--weight", help="Weight budget for query."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show per-query results."),
 ) -> None:

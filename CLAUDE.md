@@ -13,7 +13,7 @@ TurnZero is at **v0.2.7** (PyPI live).
 - 204 tests passing; Hit Rate@3 = 1.00 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
-- All thresholds unified at 0.75 (CLI, hook, MCP, retrieval)
+- All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
 - Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
 
 ## What TurnZero Does

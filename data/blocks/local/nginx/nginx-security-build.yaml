@@ -2,7 +2,7 @@ slug: nginx-security-build
 id: nginx-security-build
 version: 1.0.0
 domain: nginx
-intent: build
+intent: review
 last_verified: '2026-04-26'
 tags:
 - nginx

@@ -65,7 +65,7 @@ def classify_intent(prompt: str) -> str:
 #   - action/problem keyword hit (software + security verbs)
 #   - question pattern (domain-agnostic: "?", "how do I", "should I", ...)
 #   - domain detected in prompt or filesystem
-# Tier 3: similarity threshold (0.75) is the final quality gate
+# Tier 3: similarity threshold (0.70) is the final quality gate
 
 _SOCIAL_PATTERNS: frozenset[str] = frozenset({
     "how are you", "good morning", "good afternoon", "good evening",
@@ -91,6 +91,12 @@ _IMPL_ACTION_SIGNALS: frozenset[str] = frozenset({
     "patch", "patching", "mitigate", "mitigating", "investigate", "investigating",
     "secure", "securing", "protect", "protecting", "analyze", "analyzing",
     "analyse", "analysing", "exploit", "exploiting", "assess", "assessing",
+    # Auth / identity protocols — always professional context
+    "oauth", "oidc", "pkce", "jwt", "saml", "authenticate", "authenticating",
+    "authorize", "authorizing", "provision", "provisioning",
+    # Infrastructure
+    "terraform", "kubernetes", "kubectl", "helm", "containerize", "containerizing",
+    "orchestrate", "orchestrating", "provision", "provisioning",
 })
 
 _IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
@@ -430,7 +436,7 @@ def query(
     index: list[IndexEntry],
     blocks: dict[str, Block],
     top_k: int = 3,
-    threshold: float = 0.75,
+    threshold: float = 0.70,
     context_weight: int = 4000,
     strict_intent: bool = True,
     project_root: Path | None = None,
