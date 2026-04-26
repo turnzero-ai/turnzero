@@ -80,6 +80,7 @@ A `SessionStart` hook automatically injects all memory files into context. At th
 ### 2. Keep memory and SSOT in sync
 After any strategic decision, architectural change, or significant implementation:
 - **Update `internal/PROJECT_STATE.md`** when tickets are completed or new debt is found.
+- **Update `internal/ARCHITECTURE.md`** when any of the following change: module list, data flow, MCP tool surface, block schema, index structure, embedding backend, source tiers, scoring logic, observability files, or release pipeline. Keep ASCII diagrams accurate.
 - **Update [ROADMAP.md](ROADMAP.md)** if high-level phases or milestones changed.
 - Update the relevant memory file(s) in `~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/`
 - Update `CLAUDE.md` if project status, commands, or constraints changed.
