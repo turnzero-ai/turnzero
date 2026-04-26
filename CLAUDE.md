@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 TurnZero is at **v0.2.7** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
-- **Internal SSOT:** `PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
+- **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 74 blocks shipped in wheel, 123 blocks in Darijo's local library
 - 204 tests passing; Hit Rate@3 = 1.00 on validation set
@@ -73,13 +73,13 @@ pytest
 
 ### 1. Load full memory & SSOT at session start
 A `SessionStart` hook automatically injects all memory files into context. At the start of every session:
-- **Read `PROJECT_STATE.md`** for the latest active tickets and technical debt.
+- **Read `internal/PROJECT_STATE.md`** for the latest active tickets and technical debt.
 - **Read [ROADMAP.md](ROADMAP.md)** for the high-level project vision.
 - Treat loaded memory as ground truth for project state.
 
 ### 2. Keep memory and SSOT in sync
 After any strategic decision, architectural change, or significant implementation:
-- **Update `PROJECT_STATE.md`** when tickets are completed or new debt is found.
+- **Update `internal/PROJECT_STATE.md`** when tickets are completed or new debt is found.
 - **Update [ROADMAP.md](ROADMAP.md)** if high-level phases or milestones changed.
 - Update the relevant memory file(s) in `~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/`
 - Update `CLAUDE.md` if project status, commands, or constraints changed.

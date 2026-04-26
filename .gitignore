@@ -72,12 +72,6 @@ entities.json
 mempalace.yaml
 scripts/mempalace-mcp.sh
 
-# Internal planning docs (not for public repo)
-ANALOGY.md
-PROTOTYPE_PLAN.md
-SETUP.md
-STRATEGY.md
-SHOW_HN.md
-review.md
-PROJECT_STATE.md
+# Internal docs (not for public repo)
+internal/
 data/.processed
