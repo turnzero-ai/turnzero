@@ -32,6 +32,10 @@ htmlcov/
 # Generated at index build time — do not commit
 data/prompts/
 data/clusters/
+data/index_local.jsonl
+data/index_team.jsonl
+data/index_observed.jsonl
+data/index_synthetic.jsonl
 
 # Runtime stats and session data (machine-specific)
 data/hook_stats.json
