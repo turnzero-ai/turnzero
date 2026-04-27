@@ -51,13 +51,15 @@ def test_search_text_contains_domain(all_blocks: dict[str, Block]) -> None:
 def test_injection_text_has_sections(all_blocks: dict[str, Block]) -> None:
     for block_id, block in all_blocks.items():
         text = block.to_injection_text()
-        assert "Constraints:" in text, f"{block_id}: missing Constraints section"
-        assert "Anti-patterns" in text, f"{block_id}: missing Anti-patterns section"
+        assert "# EXPERT_PRIOR_IDENTITY" in text, f"{block_id}: missing Identity section"
+        assert "# SESSION_CONSTRAINTS" in text, f"{block_id}: missing Constraints section"
+        assert "# ANTI_PATTERNS" in text, f"{block_id}: missing Anti-patterns section"
+        assert "# VALIDATION_TASK" in text, f"{block_id}: missing Task section"
         assert block.id in text, f"{block_id}: block id missing from injection text"
 
 
 def test_load_single_block_roundtrip() -> None:
-    path = BLOCKS_DIR / "local" / "nextjs" / "nextjs15-approuter-build.yaml"
+    path = BLOCKS_DIR / "community" / "nextjs" / "nextjs15-approuter-build.yaml"
     block = load_block(path)
     assert block.domain == "nextjs"
     assert block.intent == "build"

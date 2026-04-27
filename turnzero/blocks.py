@@ -36,6 +36,10 @@ class Block:
     requires: list[str] = field(default_factory=list)
     # 0.0–1.0; curated blocks default to 1.0, AI-submitted blocks get computed score
     confidence: float = 1.0
+    # curated | observed | synthetic
+    verification_level: str = "curated"
+    # Optional rationale for constraints (research-backed for better alignment)
+    rationale: str | None = None
     # Excluded from retrieval when True; set by auto-archive after 90 days without reinforcement
     archived: bool = False
 
@@ -75,26 +79,46 @@ class Block:
         return f"{intent_prefix}: {hint}"
 
     def to_injection_text(self) -> str:
-        """Formatted Expert Prior ready to inject into an AI session."""
+        """Formatted Expert Prior ready to inject into an AI session.
+        
+        Uses a hierarchical structure (Identity -> Constraints -> Task) 
+        to maximize LLM anchoring based on research (Ni, 2026).
+        """
+        domain_title = self.domain.replace("-", " ").title()
+        role = f"Expert {domain_title} {self.intent.title()} Assistant"
+        
         lines: list[str] = [
-            f"## Expert Prior: {self.slug} (v{self.version})",
-            f"_domain: {self.domain} | intent: {self.intent} | ~{self.context_weight} tokens_",
+            f"# EXPERT_PRIOR_IDENTITY",
+            f"Role: {role}",
+            f"Slug: {self.slug} (v{self.version})",
             "",
+            f"# SESSION_CONSTRAINTS",
         ]
+        
         if self.constraints:
-            lines.append("**Constraints:**")
             for c in self.constraints:
                 lines.append(f"- {c}")
-            lines.append("")
+        
         if self.anti_patterns:
-            lines.append("**Anti-patterns to avoid:**")
-            for a in self.anti_patterns:
-                lines.append(f"- {a}")
             lines.append("")
+            lines.append(f"# ANTI_PATTERNS")
+            for a in self.anti_patterns:
+                # Ensure every anti-pattern starts with "Do not" as per mandate
+                prefix = "" if a.lower().startswith("do not") else "Do not: "
+                lines.append(f"- {prefix}{a}")
+
+        lines.extend([
+            "",
+            f"# VALIDATION_TASK",
+            f"Prioritize the constraints and anti-patterns above for the duration of this {self.domain} {self.intent} session.",
+        ])
+
         if self.doc_anchors:
-            lines.append("**Reference docs:**")
+            lines.append("")
+            lines.append(f"# REFERENCE_DOCS")
             for anchor in self.doc_anchors:
                 lines.append(f"- {anchor.url}")
+                
         return "\n".join(lines)
 
 
@@ -136,6 +160,8 @@ def load_block(path: Path) -> Block:
         provides=[str(p) for p in raw.get("provides", [])],
         requires=[str(r) for r in raw.get("requires", [])],
         confidence=float(raw.get("confidence", 1.0)),
+        verification_level=str(raw.get("verification_level", "curated")),
+        rationale=raw.get("rationale"),
         archived=bool(raw.get("archived", False)),
     )
 
