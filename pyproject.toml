@@ -1,6 +1,6 @@
 [project]
 name = "turnzero"
-version = "0.4.2"
+version = "0.5.0"
 description = "Expert Prior injection for AI sessions — eliminates cold-start friction at Turn 0 for any domain"
 readme = "README.md"
 requires-python = ">=3.12"
