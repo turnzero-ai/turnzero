@@ -15,7 +15,10 @@ test:
 check: lint type-check test
 
 index-build:
-	turnzero index build
+	TURNZERO_DATA_DIR=data turnzero index build
 
 index-verify:
 	turnzero index verify
+
+release: index-build
+	hatch build

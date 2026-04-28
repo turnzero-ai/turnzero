@@ -148,8 +148,19 @@ def query(
     from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
-        index = load_index(_index_path())
+        blocks_dir = _blocks_dir()
+        index_path = _index_path()
+
+        if not index_path.exists():
+            # Fallback to bundled data
+            blocks_dir = _bundled_blocks_dir()
+            index_path = _bundled_index_path()
+
+        if not index_path.exists():
+            raise FileNotFoundError("No index found. Run: turnzero setup")
+
+        blocks = load_all_blocks(blocks_dir)
+        index = load_index(index_path)
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)

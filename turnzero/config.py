@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import os
 import yaml
 
 TIERS = ("local", "community", "team")
@@ -15,6 +16,47 @@ _DEFAULTS: dict[str, dict[str, bool]] = {
         "team": False,
     }
 }
+
+
+def _data_dir() -> Path:
+    if env := os.environ.get("TURNZERO_DATA_DIR"):
+        return Path(env)
+    user_dir = Path.home() / ".turnzero"
+    if user_dir.exists():
+        return user_dir
+    return Path("data")
+
+
+def _blocks_dir() -> Path:
+    return _data_dir() / "blocks"
+
+
+def _index_path() -> Path:
+    return _data_dir() / "index.jsonl"
+
+
+def _bundled_index_path() -> Path:
+    """Return the pre-built index shipped inside the package (no setup needed)."""
+    # Path(__file__) is turnzero/config.py
+    # .parent is turnzero/
+    pkg = Path(__file__).parent / "data" / "index.jsonl"
+    if pkg.exists():
+        return pkg
+    repo = Path(__file__).parent.parent / "data" / "index.jsonl"
+    if repo.exists():
+        return repo
+    return _index_path()
+
+
+def _bundled_blocks_dir() -> Path:
+    """Return the blocks directory shipped inside the package (no setup needed)."""
+    pkg = Path(__file__).parent / "data" / "blocks"
+    if pkg.exists():
+        return pkg
+    repo = Path(__file__).parent.parent / "data" / "blocks"
+    if repo.exists():
+        return repo
+    return _blocks_dir()
 
 
 def load_config(data_dir: Path) -> dict[str, dict[str, bool]]:

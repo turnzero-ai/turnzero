@@ -56,39 +56,41 @@ mcp = FastMCP(
 )
 
 
+from turnzero.config import (
+    _blocks_dir,
+    _bundled_blocks_dir,
+    _bundled_index_path,
+    _data_dir,
+    _index_path,
+    enabled_sources,
+)
+
 # ---------------------------------------------------------------------------
-# Path helpers (same as CLI — respects TURNZERO_DATA_DIR env var)
+# Path helpers (centralized in config.py)
 # ---------------------------------------------------------------------------
-
-def _data_dir() -> Path:
-    if env := os.environ.get("TURNZERO_DATA_DIR"):
-        return Path(env)
-    user_dir = Path.home() / ".turnzero"
-    if user_dir.exists():
-        return user_dir
-    return Path("data")
-
-
-def _blocks_dir() -> Path:
-    return _data_dir() / "blocks"
-
-
-def _index_path() -> Path:
-    return _data_dir() / "index.jsonl"
-
 
 def _active_sources() -> list[str]:
     return enabled_sources(_data_dir())
 
 
 def _load_active_blocks() -> dict[str, Block]:
-    return load_all_blocks(_blocks_dir(), sources=_active_sources())
+    blocks_dir = _blocks_dir()
+    if not blocks_dir.exists():
+        # Fallback to bundled blocks
+        blocks_dir = _bundled_blocks_dir()
+    return load_all_blocks(blocks_dir, sources=_active_sources())
 
 
 def _load_source_index(source: str) -> list[IndexEntry]:
     """Load index for one source tier, using mtime-based cache."""
-    per_source_path = _data_dir() / f"index_{source}.jsonl"
+    data_dir = _data_dir()
+    per_source_path = data_dir / f"index_{source}.jsonl"
+    
     path = per_source_path if per_source_path.exists() else _index_path()
+    
+    if not path.exists():
+        # Fallback to bundled index
+        path = _bundled_index_path()
 
     try:
         mtime = path.stat().st_mtime
