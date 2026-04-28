@@ -21,6 +21,7 @@ class SessionAnalytics:
     session_id: str
     start_time: float
     events: list[SessionEvent] = field(default_factory=list)
+    project_root: Path | None = None
     
     # Rough estimates — 1 prior ≈ 1 avoided correction turn, ~1500 tokens, ~4 min
     TURNS_SAVED_PER_PRIOR: float = 2.5
@@ -28,11 +29,18 @@ class SessionAnalytics:
     MINUTES_PER_TURN: float = 4.0
 
     def log_injection(self, block_ids: list[str]) -> None:
+        from turnzero.state import record_project_affinity, record_session_injection
+
         self.events.append(SessionEvent(
             timestamp=time.time(),
             event_type="injection",
             details={"block_ids": block_ids}
         ))
+        
+        for bid in block_ids:
+            record_session_injection(self.session_id, bid)
+            if self.project_root:
+                record_project_affinity(self.project_root, bid)
 
     def log_miss(self, correction_text: str) -> None:
         """Log a moment where TurnZero failed to provide the right context."""
@@ -76,6 +84,7 @@ class SessionAnalytics:
         data = {
             "session_id": self.session_id,
             "start_time": self.start_time,
+            "project_root": str(self.project_root) if self.project_root else None,
             "events": [
                 {"timestamp": e.timestamp, "type": e.event_type, "details": e.details}
                 for e in self.events
@@ -95,7 +104,13 @@ class SessionAnalytics:
             SessionEvent(timestamp=e["timestamp"], event_type=e["type"], details=e["details"])
             for e in data["events"]
         ]
-        return cls(session_id=data["session_id"], start_time=data["start_time"], events=events)
+        project_root = Path(data["project_root"]) if data.get("project_root") else None
+        return cls(
+            session_id=data["session_id"],
+            start_time=data["start_time"],
+            events=events,
+            project_root=project_root
+        )
 
 
 def get_global_roi(data_dir: Path) -> dict[str, Any]:

@@ -363,6 +363,7 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
 
 DOMAIN_BOOST = 1.3  # Heavy boost for matching the detected domain
 INTENT_BOOST = 1.1  # Boost for matching intent
+PROJECT_AFFINITY_BOOST = 1.15  # Boost for blocks previously used in this project
 
 
 def _tokenize(text: str) -> set[str]:
@@ -449,6 +450,7 @@ def query(
     strict_intent: bool = True,
     project_root: Path | None = None,
     rerank_model: str | None = None,
+    exclude_block_ids: set[str] | None = None,
 ) -> list[tuple[Block, float]]:
     """Return up to top_k blocks relevant to prompt, above similarity threshold.
 
@@ -459,15 +461,26 @@ def query(
     4. Resolve conflicts and enforce context weight budget.
     """
     from turnzero.embed import embed
+    from turnzero.state import get_project_affinity
 
+    exclude_block_ids = exclude_block_ids or set()
     prompt_embedding = embed(prompt)
     intent = classify_intent(prompt)
     domain = detect_domain(prompt, project_root=project_root)
     test_mode = os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1"
     effective_threshold = min(threshold, 0.55) if test_mode else threshold
 
+    # Load project affinity to apply boosts
+    affinity = {}
+    if project_root:
+        affinity = get_project_affinity(project_root)
+
     scored: list[tuple[IndexEntry, float]] = []
     for entry in index:
+        # Session Deduplication: skip blocks already injected
+        if entry.block_id in exclude_block_ids:
+            continue
+
         # Strict intent filtering
         if strict_intent and entry.intent != intent:
             continue
@@ -491,6 +504,10 @@ def query(
         elif domain and entry.domain != domain:
             # Penalize blocks from DIFFERENT domains if a project domain is detected
             boost *= 0.5
+
+        # Project Affinity boost
+        if entry.block_id in affinity:
+            boost *= PROJECT_AFFINITY_BOOST
 
         score = min(score * boost, 1.0)
         scored.append((entry, score))

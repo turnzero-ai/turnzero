@@ -24,6 +24,11 @@ from turnzero.blocks import Block, compute_confidence, load_all_blocks
 from turnzero.config import enabled_sources
 from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
+from turnzero.state import (
+    get_session_injections,
+    record_project_affinity,
+    record_session_injection,
+)
 
 # ---------------------------------------------------------------------------
 # Per-source index cache: path → (mtime, entries)
@@ -125,15 +130,21 @@ def _list_suggested_blocks(
     context_weight: int = 4000,
     strict_intent: bool = True,
     project_root: Path | None = None,
+    session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
     blocks = _load_active_blocks()
     index = _load_active_index()
+
+    # Get already injected blocks to avoid redundancy
+    exclude_ids = get_session_injections(session_id) if session_id else set()
+
     results = _query(
         prompt, index, blocks,
         top_k=top_k, threshold=threshold, context_weight=context_weight,
         strict_intent=strict_intent,
         project_root=project_root,
+        exclude_block_ids=exclude_ids,
     )
     return [
         {
@@ -184,8 +195,12 @@ def _get_block(block_id: str) -> dict[str, Any]:
     }
 
 
-def _inject_block(block_id: str) -> str:
-    """Return formatted injection text for a block."""
+def _inject_block(
+    block_id: str,
+    session_id: str | None = None,
+    project_root: Path | None = None,
+) -> str:
+    """Return formatted injection text for a block and record state."""
     blocks = _load_active_blocks()
     if block_id not in blocks:
         available = sorted(blocks.keys())
@@ -193,6 +208,13 @@ def _inject_block(block_id: str) -> str:
             f"Block '{block_id}' not found. "
             f"Available blocks: {', '.join(available)}"
         )
+
+    # Record injection for deduplication and project affinity
+    if session_id:
+        record_session_injection(session_id, block_id)
+    if project_root:
+        record_project_affinity(project_root, block_id)
+
     return blocks[block_id].to_injection_text()
 
 
@@ -200,7 +222,12 @@ def _inject_block(block_id: str) -> str:
 # MCP tool definitions
 # ---------------------------------------------------------------------------
 
-def _log_mcp_injection(block_ids: list[str], domains: list[str], prompt_words: int) -> None:
+def _log_mcp_injection(
+    block_ids: list[str],
+    domains: list[str],
+    prompt_words: int,
+    session_id: str | None = None,
+) -> None:
     """Append a session entry to hook_log.jsonl so get_stats reflects MCP injections."""
     import json
     import time
@@ -211,6 +238,7 @@ def _log_mcp_injection(block_ids: list[str], domains: list[str], prompt_words: i
         "domains": domains,
         "prompt_words": prompt_words,
         "source": "mcp",
+        "session_id": session_id,
     })
     log_path = _data_dir() / "hook_log.jsonl"
     try:
@@ -254,7 +282,9 @@ def _log_tool_call(
 
 
 @mcp.tool()
-def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
+def list_suggested_blocks(
+    prompt: str, session_id: str | None = None
+) -> list[dict[str, Any]]:
     """Suggest Expert Priors relevant to an opening developer prompt.
 
     Returns up to 3 ranked Expert Priors with scores, tags, context weights,
@@ -263,6 +293,7 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
 
     Args:
         prompt: The user's opening prompt or session description.
+        session_id: Optional session identifier for deduplication.
 
     Returns:
         List of Expert Prior suggestions, ranked by relevance score.
@@ -271,14 +302,21 @@ def list_suggested_blocks(prompt: str) -> list[dict[str, Any]]:
         Returns a single error entry if no embedding backend is configured.
     """
     try:
-        suggestions = _list_suggested_blocks(prompt, project_root=Path.cwd())
+        suggestions = _list_suggested_blocks(
+            prompt, project_root=Path.cwd(), session_id=session_id
+        )
         if suggestions:
             _log_mcp_injection(
                 block_ids=[s["block_id"] for s in suggestions],
                 domains=list({s["domain"] for s in suggestions}),
                 prompt_words=len(prompt.split()),
+                session_id=session_id,
             )
-        _log_tool_call("list_suggested_blocks", {"prompt": prompt}, suggestions)
+        _log_tool_call(
+            "list_suggested_blocks",
+            {"prompt": prompt, "session_id": session_id},
+            suggestions,
+        )
         return suggestions
     except RuntimeError as e:
         result = [{
@@ -317,7 +355,7 @@ def get_block(block_id: str) -> dict[str, Any]:
 
 
 @mcp.tool()
-def inject_block(block_id: str) -> str:
+def inject_block(block_id: str, session_id: str | None = None) -> str:
     """Return a formatted Expert Prior ready for injection into an AI session.
 
     The returned markdown string contains constraints, anti-patterns, and
@@ -326,13 +364,18 @@ def inject_block(block_id: str) -> str:
 
     Args:
         block_id: The block identifier (e.g. 'nextjs15-approuter-build').
+        session_id: Optional session identifier for deduplication.
 
     Returns:
         Formatted markdown Expert Prior, ready to inject before the
         first AI response.
     """
-    result = _inject_block(block_id)
-    _log_tool_call("inject_block", {"block_id": block_id}, result)
+    result = _inject_block(
+        block_id, session_id=session_id, project_root=Path.cwd()
+    )
+    _log_tool_call(
+        "inject_block", {"block_id": block_id, "session_id": session_id}, result
+    )
     return result
 
 

@@ -35,6 +35,16 @@ def _index_path() -> Path:
     return _data_dir() / "index.jsonl"
 
 
+def _affinity_path() -> Path:
+    """Return the path to the project affinity storage."""
+    return _data_dir() / "affinity.json"
+
+
+def _session_injections_dir() -> Path:
+    """Return the directory where transient session injections are tracked."""
+    return _data_dir() / "sessions"
+
+
 def _bundled_index_path() -> Path:
     """Return the pre-built index shipped inside the package (no setup needed)."""
     # Path(__file__) is turnzero/config.py
