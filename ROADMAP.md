@@ -56,8 +56,8 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
-- [x] v0.5.2 — Multi-client setup (Cursor, Gemini, Claude Desktop), bundled index, CLI modularization, rationale enforcement.
-- [x] v0.5.1 — Confidence scoring (TD-005), centralized logic, verification tiers, archived blocks.
+- [x] v0.5.4 — Fix `turnzero setup` index build, add `turnzero.cli` module entry point.
+- [x] v0.5.3 — Multi-client setup (Cursor, Gemini, Claude Desktop), bundled index, CLI modularization, rationale enforcement.
 - [x] v0.2.7 — Runtime contract hardening, mandatory local Ollama for stability.
 - [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.
 - [x] v0.2.0 — MCP-first architecture, `submit_candidate` learning loop.

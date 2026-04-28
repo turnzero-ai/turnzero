@@ -574,7 +574,7 @@ def setup(
             env["TURNZERO_DATA_DIR"] = str(resolved)
             try:
                 subprocess.run(
-                    [sys.executable, "-m", "turnzero.cli", "index", "build"],
+                    [sys.executable, "-m", "turnzero", "index", "build"],
                     env=env,
                     check=True,
                 )
