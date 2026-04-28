@@ -26,7 +26,7 @@ Circle 3 — Enterprise (Phase 5)
 
 - [ ] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing.
 - [ ] **ONNX embedding research** — Explore/test ONNX-based local embeddings (~150MB, zero-dep) to replace the 2GB Ollama requirement while maintaining 100% privacy.
-- [ ] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
+- [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
 - [ ] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, and Claude Desktop.
 - [ ] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
 - [ ] **Privacy disclosure** — Document that `harvest` stores local transcript data; user opt-in.
@@ -39,7 +39,7 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **Domain router** — Layer 1 env-based filter eliminates 90%+ of candidates before vector math.
 - [ ] **Semantic deduplication** — Detect and merge blocks with cosine similarity > 0.92 covering the same topic.
 - [ ] **Block versioning / deprecation** — `deprecated_by` field on block schema; old versions score-decay.
-- [ ] **Outcome feedback loop** — Clean session boosts block confidence; correction decays it.
+- [x] **Outcome feedback loop** — Clean session boosts block confidence; correction decays it (v0.5.0 baseline).
 - [ ] **Hosted block registry** — Static nginx on Hetzner, versioned YAML + pre-computed embeddings.
 - [ ] **`turnzero sync`** — Pull community blocks + index, no local model required.
 - [ ] **Community submission flow** — `submit_candidate` → registry PR → merged → synced.
@@ -56,6 +56,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.5.1 — Confidence scoring (TD-005), centralized logic, verification tiers, archived blocks.
 - [x] v0.2.7 — Runtime contract hardening, mandatory local Ollama for stability.
 - [x] v0.2.6 — Confidence scoring live, library poisoning mitigation.
 - [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.

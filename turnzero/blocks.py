@@ -11,6 +11,43 @@ from typing import Any
 import yaml
 
 
+# ---------------------------------------------------------------------------
+# Confidence scoring
+# ---------------------------------------------------------------------------
+
+CONFIDENCE_REASON_MIN_LEN = 15
+CONFIDENCE_MIN_CONSTRAINTS = 2
+CONFIDENCE_MIN_HYPHENS = 2
+MAX_AUTO_CONFIDENCE = 0.95
+
+
+def compute_confidence(
+    slug: str,
+    constraints: list[str],
+    anti_patterns: list[str],
+    tags: list[str],
+    reason: str | None = None,
+) -> float:
+    """Score block quality based on content density and context signals.
+
+    Signals: non-empty reason, constraint count, anti-pattern presence,
+    tags, and slug specificity (hyphen count as specificity proxy).
+    Cap at 0.95 — only manually curated blocks reach 1.0.
+    """
+    score = 0.25
+    if reason and len(reason.strip()) >= CONFIDENCE_REASON_MIN_LEN:
+        score += 0.20
+    if len(constraints) >= CONFIDENCE_MIN_CONSTRAINTS:
+        score += 0.20
+    if anti_patterns:
+        score += 0.15
+    if tags:
+        score += 0.10
+    if slug.count("-") >= CONFIDENCE_MIN_HYPHENS:
+        score += 0.10
+    return round(min(score, MAX_AUTO_CONFIDENCE), 2)
+
+
 @dataclass
 class DocAnchor:
     url: str

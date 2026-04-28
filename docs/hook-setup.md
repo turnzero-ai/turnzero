@@ -49,7 +49,7 @@ try:
 
     blocks = load_all_blocks(DATA_DIR / "blocks")
     index = load_index(DATA_DIR / "index.jsonl")
-    results = _query(prompt, index, blocks, top_k=3, threshold=0.75, context_weight=4000, strict_intent=True)
+    results = _query(prompt, index, blocks, top_k=3, threshold=0.70, context_weight=4000, strict_intent=True)
     if not results:
         sys.exit(0)
 

@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.2.7** (PyPI live).
+TurnZero is at **v0.5.1** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
-- 74 blocks shipped in wheel, 123 blocks in Darijo's local library
-- 204 tests passing; Hit Rate@3 = 1.00 on validation set
+- 121 Expert Priors across 25 domains shipped in wheel
+- 234 tests passing; Hit Rate@3 = 1.00 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
@@ -156,8 +156,12 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 - Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)
 - Never mutate a slug for a breaking change — create a new slug
 - Every `anti_patterns` entry must start with `"Do not"`
-- `context_weight` = realistic token estimate (word count × 4)
+- `context_weight` = realistic token estimate (word_count × 4)
+- `confidence` = 0.0-1.0; curated blocks = 1.0, AI-submitted start lower
+- `archived` = set to true to exclude from retrieval
 - `last_verified` = ISO date — update whenever the block is re-verified
+- `verification_level` = curated | observed | synthetic
+
 
 ### MCP tools
 - Tool names: `snake_case` verbs

@@ -33,13 +33,15 @@ If you want to share it with the community, open a PR adding the YAML file from 
 ## Block schema
 
 ```yaml
-id: "domain-intent-keyword"      # e.g. nextjs15-approuter-build
-slug: "nextjs15-approuter-build"
+slug: "nextjs15-approuter-build" # kebab-case, version-anchored
 domain: "nextjs"                 # primary technology, lowercase
 intent: "build"                  # build | debug | migrate | review
 last_verified: "2026-04-19"
+verification_level: "curated"    # curated | observed | synthetic
 tags: [nextjs, react, approuter]
 context_weight: 900              # estimated tokens when injected
+confidence: 1.0                  # 0.0-1.0; curated = 1.0
+archived: false                  # set to true to exclude from retrieval
 constraints:
   - "Use Server Components by default; Client Components only when state/browser APIs required"
 anti_patterns:
@@ -49,7 +51,7 @@ doc_anchors:
     verified: "2026-04-19"
 ```
 
-Block IDs are descriptive slugs. Never mutate an existing block — create a new version with a bumped `version` field.
+Block IDs are descriptive slugs. Never mutate an existing block — create a new version with a bumped `version` field. Use the `slug` field for new blocks; the `id` field is supported for backward compatibility but deprecated.
 
 ## Running tests
 

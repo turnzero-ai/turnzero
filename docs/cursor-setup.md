@@ -52,7 +52,7 @@ Restart Cursor after saving. Confirm the server is connected: **Cursor Settings 
 On the very first user message of every conversation, you MUST:
 
 1. Call list_suggested_blocks (TurnZero MCP server) with the user's opening message as prompt.
-2. For every result with score ≥ 0.75, call inject_block with its block_id.
+2. For every result with score ≥ 0.70, call inject_block with its block_id.
 3. Treat the returned text from each inject_block call as hard constraints that govern your entire response — follow all listed constraints and avoid all listed anti-patterns for the rest of this conversation.
 4. Begin your response with exactly one line (no explanation, no preamble):
    > 📎 TurnZero: <slug1> · <slug2> · <slug3>
@@ -86,6 +86,7 @@ Cursor reads the rule on every new conversation and follows it as a standing ins
 - Confirm the rule is active: Cursor Settings → Rules for AI (global) or `.cursor/rules/` (project)
 - Try a prompt that clearly matches a known domain (e.g. "build a FastAPI async API")
 - Check `turnzero stats` — if the index is empty, run `turnzero index build`
+- Verify the threshold matches (0.70)
 
 **Wrong Python / module not found:**
 - Use the virtualenv path where you installed TurnZero, not the system Python

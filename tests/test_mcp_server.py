@@ -9,8 +9,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from turnzero.blocks import compute_confidence
 from turnzero.mcp_server import (
-    _compute_confidence,
     _get_block,
     _inject_block,
     _list_suggested_blocks,
@@ -231,16 +231,16 @@ def test_inject_block_all_seed_blocks() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _compute_confidence
+# compute_confidence
 # ---------------------------------------------------------------------------
 
 def test_compute_confidence_minimal_signals() -> None:
-    score = _compute_confidence("x", ["one constraint"], [], [], "")
+    score = compute_confidence("x", ["one constraint"], [], [], "")
     assert score == pytest.approx(0.25, abs=0.01)
 
 
 def test_compute_confidence_full_signals() -> None:
-    score = _compute_confidence(
+    score = compute_confidence(
         "nextjs15-approuter-auth-build",
         ["Use App Router", "Pin to Next.js 15"],
         ["Do not use Pages Router", "Do not use getServerSideProps"],
@@ -252,7 +252,7 @@ def test_compute_confidence_full_signals() -> None:
 
 def test_compute_confidence_caps_at_0_95() -> None:
     for _ in range(3):
-        score = _compute_confidence(
+        score = compute_confidence(
             "a-b-c-d",
             ["c1", "c2", "c3"],
             ["Do not do x", "Do not do y"],
@@ -263,8 +263,8 @@ def test_compute_confidence_caps_at_0_95() -> None:
 
 
 def test_compute_confidence_reason_bonus() -> None:
-    without = _compute_confidence("slug-a-b", ["c1", "c2"], ["Do not x"], ["t"], "")
-    with_reason = _compute_confidence(
+    without = compute_confidence("slug-a-b", ["c1", "c2"], ["Do not x"], ["t"], "")
+    with_reason = compute_confidence(
         "slug-a-b", ["c1", "c2"], ["Do not x"], ["t"], "AI got this wrong in session"
     )
     assert with_reason > without

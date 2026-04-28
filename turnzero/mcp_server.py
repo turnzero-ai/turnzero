@@ -20,7 +20,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from turnzero.blocks import Block, load_all_blocks
+from turnzero.blocks import Block, compute_confidence, load_all_blocks
 from turnzero.config import enabled_sources
 from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
@@ -30,10 +30,6 @@ from turnzero.retrieval import query as _query
 # Avoids re-reading disk on every Turn 0 — reloads only when file changes.
 # ---------------------------------------------------------------------------
 _INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
-CONFIDENCE_REASON_MIN_LEN = 15
-CONFIDENCE_MIN_CONSTRAINTS = 2
-CONFIDENCE_MIN_HYPHENS = 2
-MAX_AUTO_CONFIDENCE = 0.95
 
 mcp = FastMCP(
     "turnzero",
@@ -447,33 +443,6 @@ def get_stats() -> dict[str, Any]:
     return result
 
 
-def _compute_confidence(
-    block_id: str,
-    constraints: list[str],
-    anti_patterns: list[str],
-    tags: list[str],
-    reason: str,
-) -> float:
-    """Score AI-submitted block quality. Curated blocks always get 1.0.
-
-    Signals: non-empty reason, constraint count, anti-pattern presence,
-    tags, and slug specificity (hyphen count as specificity proxy).
-    Cap at 0.95 — only manually curated blocks reach 1.0.
-    """
-    score = 0.25
-    if len(reason.strip()) >= CONFIDENCE_REASON_MIN_LEN:
-        score += 0.20
-    if len(constraints) >= CONFIDENCE_MIN_CONSTRAINTS:
-        score += 0.20
-    if anti_patterns:
-        score += 0.15
-    if tags:
-        score += 0.10
-    if block_id.count("-") >= CONFIDENCE_MIN_HYPHENS:
-        score += 0.10
-    return round(min(score, MAX_AUTO_CONFIDENCE), 2)
-
-
 @mcp.tool()
 def submit_candidate(
     block_id: str,
@@ -518,7 +487,7 @@ def submit_candidate(
     import yaml as _yaml
 
     today = __import__("datetime").date.today().isoformat()
-    confidence = _compute_confidence(block_id, constraints, anti_patterns or [], tags or [], reason)
+    confidence = compute_confidence(block_id, constraints, anti_patterns or [], tags or [], reason)
     block = {
         "id": block_id,
         "slug": block_id,

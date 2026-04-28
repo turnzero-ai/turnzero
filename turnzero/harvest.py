@@ -23,6 +23,8 @@ from typing import Any
 
 import yaml
 
+from turnzero.blocks import compute_confidence
+
 MIN_TURN_WORDS = 3
 MIN_CONTEXT_WEIGHT = 50
 MIN_SESSION_WORDS = 5
@@ -63,6 +65,7 @@ OUTPUT FORMAT — respond with ONLY valid YAML, no prose, no markdown fences:
   domain: <primary technology, lowercase, single word>
   intent: <build|debug|migrate|review>
   last_verified: "{today}"
+  verification_level: "observed"
   tags: [<tag1>, <tag2>, ...]
   context_weight: <estimated token count of this block, integer>
   conflicts_with: []
@@ -663,14 +666,26 @@ def _normalise(candidate: dict[str, Any]) -> dict[str, Any]:
     candidate.setdefault("version", "1.0.0")
     from datetime import date
     candidate.setdefault("last_verified", date.today().isoformat())
+    candidate.setdefault("verification_level", "observed")
     candidate.setdefault("tags", [])
     candidate.setdefault("conflicts_with", [])
     candidate.setdefault("requires", [])
     candidate.setdefault("constraints", [])
     candidate.setdefault("anti_patterns", [])
     candidate.setdefault("doc_anchors", [])
-    # Always recompute — don't trust the LLM's estimate
+    candidate.setdefault("archived", False)
+
+    # Always recompute weight — don't trust the LLM's estimate
     candidate["context_weight"] = _compute_context_weight(candidate)
+
+    # Compute confidence for harvested block
+    candidate["confidence"] = compute_confidence(
+        slug=candidate.get("id", ""),
+        constraints=candidate["constraints"],
+        anti_patterns=candidate["anti_patterns"],
+        tags=candidate["tags"],
+        reason="Harvested from session transcript",
+    )
 
     # Ensure intent is valid
     valid_intents = {"build", "debug", "migrate", "review"}

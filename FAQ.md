@@ -16,7 +16,7 @@ AI memory remembers *you*. TurnZero remembers your *domain*. Native memory is pe
 
 **Is my data private? Does TurnZero send my prompts anywhere?**
 
-Raw prompt text is never stored. When you run `list_suggested_blocks`, your prompt is embedded locally (via ollama, sentence-transformers, or OpenAI — your choice), the embedding is compared against a local index, and the raw text is discarded immediately. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
+Raw prompt text is never stored. When you run `list_suggested_blocks`, your prompt is embedded locally (via ollama or OpenAI — your choice), the embedding is compared against a local index, and the raw text is discarded immediately. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
 
 ---
 
@@ -28,7 +28,7 @@ Raw prompt text is never stored. When you run `list_suggested_blocks`, your prom
 
 **Do I need ollama? What if I don't want to install anything extra?**
 
-No. TurnZero has three embedding backends and falls back automatically: ollama (local, free, private) → sentence-transformers (`pip install 'turnzero[local]'`) → OpenAI API (set `OPENAI_API_KEY`). If you already have an OpenAI key, there is nothing extra to install. If you want full local/private operation, `ollama pull nomic-embed-text` is a one-time step.
+No. TurnZero has two embedding backends and falls back automatically: ollama (local, free, private) → OpenAI API (set `OPENAI_API_KEY`). If you already have an OpenAI key, there is nothing extra to install. If you want full local/private operation, `ollama pull nomic-embed-text` is a one-time step.
 
 ---
 

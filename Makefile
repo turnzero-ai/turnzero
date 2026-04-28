@@ -7,7 +7,7 @@ lint:
 	ruff check . --fix
 
 type-check:
-	mypy promptgraph/
+	mypy turnzero/
 
 test:
 	pytest tests/ -v
@@ -15,7 +15,7 @@ test:
 check: lint type-check test
 
 index-build:
-	promptgraph index build
+	turnzero index build
 
 index-verify:
-	promptgraph index verify
+	turnzero index verify

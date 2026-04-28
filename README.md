@@ -106,13 +106,13 @@ TurnZero learns from your sessions. When the AI gets something wrong and you cor
     AI detects correction, suggests a new Expert Prior
               │
               ▼
-    Candidate is reviewed or auto-added to the library
+    Confidence scoring + manual review safety layer
               │
               ▼
     Injected in every future session matching that stack
 ```
 
-No background daemons required. The AI used in the session performs the extraction, identifying the exact moments where domain-specific knowledge saved the day.
+No background daemons required. The AI used in the session performs the extraction, identifying the exact moments where domain-specific knowledge saved the day. AI-submitted blocks are automatically down-weighted until they gain confidence through reinforcement.
 
 
 ---
@@ -126,7 +126,7 @@ turnzero query   "build a Next.js 15 app with Supabase"   # ranked block list
 turnzero inject  "build a Next.js 15 app with Supabase"   # formatted output for any AI
 turnzero show    nextjs15-approuter-build                  # full block content
 turnzero stats                                             # library + session stats
-turnzero review                                            # review pending candidates
+turnzero review                                            # review pending candidates + low-confidence blocks
 ```
 
 ---
@@ -134,11 +134,15 @@ turnzero review                                            # review pending cand
 ## Expert Prior schema
 
 ```yaml
-id: nextjs15-approuter-build
+slug: nextjs15-approuter-build    # kebab-case, version-anchored
 domain: nextjs
 intent: build                    # build | debug | migrate | review
+last_verified: "2026-04-19"
+verification_level: curated      # curated | observed | synthetic
 tags: [nextjs, react, approuter]
 context_weight: 900              # estimated tokens when injected
+confidence: 1.0                  # 0.0-1.0; AI-submitted blocks start lower
+archived: false                  # set to true to exclude from retrieval
 constraints:
   - "Use App Router (app/) — all new projects default to App Router in Next.js 13+"
   - "fetch() in Next.js 15 is not cached by default — add { cache: 'force-cache' } explicitly"

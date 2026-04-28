@@ -1339,49 +1339,84 @@ def harvest(
 
 @app.command()
 def review() -> None:
-    """Review Expert Prior candidates extracted from your sessions.
+    """Review Expert Prior candidates and low-confidence library blocks.
 
-    Shows each candidate and prompts for approval.
-    Approved candidates are added to your block library and the index is rebuilt.
-    Also surfaces low-confidence blocks already in the library (confidence < 0.7).
+    1. Surfaces low-confidence blocks (confidence < 0.7) already in the library.
+    2. Shows harvested candidates from data/candidates/ for approval.
     """
     from turnzero.blocks import load_all_blocks
     from turnzero.index import build as _build
 
     data_dir = _data_dir()
     candidates_dir = data_dir / "candidates"
+    blocks_dir = _blocks_dir()
 
-    # ── Low-confidence library blocks ────────────────────────────────────────
+    # ── 1. Low-confidence library blocks ────────────────────────────────────────
     try:
-        all_blocks = load_all_blocks(_blocks_dir())
+        all_blocks = load_all_blocks(blocks_dir)
         low_conf = [
             b for b in all_blocks.values()
             if b.confidence < LOW_CONFIDENCE_THRESHOLD and not b.archived
         ]
         if low_conf:
             console.print(
-                "\n"
-                f"[yellow]⚠  {len(low_conf)} low-confidence block(s) in library "
-                f"(confidence < {LOW_CONFIDENCE_THRESHOLD:.1f})[/yellow]"
+                f"\n[yellow]⚠  Found {len(low_conf)} low-confidence block(s) in your library.[/yellow]"
             )
-            console.print("[dim]These were auto-submitted and may contain errors. Verify or archive them.[/dim]\n")
+            console.print("[dim]These were auto-submitted and haven't been verified yet.[/dim]\n")
+
             for block in sorted(low_conf, key=lambda b: b.confidence):
-                console.print(
-                    f"  [bold]{block.slug}[/bold]  "
-                    f"[dim]confidence={block.confidence:.2f}  domain={block.domain}[/dim]"
-                )
+                console.rule(f"[bold yellow]Review Library Block: {block.slug}[/bold yellow]")
+                console.print(f"[dim]Current Confidence: {block.confidence:.2f} | Level: {block.verification_level}[/dim]\n")
+                
+                # Show content preview
                 if block.constraints:
-                    console.print(f"    [dim]{block.constraints[0][:100]}[/dim]")
-            console.print()
+                    console.print("[bold]Constraints:[/bold]")
+                    for c in block.constraints[:3]:
+                        console.print(f"  • {c}")
+                
+                choice = typer.prompt(
+                    "\n  [v]erify (set confidence 1.0) / [a]rchive / [s]kip / [d]elete", 
+                    default="s"
+                ).strip().lower()
+
+                found_path = blocks_dir / block.domain / f"{block.slug}.yaml"
+                if not found_path.exists():
+                    # Fallback for flat structure or different sub-nesting
+                    found_path = next(blocks_dir.rglob(f"{block.slug}.yaml"), None)  # type: ignore[assignment]
+
+                if choice in ("v", "verify") and found_path:
+                    import yaml as _yaml
+                    raw = _yaml.safe_load(found_path.read_text())
+                    raw["confidence"] = 1.0
+                    raw["verification_level"] = "curated"
+                    found_path.write_text(_yaml.dump(raw, sort_keys=False, allow_unicode=True))
+                    console.print(f"  [green]✓ {block.slug} promoted to curated (1.0).[/green]\n")
+                elif choice in ("a", "archive") and found_path:
+                    import yaml as _yaml
+                    raw = _yaml.safe_load(found_path.read_text())
+                    raw["archived"] = True
+                    found_path.write_text(_yaml.dump(raw, sort_keys=False, allow_unicode=True))
+                    console.print(f"  [yellow]✓ {block.slug} archived (excluded from retrieval).[/yellow]\n")
+                elif choice in ("d", "delete") and found_path:
+                    if typer.confirm(f"  Are you sure you want to PERMANENTLY delete {block.slug}?"):
+                        found_path.unlink()
+                        console.print(f"  [red]✗ {block.slug} deleted.[/red]\n")
+                else:
+                    console.print("  [dim]Skipped.[/dim]\n")
+
     except FileNotFoundError:
         pass
 
+    # ── 2. Harvested candidates ──────────────────────────────────────────────
     if not candidates_dir.exists() or not list(candidates_dir.glob("*.yaml")):
-        console.print("[dim]No candidates to review. Run [bold]turnzero harvest[/bold] first.[/dim]")
+        console.print("[dim]No new harvested candidates to review.[/dim]")
+        # If we made changes to the library, we still need to rebuild
+        if any(typer.confirm("Rebuild index now?", default=True) for _ in [1]):
+             _build(blocks_dir, _index_path(), data_dir=data_dir)
         return
 
     pending = sorted(candidates_dir.glob("*.yaml"))
-    console.print(f"\n[bold]📋 {len(pending)} candidate(s) to review[/bold]\n")
+    console.print(f"\n[bold]📋 {len(pending)} new candidate(s) to review[/bold]\n")
 
     approved = 0
     rejected = 0
