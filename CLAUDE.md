@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.5.1** (PyPI live).
+TurnZero is at **v0.5.2** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
@@ -12,6 +12,7 @@ TurnZero is at **v0.5.1** (PyPI live).
 - 143 Expert Priors across 37 domains shipped in wheel
 - 234 tests passing; Hit Rate@3 = 1.00 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
+- Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
 - Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
@@ -161,6 +162,7 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 - `archived` = set to true to exclude from retrieval
 - `last_verified` = ISO date — update whenever the block is re-verified
 - `verification_level` = curated | observed | synthetic
+- `rationale` = required if `anti_patterns` are present; explains the "why" behind the rules.
 
 
 ### MCP tools

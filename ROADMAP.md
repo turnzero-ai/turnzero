@@ -27,7 +27,7 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing.
 - [x] **ONNX embedding research** — Research concluded: preferred Ollama/OpenAI fallback chain for reliability and lower runtime dependency overhead.
 - [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
-- [ ] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, and Claude Desktop.
+- [x] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, Claude Desktop, and Gemini CLI.
 - [ ] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
 - [ ] **Privacy disclosure** — Document that `harvest` stores local transcript data; user opt-in.
 
@@ -56,6 +56,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.5.2 — Multi-client setup (Cursor, Gemini, Claude Desktop), bundled index, CLI modularization, rationale enforcement.
 - [x] v0.5.1 — Confidence scoring (TD-005), centralized logic, verification tiers, archived blocks.
 - [x] v0.2.7 — Runtime contract hardening, mandatory local Ollama for stability.
 - [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.

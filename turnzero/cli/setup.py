@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import shutil
@@ -110,6 +111,16 @@ TurnZero MCP is installed. Follow these rules every session:
 Skip only for pure chitchat (greetings, one-word replies).
 """
 
+_TURNZERO_GEMINI_MD_BLOCK = """\
+
+## TurnZero — Expert Prior injection
+TurnZero MCP is installed. Follow these rules every session:
+1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
+2. Call `inject_block` for each relevant prior before answering.
+3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
+Skip only for pure chitchat (greetings, one-word replies).
+"""
+
 _TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
 
 
@@ -162,6 +173,124 @@ env = {{ TURNZERO_DATA_DIR = "{data_dir}" }}
         )
 
     con.print(f"[green]✓[/green] MCP server registered in {config_path}")
+
+
+def _setup_cursor_mcp(
+    mcp_bin: str,
+    data_dir: Path,
+    force: bool,
+    con: Any,
+) -> None:
+    """Register MCP server in Cursor config."""
+    import platform
+
+    if platform.system() == "Darwin":
+        config_path = Path.home() / "Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+        # Also check the newer/alternative path if needed
+        # Cursor sometimes uses different paths for different MCP plugins
+    elif platform.system() == "Windows":
+        config_path = Path(os.environ["APPDATA"]) / "Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+    else:
+        return
+
+    # If the specific plugin path doesn't exist, we skip for now as we don't want to 
+    # guess which MCP plugin the user is using in Cursor (though saoudrizwan.claude-dev is common)
+    if not config_path.parent.exists():
+        return
+
+    config: dict[str, Any] = {}
+    if config_path.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+
+    mcp_entry = {
+        "command": mcp_bin,
+        "args": [],
+        "env": {"TURNZERO_DATA_DIR": str(data_dir)},
+        "disabled": False
+    }
+
+    mcp_servers = config.setdefault("mcpServers", {})
+    if "turnzero" not in mcp_servers or force:
+        mcp_servers["turnzero"] = mcp_entry
+        config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+        con.print(f"[green]✓[/green] MCP server registered in Cursor ({config_path.name})")
+    else:
+        con.print("[dim]✓ MCP server already in Cursor[/dim]")
+
+
+def _setup_claude_desktop_mcp(
+    mcp_bin: str,
+    data_dir: Path,
+    force: bool,
+    con: Any,
+) -> None:
+    """Register MCP server in Claude Desktop config."""
+    import platform
+
+    if platform.system() == "Darwin":
+        config_path = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
+    elif platform.system() == "Windows":
+        config_path = Path(os.environ["APPDATA"]) / "Claude/claude_desktop_config.json"
+    else:
+        return
+
+    if not config_path.parent.exists():
+        return
+
+    config: dict[str, Any] = {}
+    if config_path.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+
+    mcp_entry = {
+        "command": mcp_bin,
+        "args": [],
+        "env": {"TURNZERO_DATA_DIR": str(data_dir)},
+    }
+
+    mcp_servers = config.setdefault("mcpServers", {})
+    if "turnzero" not in mcp_servers or force:
+        mcp_servers["turnzero"] = mcp_entry
+        config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+        con.print(f"[green]✓[/green] MCP server registered in Claude Desktop ({config_path.name})")
+    else:
+        con.print("[dim]✓ MCP server already in Claude Desktop[/dim]")
+
+
+def _setup_gemini_mcp(
+    mcp_bin: str,
+    data_dir: Path,
+    force: bool,
+    con: Any,
+) -> None:
+    """Register MCP server in Gemini CLI config."""
+    config_path = Path.home() / ".gemini" / "settings.json"
+
+    # If ~/.gemini doesn't exist, the user likely hasn't used Gemini CLI
+    if not config_path.parent.exists():
+        return
+
+    config: dict[str, Any] = {}
+    if config_path.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+
+    mcp_entry = {
+        "command": mcp_bin,
+        "args": [],
+        "env": {"TURNZERO_DATA_DIR": str(data_dir)},
+    }
+
+    mcp_servers = config.setdefault("mcpServers", {})
+    if "turnzero" not in mcp_servers or force:
+        mcp_servers["turnzero"] = mcp_entry
+        config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
+        con.print(
+            f"[green]✓[/green] MCP server registered in Gemini CLI ({config_path.name})"
+        )
+    else:
+        con.print("[dim]✓ MCP server already in Gemini CLI[/dim]")
 
 
 def _setup_claude_md(force: bool, con: Any, claude_dir: Path | None = None) -> None:
@@ -223,6 +352,36 @@ def _setup_codex_agents_md(
         existing = "".join(filtered).rstrip("\n")
 
     md_path.write_text(existing + _TURNZERO_AGENTS_MD_BLOCK, encoding="utf-8")
+    con.print(f"[green]✓[/green] TurnZero rule written to {md_path}")
+
+
+def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> None:
+    """Write TurnZero instruction block to ~/.gemini/GEMINI.md (global Gemini CLI rules)."""
+    target_dir = gemini_dir or Path.home() / ".gemini"
+    if not target_dir.exists():
+        return
+
+    md_path = target_dir / "GEMINI.md"
+    existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+
+    if _TURNZERO_MD_MARKER in existing:
+        if not force:
+            con.print("[dim]✓ TurnZero rule already in ~/.gemini/GEMINI.md[/dim]")
+            return
+        # Remove old block before rewriting
+        lines = existing.splitlines(keepends=True)
+        filtered: list[str] = []
+        skip = False
+        for line in lines:
+            if _TURNZERO_MD_MARKER in line:
+                skip = True
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+                skip = False
+            if not skip:
+                filtered.append(line)
+        existing = "".join(filtered).rstrip("\n")
+
+    md_path.write_text(existing + _TURNZERO_GEMINI_MD_BLOCK, encoding="utf-8")
     con.print(f"[green]✓[/green] TurnZero rule written to {md_path}")
 
 
@@ -503,9 +662,19 @@ def setup(
     # ── 6b. Register MCP in ~/.codex/config.toml (Codex CLI) ─────────────
     _setup_codex_mcp(mcp_bin, resolved, force, console)
 
-    # ── 6c. Write global instruction rules (makes AI invoke tools reliably) ─
+    # ── 6c. Register MCP in Cursor ──────────────────────────────────────
+    _setup_cursor_mcp(mcp_bin, resolved, force, console)
+
+    # ── 6d. Register MCP in Claude Desktop ──────────────────────────────
+    _setup_claude_desktop_mcp(mcp_bin, resolved, force, console)
+
+    # ── 6e. Register MCP in Gemini CLI ──────────────────────────────────
+    _setup_gemini_mcp(mcp_bin, resolved, force, console)
+
+    # ── 6f. Write global instruction rules (makes AI invoke tools reliably) ─
     _setup_claude_md(force, console)
     _setup_codex_agents_md(force, console)
+    _setup_gemini_md(force, console)
 
     # ── 7. Summary ────────────────────────────────────────────────────────
     console.print()

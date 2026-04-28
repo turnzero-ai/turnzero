@@ -50,7 +50,7 @@ turnzero setup
 
 Python support: `3.12`, `3.13`, and `3.14`.
 
-`turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
+`turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop, Gemini CLI — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
 
 **Embedding backend — pick one:**
 
@@ -92,6 +92,14 @@ See [`docs/cursor-setup.md`](docs/cursor-setup.md) — register the MCP server a
 ### Any other MCP-compatible client
 
 Register the MCP server however that client supports it. The server's `instructions` field tells the AI to call `list_suggested_blocks` at the start of every session. If the client surfaces MCP server instructions to the model, injection is automatic.
+
+### Gemini CLI
+
+```bash
+turnzero setup
+```
+
+The MCP server is registered in `~/.gemini/settings.json`, and global rules are added to `~/.gemini/GEMINI.md` to ensure the AI invokes the tools automatically.
 
 ---
 
