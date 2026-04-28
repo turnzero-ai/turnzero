@@ -7,7 +7,12 @@ from pathlib import Path
 from rich.console import Console
 from typer.testing import CliRunner
 
-from turnzero.cli import _setup_claude_md, _setup_codex_agents_md, _setup_codex_mcp, app
+from turnzero.cli import app
+from turnzero.cli.setup import (
+    _setup_claude_md,
+    _setup_codex_agents_md,
+    _setup_codex_mcp,
+)
 
 runner = CliRunner()
 
