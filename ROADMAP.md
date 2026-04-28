@@ -6,7 +6,7 @@
 
 ```
 Circle 1 — Personal (live today)
-  Your library grows automatically from your own sessions. Any domain. Zero curation.
+  Your library grows automatically from your own sessions. Automated learning with confidence scoring and expert review.
 
 Circle 2 — Community (Phase 4)
   Corrections route to everyone on the same stack. Every "remember this" enriches all users.
@@ -15,7 +15,7 @@ Circle 3 — Enterprise (Phase 5)
   Teams build proprietary knowledge bases. Can't be in public registry — competitive moat.
 ```
 
-**Flywheel:** session → correction → `submit_candidate` → registry → injected at Turn 0 for everyone.
+**Flywheel:** session → correction → `submit_candidate` → review → registry → Turn 0.
 
 **Positioning:** Infrastructure, not a feature. Like npm, not a plugin. AI companies won't build this — provider-neutral context is anti-competitive for them. The moat is community standard, not the retrieval algorithm.
 
@@ -25,7 +25,7 @@ Circle 3 — Enterprise (Phase 5)
 *Goal: Remove every remaining friction point. Any user, any setup.*
 
 - [ ] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing.
-- [ ] **ONNX embedding research** — Explore/test ONNX-based local embeddings (~150MB, zero-dep) to replace the 2GB Ollama requirement while maintaining 100% privacy.
+- [x] **ONNX embedding research** — Research concluded: preferred Ollama/OpenAI fallback chain for reliability and lower runtime dependency overhead.
 - [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
 - [ ] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, and Claude Desktop.
 - [ ] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
@@ -58,7 +58,6 @@ Circle 3 — Enterprise (Phase 5)
 ## Maintenance & Done
 - [x] v0.5.1 — Confidence scoring (TD-005), centralized logic, verification tiers, archived blocks.
 - [x] v0.2.7 — Runtime contract hardening, mandatory local Ollama for stability.
-- [x] v0.2.6 — Confidence scoring live, library poisoning mitigation.
 - [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.
 - [x] v0.2.0 — MCP-first architecture, `submit_candidate` learning loop.
 - [x] v0.1.0 — Core engine, hybrid retrieval, three-layer injection gate.

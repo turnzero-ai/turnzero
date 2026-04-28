@@ -48,7 +48,7 @@ pip install turnzero
 turnzero setup
 ```
 
-Python support: `3.12` and `3.13`.
+Python support: `3.12`, `3.13`, and `3.14`.
 
 `turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
 
@@ -158,7 +158,7 @@ doc_anchors:
 
 ## Knowledge domains
 
-121 Expert Priors across 25 domains — currently software-heavy since that's where the library started, but the system is domain-agnostic. Law, medicine, finance, design, writing, research — any field where the AI makes the same mistakes without context is a valid domain. The library grows from your sessions via `submit_candidate`.
+143 Expert Priors across 37 domains — currently software-heavy since that's where the library started, but the system is domain-agnostic. Law, medicine, finance, design, writing, research — any field where the AI makes the same mistakes without context is a valid domain. The library grows from your sessions via `submit_candidate`.
 
 ---
 

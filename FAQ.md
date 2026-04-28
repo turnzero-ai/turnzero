@@ -46,10 +46,10 @@ RAG retrieves documents to answer a question *mid-response*. TurnZero retrieves 
 
 **How does the library grow? Who writes the Expert Priors?**
 
-The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly, which gets added to your local library immediately with `auto_approve=True`. The 121 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
+The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly, which enters your local library with a confidence score based on detail; you can verify or prune these via `turnzero review`. The 143 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
 
 ---
 
 **What if there are no relevant priors for my domain?**
 
-TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.75 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set.
+TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set.
