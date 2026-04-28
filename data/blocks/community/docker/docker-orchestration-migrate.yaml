@@ -1,29 +1,40 @@
-slug: "docker-orchestration-migrate"
-version: "1.0.0"
+slug: docker-orchestration-migrate
+version: 1.0.0
 domain: docker
 intent: migrate
-last_verified: "2026-04-11"
-tags: [docker, kubernetes, orchestration, migration, devops]
+last_verified: '2026-04-11'
+tags:
+- docker
+- kubernetes
+- orchestration
+- migration
+- devops
 context_weight: 850
-provides: [docker-orchestration]
+provides:
+- docker-orchestration
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["docker-compose-production-build"]
-
+requires:
+- docker-compose-production-build
 constraints:
-  - "Convert docker-compose.yml services to Kubernetes Deployments, Services, and Ingress resources"
-  - "Use ConfigMaps and Secrets for environment variables instead of local .env files"
-  - "Replace Docker Compose volumes with PersistentVolumeClaims (PVCs) and appropriate StorageClasses"
-  - "Implement readiness and liveness probes to allow the orchestrator to manage container health effectively"
-  - "Use a container registry (e.g., ECR, GCR, Docker Hub) to store and distribute images to the cluster"
-
+- Convert docker-compose.yml services to Kubernetes Deployments, Services, and Ingress
+  resources
+- Use ConfigMaps and Secrets for environment variables instead of local .env files
+- Replace Docker Compose volumes with PersistentVolumeClaims (PVCs) and appropriate
+  StorageClasses
+- Implement readiness and liveness probes to allow the orchestrator to manage container
+  health effectively
+- Use a container registry (e.g., ECR, GCR, Docker Hub) to store and distribute images
+  to the cluster
 anti_patterns:
-  - "Do not use 'latest' tags for images in an orchestrated environment — always use specific version tags or digests"
-  - "Do not attempt to manage stateful sets (databases) the same way as stateless deployments"
-  - "Do not forget to define resource requests and limits for every pod to prevent cluster instability"
-
+- Do not use 'latest' tags for images in an orchestrated environment — always use
+  specific version tags or digests
+- Do not attempt to manage stateful sets (databases) the same way as stateless deployments
+- Do not forget to define resource requests and limits for every pod to prevent cluster
+  instability
 doc_anchors:
-  - url: "https://kubernetes.io/docs/tasks/configure-pod-container/translate-compose-kubernetes/"
-    verified: "2026-04-11"
-  - url: "https://docs.docker.com/compose/compose-file/deploy/"
-    verified: "2026-04-11"
+- url: https://kubernetes.io/docs/tasks/configure-pod-container/translate-compose-kubernetes/
+  verified: '2026-04-11'
+- url: https://docs.docker.com/compose/compose-file/deploy/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

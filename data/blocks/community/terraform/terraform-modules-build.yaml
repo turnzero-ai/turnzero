@@ -27,3 +27,4 @@ doc_anchors:
 - url: https://developer.hashicorp.com/terraform/language/modules/develop
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

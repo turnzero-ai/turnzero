@@ -1,33 +1,51 @@
-slug: "docker-compose-production-build"
-version: "1.0.0"
+slug: docker-compose-production-build
+version: 1.0.0
 domain: docker
 intent: build
-last_verified: "2026-04-11"
-tags: [docker, docker-compose, production, deployment, security]
+last_verified: '2026-04-11'
+tags:
+- docker
+- docker-compose
+- production
+- deployment
+- security
 context_weight: 650
-provides: [docker-config]
-conflicts_with_tags: [docker-config]
-conflicts_with: ["docker-compose-dev-build"]
+provides:
+- docker-config
+conflicts_with_tags:
+- docker-config
+conflicts_with:
+- docker-compose-dev-build
 requires: []
-
 constraints:
-  - "Use named volumes for persistent data (databases, uploads) — bind mounts are for dev only and depend on host paths"
-  - "Set memory and CPU limits on every service: mem_limit, cpus — without limits a misbehaving container can starve others"
-  - "Define healthcheck on services that other services depend on: depends_on with condition: service_healthy"
-  - "Pass secrets via environment variables referencing a .env file or Docker secrets — never hardcode credentials in docker-compose.yml"
-  - "Use multi-stage Dockerfiles: build stage installs deps and compiles, runtime stage copies only artifacts — keeps images small"
-  - "Pin image versions explicitly (postgres:16.2-alpine not postgres:latest) — latest will silently break on upstream updates"
-  - "Set restart: unless-stopped on long-running services so they recover after host reboots"
-
+- Use named volumes for persistent data (databases, uploads) — bind mounts are for
+  dev only and depend on host paths
+- 'Set memory and CPU limits on every service: mem_limit, cpus — without limits a
+  misbehaving container can starve others'
+- 'Define healthcheck on services that other services depend on: depends_on with condition:
+  service_healthy'
+- Pass secrets via environment variables referencing a .env file or Docker secrets
+  — never hardcode credentials in docker-compose.yml
+- 'Use multi-stage Dockerfiles: build stage installs deps and compiles, runtime stage
+  copies only artifacts — keeps images small'
+- Pin image versions explicitly (postgres:16.2-alpine not postgres:latest) — latest
+  will silently break on upstream updates
+- 'Set restart: unless-stopped on long-running services so they recover after host
+  reboots'
 anti_patterns:
-  - "Do not use privileged: true unless absolutely required — it gives the container root access to the host kernel"
-  - "Do not mount the Docker socket (/var/run/docker.sock) into containers in production — it is equivalent to root host access"
-  - "Do not put .env files with real secrets in version control — add .env to .gitignore, commit .env.example with placeholder values"
-  - "Do not use host network mode in production (network_mode: host) — it bypasses container network isolation"
-  - "Do not expose database ports to 0.0.0.0 in production (e.g. '5432:5432') — use internal Docker networks and expose only the app port"
-
+- 'Do not use privileged: true unless absolutely required — it gives the container
+  root access to the host kernel'
+- Do not mount the Docker socket (/var/run/docker.sock) into containers in production
+  — it is equivalent to root host access
+- Do not put .env files with real secrets in version control — add .env to .gitignore,
+  commit .env.example with placeholder values
+- 'Do not use host network mode in production (network_mode: host) — it bypasses container
+  network isolation'
+- Do not expose database ports to 0.0.0.0 in production (e.g. '5432:5432') — use internal
+  Docker networks and expose only the app port
 doc_anchors:
-  - url: "https://docs.docker.com/compose/compose-file/05-services/#healthcheck"
-    verified: "2026-04-11"
-  - url: "https://docs.docker.com/compose/use-secrets/"
-    verified: "2026-04-11"
+- url: https://docs.docker.com/compose/compose-file/05-services/#healthcheck
+  verified: '2026-04-11'
+- url: https://docs.docker.com/compose/use-secrets/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

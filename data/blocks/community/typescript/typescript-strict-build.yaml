@@ -1,32 +1,45 @@
-slug: "typescript-strict-build"
-version: "1.0.0"
+slug: typescript-strict-build
+version: 1.0.0
 domain: typescript
 intent: build
-last_verified: "2026-04-11"
-tags: [typescript, strict, types, tsconfig]
+last_verified: '2026-04-11'
+tags:
+- typescript
+- strict
+- types
+- tsconfig
 context_weight: 600
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Enable strict: true in tsconfig.json — this enables strictNullChecks, noImplicitAny, strictFunctionTypes, and others as a group"
-  - "Use unknown instead of any for values of unknown type — unknown requires a type guard before use, any does not"
-  - "Use the satisfies operator to validate a value against a type without widening it: const config = { ... } satisfies Config"
-  - "Prefer type aliases over interfaces for union types and mapped types — use interface only for object shapes that will be extended or implemented"
-  - "Use const assertions (as const) for literal values that should not be widened: const STATUS = ['active', 'inactive'] as const"
-  - "Discriminated unions over optional properties: { kind: 'success'; data: T } | { kind: 'error'; message: string } not { data?: T; message?: string }"
-
+- 'Enable strict: true in tsconfig.json — this enables strictNullChecks, noImplicitAny,
+  strictFunctionTypes, and others as a group'
+- Use unknown instead of any for values of unknown type — unknown requires a type
+  guard before use, any does not
+- 'Use the satisfies operator to validate a value against a type without widening
+  it: const config = { ... } satisfies Config'
+- Prefer type aliases over interfaces for union types and mapped types — use interface
+  only for object shapes that will be extended or implemented
+- 'Use const assertions (as const) for literal values that should not be widened:
+  const STATUS = [''active'', ''inactive''] as const'
+- 'Discriminated unions over optional properties: { kind: ''success''; data: T } |
+  { kind: ''error''; message: string } not { data?: T; message?: string }'
 anti_patterns:
-  - "Do not use @ts-ignore — use @ts-expect-error with a comment explaining why, or fix the underlying type issue"
-  - "Do not assert with 'as Type' to silence type errors — this removes type safety; use type guards or proper narrowing instead"
-  - "Do not use Function, Object, or {} as types — they accept nearly anything; use specific signatures or Record<string, unknown>"
-  - "Do not use enum — use as const object or union of string literals; TypeScript enums have surprising runtime behavior and are not idiomatic"
-  - "Do not spread unknown objects without narrowing: { ...obj } where obj is unknown or any erases all type information"
-
+- Do not use @ts-ignore — use @ts-expect-error with a comment explaining why, or fix
+  the underlying type issue
+- Do not assert with 'as Type' to silence type errors — this removes type safety;
+  use type guards or proper narrowing instead
+- Do not use Function, Object, or {} as types — they accept nearly anything; use specific
+  signatures or Record<string, unknown>
+- Do not use enum — use as const object or union of string literals; TypeScript enums
+  have surprising runtime behavior and are not idiomatic
+- 'Do not spread unknown objects without narrowing: { ...obj } where obj is unknown
+  or any erases all type information'
 doc_anchors:
-  - url: "https://www.typescriptlang.org/tsconfig#strict"
-    verified: "2026-04-11"
-  - url: "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
-    verified: "2026-04-11"
+- url: https://www.typescriptlang.org/tsconfig#strict
+  verified: '2026-04-11'
+- url: https://www.typescriptlang.org/docs/handbook/2/narrowing.html
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

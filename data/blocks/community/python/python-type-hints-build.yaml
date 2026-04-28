@@ -29,3 +29,4 @@ doc_anchors:
 - url: https://mypy.readthedocs.io/en/stable/
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

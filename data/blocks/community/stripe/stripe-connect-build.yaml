@@ -1,29 +1,41 @@
-slug: "stripe-connect-build"
-version: "1.0.0"
+slug: stripe-connect-build
+version: 1.0.0
 domain: stripe
 intent: build
-last_verified: "2026-04-11"
-tags: [stripe, connect, marketplace, payments, build]
+last_verified: '2026-04-11'
+tags:
+- stripe
+- connect
+- marketplace
+- payments
+- build
 context_weight: 950
-provides: [payment-marketplace]
+provides:
+- payment-marketplace
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["stripe-checkout-build"]
-
+requires:
+- stripe-checkout-build
 constraints:
-  - "Use Stripe Connect for multi-party payments (marketplaces, platforms)"
-  - "Decide on an account type: Standard (seller-owned), Express (platform-managed UX), or Custom (full white-label)"
-  - "Implement 'Direct Charges' for simple marketplace flows where the seller is the merchant of record"
-  - "Use 'Destination Charges' if the platform needs to handle the checkout but the funds flow to the seller"
-  - "Handle onboarding via the Stripe-hosted onboarding flow to simplify identity verification (KYC)"
-
+- Use Stripe Connect for multi-party payments (marketplaces, platforms)
+- 'Decide on an account type: Standard (seller-owned), Express (platform-managed UX),
+  or Custom (full white-label)'
+- Implement 'Direct Charges' for simple marketplace flows where the seller is the
+  merchant of record
+- Use 'Destination Charges' if the platform needs to handle the checkout but the funds
+  flow to the seller
+- Handle onboarding via the Stripe-hosted onboarding flow to simplify identity verification
+  (KYC)
 anti_patterns:
-  - "Do not attempt to collect sensitive seller information yourself — let Stripe handle KYC/AML compliance"
-  - "Do not ignore the 'account.updated' webhook — it's critical for knowing when a seller is ready to receive payments"
-  - "Do not manually calculate application fees if you can use Stripe's automatic fee collection"
-
+- Do not attempt to collect sensitive seller information yourself — let Stripe handle
+  KYC/AML compliance
+- Do not ignore the 'account.updated' webhook — it's critical for knowing when a seller
+  is ready to receive payments
+- Do not manually calculate application fees if you can use Stripe's automatic fee
+  collection
 doc_anchors:
-  - url: "https://stripe.com/docs/connect"
-    verified: "2026-04-11"
-  - url: "https://stripe.com/docs/connect/onboarding"
-    verified: "2026-04-11"
+- url: https://stripe.com/docs/connect
+  verified: '2026-04-11'
+- url: https://stripe.com/docs/connect/onboarding
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

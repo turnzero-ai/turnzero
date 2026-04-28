@@ -29,3 +29,4 @@ doc_anchors:
 - url: https://supabase.com/docs/guides/realtime
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

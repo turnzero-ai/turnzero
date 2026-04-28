@@ -26,3 +26,4 @@ anti_patterns:
 - Do not skip rate limiting on API key endpoints — credential stuffing hits APIs too
 doc_anchors: []
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

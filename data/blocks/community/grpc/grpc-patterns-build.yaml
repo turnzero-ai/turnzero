@@ -34,3 +34,4 @@ doc_anchors:
 - url: https://protobuf.dev/programming-guides/dos-donts/
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

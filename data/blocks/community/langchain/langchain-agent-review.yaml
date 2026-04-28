@@ -1,29 +1,42 @@
-slug: "langchain-agent-review"
-version: "1.0.0"
+slug: langchain-agent-review
+version: 1.0.0
 domain: langchain
 intent: review
-last_verified: "2026-04-11"
-tags: [langchain, agents, review, tools, llm]
+last_verified: '2026-04-11'
+tags:
+- langchain
+- agents
+- review
+- tools
+- llm
 context_weight: 850
-provides: [llm-agents]
+provides:
+- llm-agents
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["langchain-lcel-build"]
-
+requires:
+- langchain-lcel-build
 constraints:
-  - "Review tool descriptions: the LLM uses these to decide which tool to call — they must be clear and distinct"
-  - "Ensure all agent tools have proper input schemas (Pydantic models) for better validation and type safety"
-  - "Check for infinite loops: implement a max_iterations or max_execution_time limit for the agent"
-  - "Verify that the agent has access to necessary context (memory) to make informed decisions"
-  - "Monitor agent traces using LangSmith or similar tools to debug complex reasoning paths"
-
+- 'Review tool descriptions: the LLM uses these to decide which tool to call — they
+  must be clear and distinct'
+- Ensure all agent tools have proper input schemas (Pydantic models) for better validation
+  and type safety
+- 'Check for infinite loops: implement a max_iterations or max_execution_time limit
+  for the agent'
+- Verify that the agent has access to necessary context (memory) to make informed
+  decisions
+- Monitor agent traces using LangSmith or similar tools to debug complex reasoning
+  paths
 anti_patterns:
-  - "Do not give an agent too many tools at once — it increases hallucination risk and token cost"
-  - "Do not trust agent output for critical operations without a 'human-in-the-loop' verification step"
-  - "Do not use agents for deterministic logic that could be solved with a simple script or chain"
-
+- Do not give an agent too many tools at once — it increases hallucination risk and
+  token cost
+- Do not trust agent output for critical operations without a 'human-in-the-loop'
+  verification step
+- Do not use agents for deterministic logic that could be solved with a simple script
+  or chain
 doc_anchors:
-  - url: "https://python.langchain.com/docs/modules/agents/"
-    verified: "2026-04-11"
-  - url: "https://python.langchain.com/docs/modules/agents/how_to/custom_agent"
-    verified: "2026-04-11"
+- url: https://python.langchain.com/docs/modules/agents/
+  verified: '2026-04-11'
+- url: https://python.langchain.com/docs/modules/agents/how_to/custom_agent
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

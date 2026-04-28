@@ -26,3 +26,4 @@ anti_patterns:
 - Do not skip replay detection — rotation without detection gives false security
 doc_anchors: []
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

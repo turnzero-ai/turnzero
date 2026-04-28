@@ -31,3 +31,4 @@ doc_anchors:
 - url: https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

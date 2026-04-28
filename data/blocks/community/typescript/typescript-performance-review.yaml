@@ -1,29 +1,34 @@
-slug: "typescript-performance-review"
-version: "1.0.0"
+slug: typescript-performance-review
+version: 1.0.0
 domain: typescript
 intent: review
-last_verified: "2026-04-11"
-tags: [typescript, performance, review, typing]
+last_verified: '2026-04-11'
+tags:
+- typescript
+- performance
+- review
+- typing
 context_weight: 750
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Review recursive type definitions for deep nesting — use interfaces over types for better compiler performance"
-  - "Avoid excessive use of conditional types in hot paths — they increase compilation time"
-  - "Ensure that discriminated unions are used for complex state instead of multiple boolean flags"
-  - "Check for unnecessary 'any' or 'unknown' casts that bypass type safety during review"
-  - "Prefer const enums or union types for literal values to reduce runtime overhead"
-
+- Review recursive type definitions for deep nesting — use interfaces over types for
+  better compiler performance
+- Avoid excessive use of conditional types in hot paths — they increase compilation
+  time
+- Ensure that discriminated unions are used for complex state instead of multiple
+  boolean flags
+- Check for unnecessary 'any' or 'unknown' casts that bypass type safety during review
+- Prefer const enums or union types for literal values to reduce runtime overhead
 anti_patterns:
-  - "Do not use type assertions (as T) when a type guard (is T) would be more robust"
-  - "Do not use the 'any' type to silence the compiler — fix the underlying type definition"
-  - "Do not leave unused generic parameters in functions or classes"
-
+- Do not use type assertions (as T) when a type guard (is T) would be more robust
+- Do not use the 'any' type to silence the compiler — fix the underlying type definition
+- Do not leave unused generic parameters in functions or classes
 doc_anchors:
-  - url: "https://www.typescriptlang.org/docs/handbook/2/narrowing.html"
-    verified: "2026-04-11"
-  - url: "https://github.com/microsoft/TypeScript/wiki/Performance"
-    verified: "2026-04-11"
+- url: https://www.typescriptlang.org/docs/handbook/2/narrowing.html
+  verified: '2026-04-11'
+- url: https://github.com/microsoft/TypeScript/wiki/Performance
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

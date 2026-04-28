@@ -1,27 +1,37 @@
-slug: "docker-multistage-build"
-version: "1.0.0"
+slug: docker-multistage-build
+version: 1.0.0
 domain: docker
 intent: build
-last_verified: "2026-04-11"
-tags: [docker, build, optimization, multistage, images]
+last_verified: '2026-04-11'
+tags:
+- docker
+- build
+- optimization
+- multistage
+- images
 context_weight: 800
-provides: [docker-build-patterns]
+provides:
+- docker-build-patterns
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Use multi-stage builds to separate build-time dependencies from the runtime image"
-  - "Name your build stages (FROM ... AS builder) for better readability and targeted re-use"
-  - "Copy only the necessary artifacts from the builder stage to the final stage using COPY --from=builder"
-  - "Use a minimal base image for the final stage (e.g., alpine or distroless) to reduce attack surface and size"
-  - "Order Dockerfile instructions to maximize layer caching: copy package files first, install deps, then copy source code"
-
+- Use multi-stage builds to separate build-time dependencies from the runtime image
+- Name your build stages (FROM ... AS builder) for better readability and targeted
+  re-use
+- Copy only the necessary artifacts from the builder stage to the final stage using
+  COPY --from=builder
+- Use a minimal base image for the final stage (e.g., alpine or distroless) to reduce
+  attack surface and size
+- 'Order Dockerfile instructions to maximize layer caching: copy package files first,
+  install deps, then copy source code'
 anti_patterns:
-  - "Do not include compilers, build tools, or source code in the final production image"
-  - "Do not use a single stage for both building and running if the build requires large toolchains"
-  - "Do not forget to clean up package manager caches (e.g., rm -rf /var/lib/apt/lists/*) if not using multi-stage"
-
+- Do not include compilers, build tools, or source code in the final production image
+- Do not use a single stage for both building and running if the build requires large
+  toolchains
+- Do not forget to clean up package manager caches (e.g., rm -rf /var/lib/apt/lists/*)
+  if not using multi-stage
 doc_anchors:
-  - url: "https://docs.docker.com/build/building/multi-stage/"
-    verified: "2026-04-11"
+- url: https://docs.docker.com/build/building/multi-stage/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

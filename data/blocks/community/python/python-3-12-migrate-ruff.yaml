@@ -16,3 +16,4 @@ anti_patterns:
 - Do not add "from None" to typer.Exit calls
 - Do not move Argument calls into function bodies
 doc_anchors: []
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

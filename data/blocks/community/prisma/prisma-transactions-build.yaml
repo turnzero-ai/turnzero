@@ -29,3 +29,4 @@ doc_anchors:
 - url: https://www.prisma.io/docs/orm/prisma-client/queries/transactions
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

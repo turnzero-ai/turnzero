@@ -28,3 +28,4 @@ anti_patterns:
 - Do not expose internal database IDs directly — use opaque global IDs
 doc_anchors: []
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

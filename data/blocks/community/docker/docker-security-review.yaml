@@ -1,29 +1,41 @@
-slug: "docker-security-review"
-version: "1.0.0"
+slug: docker-security-review
+version: 1.0.0
 domain: docker
 intent: review
-last_verified: "2026-04-11"
-tags: [docker, security, review, production, containers]
+last_verified: '2026-04-11'
+tags:
+- docker
+- security
+- review
+- production
+- containers
 context_weight: 850
-provides: [docker-security]
+provides:
+- docker-security
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["docker-compose-production-build"]
-
+requires:
+- docker-compose-production-build
 constraints:
-  - "Run containers as a non-root user (USER directive in Dockerfile) to mitigate container breakout risks"
-  - "Scan images for vulnerabilities using tools like Snyk or Docker Scout before deployment"
-  - "Use read-only filesystems where possible (read_only: true in docker-compose) for application code"
-  - "Limit container capabilities (cap_drop: [ALL]) and only add back what is strictly necessary"
-  - "Ensure base images are from trusted sources and use specific digest hashes for maximum supply chain security"
-
+- Run containers as a non-root user (USER directive in Dockerfile) to mitigate container
+  breakout risks
+- Scan images for vulnerabilities using tools like Snyk or Docker Scout before deployment
+- 'Use read-only filesystems where possible (read_only: true in docker-compose) for
+  application code'
+- 'Limit container capabilities (cap_drop: [ALL]) and only add back what is strictly
+  necessary'
+- Ensure base images are from trusted sources and use specific digest hashes for maximum
+  supply chain security
 anti_patterns:
-  - "Do not use the --privileged flag in production — it grants the container full access to the host"
-  - "Do not store sensitive data in the image layers — even deleted files can be recovered from image history"
-  - "Do not allow containers to access the host's network namespace (network_mode: host) unless necessary"
-
+- Do not use the --privileged flag in production — it grants the container full access
+  to the host
+- Do not store sensitive data in the image layers — even deleted files can be recovered
+  from image history
+- 'Do not allow containers to access the host''s network namespace (network_mode:
+  host) unless necessary'
 doc_anchors:
-  - url: "https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"
-    verified: "2026-04-11"
-  - url: "https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html"
-    verified: "2026-04-11"
+- url: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/
+  verified: '2026-04-11'
+- url: https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

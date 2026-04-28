@@ -1,35 +1,50 @@
-slug: "fastapi-async-build"
-version: "1.0.0"
+slug: fastapi-async-build
+version: 1.0.0
 domain: fastapi
 intent: build
-last_verified: "2026-04-11"
-tags: [fastapi, python, async, pydantic, apiRouter]
+last_verified: '2026-04-11'
+tags:
+- fastapi
+- python
+- async
+- pydantic
+- apiRouter
 context_weight: 800
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Use async def for all endpoint functions — sync def blocks the event loop under load"
-  - "Use APIRouter and include_router() to organize routes — never attach routes directly to the FastAPI() app instance in production code"
-  - "Use Pydantic v2 syntax: model_config = ConfigDict(...) not inner class Config, and model_validate() not parse_obj()"
-  - "Define separate request and response models — do not reuse the same Pydantic model for both input validation and output serialization"
-  - "Use Depends() for all shared logic (auth, DB sessions, config) — do not instantiate dependencies inside route functions"
-  - "Database sessions must be yielded from a dependency with try/finally or a context manager — never create a session inside a route directly"
-  - "Set response_model on every endpoint that returns data — this enforces output validation and controls what gets serialized"
-
+- Use async def for all endpoint functions — sync def blocks the event loop under
+  load
+- Use APIRouter and include_router() to organize routes — never attach routes directly
+  to the FastAPI() app instance in production code
+- 'Use Pydantic v2 syntax: model_config = ConfigDict(...) not inner class Config,
+  and model_validate() not parse_obj()'
+- Define separate request and response models — do not reuse the same Pydantic model
+  for both input validation and output serialization
+- Use Depends() for all shared logic (auth, DB sessions, config) — do not instantiate
+  dependencies inside route functions
+- Database sessions must be yielded from a dependency with try/finally or a context
+  manager — never create a session inside a route directly
+- Set response_model on every endpoint that returns data — this enforces output validation
+  and controls what gets serialized
 anti_patterns:
-  - "Do not use @app.get / @app.post directly for application routes — reserve the FastAPI() instance for app-level config only"
-  - "Do not raise HTTPException inside Pydantic validators — raise ValueError; FastAPI converts it to a 422 automatically"
-  - "Do not use mutable default arguments in Pydantic models (e.g. field: list = []) — use Field(default_factory=list)"
-  - "Do not block the event loop with synchronous I/O (requests.get, time.sleep) inside async def — use httpx.AsyncClient and asyncio.sleep"
-  - "Do not ignore the lifespan parameter for startup/shutdown logic — @app.on_event('startup') is deprecated in FastAPI 0.93+"
-
+- Do not use @app.get / @app.post directly for application routes — reserve the FastAPI()
+  instance for app-level config only
+- Do not raise HTTPException inside Pydantic validators — raise ValueError; FastAPI
+  converts it to a 422 automatically
+- 'Do not use mutable default arguments in Pydantic models (e.g. field: list = [])
+  — use Field(default_factory=list)'
+- Do not block the event loop with synchronous I/O (requests.get, time.sleep) inside
+  async def — use httpx.AsyncClient and asyncio.sleep
+- Do not ignore the lifespan parameter for startup/shutdown logic — @app.on_event('startup')
+  is deprecated in FastAPI 0.93+
 doc_anchors:
-  - url: "https://fastapi.tiangolo.com/tutorial/bigger-applications/"
-    verified: "2026-04-11"
-  - url: "https://docs.pydantic.dev/latest/migration/"
-    verified: "2026-04-11"
-  - url: "https://fastapi.tiangolo.com/advanced/events/"
-    verified: "2026-04-11"
+- url: https://fastapi.tiangolo.com/tutorial/bigger-applications/
+  verified: '2026-04-11'
+- url: https://docs.pydantic.dev/latest/migration/
+  verified: '2026-04-11'
+- url: https://fastapi.tiangolo.com/advanced/events/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

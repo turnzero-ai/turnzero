@@ -32,3 +32,4 @@ doc_anchors:
 - url: https://docs.spring.io/spring-data/jpa/reference/
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

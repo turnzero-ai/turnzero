@@ -31,3 +31,4 @@ doc_anchors:
 - url: https://supabase.com/docs/guides/database/postgres/row-level-security
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

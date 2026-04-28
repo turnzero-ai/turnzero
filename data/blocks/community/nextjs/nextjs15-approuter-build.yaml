@@ -1,36 +1,52 @@
-# ID is SHA-256 of content — computed at index build time, placeholder used during authoring
-slug: "nextjs15-approuter-build"
-version: "1.0.0"
+slug: nextjs15-approuter-build
+version: 1.0.0
 domain: nextjs
 intent: build
-last_verified: "2026-04-11"
-tags: [nextjs, nextjs15, approuter, react, typescript]
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- nextjs15
+- approuter
+- react
+- typescript
 context_weight: 900
-provides: ["nextjs-app"]
-conflicts_with_tags: ["nextjs-app"]
+provides:
+- nextjs-app
+conflicts_with_tags:
+- nextjs-app
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Use App Router (app/) not Pages Router (pages/) — all new projects default to App Router in Next.js 13+"
-  - "Components are Server Components by default — add 'use client' only when you need useState, useEffect, browser APIs, or event listeners"
-  - "Server Actions must be marked with 'use server' at the function level when colocated with Client Components, or at the file level in a dedicated actions file"
-  - "fetch() in Next.js 15 is no longer cached by default — add { cache: 'force-cache' } explicitly if you want caching, or use React's cache() for request deduplication"
-  - "Use next/image with explicit width and height props, or the fill prop with a positioned parent — bare <img> tags will warn"
-  - "Route handlers live at app/api/.../route.ts, not pages/api/ — export named functions GET, POST, PUT, DELETE"
-  - "Metadata is exported as a const or generateMetadata function from page.tsx, not via next/head"
-
+- Use App Router (app/) not Pages Router (pages/) — all new projects default to App
+  Router in Next.js 13+
+- Components are Server Components by default — add 'use client' only when you need
+  useState, useEffect, browser APIs, or event listeners
+- Server Actions must be marked with 'use server' at the function level when colocated
+  with Client Components, or at the file level in a dedicated actions file
+- 'fetch() in Next.js 15 is no longer cached by default — add { cache: ''force-cache''
+  } explicitly if you want caching, or use React''s cache() for request deduplication'
+- Use next/image with explicit width and height props, or the fill prop with a positioned
+  parent — bare <img> tags will warn
+- Route handlers live at app/api/.../route.ts, not pages/api/ — export named functions
+  GET, POST, PUT, DELETE
+- Metadata is exported as a const or generateMetadata function from page.tsx, not
+  via next/head
 anti_patterns:
-  - "Do not use getServerSideProps or getStaticProps — these are Pages Router APIs and do not exist in App Router"
-  - "Do not put data fetching logic in Client Components when it can live in a Server Component — every 'use client' boundary adds client bundle weight"
-  - "Do not nest 'use client' components inside other 'use client' components unnecessarily — the directive is a boundary, not a component type"
-  - "Do not use next/router — use next/navigation (useRouter, usePathname, useSearchParams) in App Router"
-  - "Do not call cookies() or headers() in Client Components — these are server-only APIs"
-
+- Do not use getServerSideProps or getStaticProps — these are Pages Router APIs and
+  do not exist in App Router
+- Do not put data fetching logic in Client Components when it can live in a Server
+  Component — every 'use client' boundary adds client bundle weight
+- Do not nest 'use client' components inside other 'use client' components unnecessarily
+  — the directive is a boundary, not a component type
+- Do not use next/router — use next/navigation (useRouter, usePathname, useSearchParams)
+  in App Router
+- Do not call cookies() or headers() in Client Components — these are server-only
+  APIs
 doc_anchors:
-  - url: "https://nextjs.org/docs/app/building-your-application/rendering/server-components"
-    verified: "2026-04-11"
-  - url: "https://nextjs.org/docs/app/api-reference/functions/fetch"
-    verified: "2026-04-11"
-  - url: "https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations"
-    verified: "2026-04-11"
+- url: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  verified: '2026-04-11'
+- url: https://nextjs.org/docs/app/api-reference/functions/fetch
+  verified: '2026-04-11'
+- url: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

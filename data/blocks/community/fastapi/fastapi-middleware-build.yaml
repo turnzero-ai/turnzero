@@ -1,29 +1,41 @@
-slug: "fastapi-middleware-build"
-version: "1.0.0"
+slug: fastapi-middleware-build
+version: 1.0.0
 domain: fastapi
 intent: build
-last_verified: "2026-04-11"
-tags: [fastapi, middleware, python, request-lifecycle, build]
+last_verified: '2026-04-11'
+tags:
+- fastapi
+- middleware
+- python
+- request-lifecycle
+- build
 context_weight: 750
-provides: [fastapi-middleware]
+provides:
+- fastapi-middleware
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["fastapi-async-build"]
-
+requires:
+- fastapi-async-build
 constraints:
-  - "Use the @app.middleware('http') decorator for simple request/call_next/response logic"
-  - "Inherit from starlette.middleware.base.BaseHTTPMiddleware for more complex class-based middleware"
-  - "Handle exceptions within the middleware to prevent internal details from leaking to the response"
-  - "Add CORS middleware using fastapi.middleware.cors.CORSMiddleware with specific origins, not '*'"
-  - "Ensure middleware order is correct: they wrap the app like an onion, the first added is the last to execute on the request path"
-
+- Use the @app.middleware('http') decorator for simple request/call_next/response
+  logic
+- Inherit from starlette.middleware.base.BaseHTTPMiddleware for more complex class-based
+  middleware
+- Handle exceptions within the middleware to prevent internal details from leaking
+  to the response
+- Add CORS middleware using fastapi.middleware.cors.CORSMiddleware with specific origins,
+  not '*'
+- 'Ensure middleware order is correct: they wrap the app like an onion, the first
+  added is the last to execute on the request path'
 anti_patterns:
-  - "Do not perform heavy blocking I/O in middleware — it blocks the event loop for every request"
-  - "Do not modify the request body in middleware without careful consideration of stream consumption"
-  - "Do not use middleware for logic that is better handled by FastAPI Dependencies (DI)"
-
+- Do not perform heavy blocking I/O in middleware — it blocks the event loop for every
+  request
+- Do not modify the request body in middleware without careful consideration of stream
+  consumption
+- Do not use middleware for logic that is better handled by FastAPI Dependencies (DI)
 doc_anchors:
-  - url: "https://fastapi.tiangolo.com/tutorial/middleware/"
-    verified: "2026-04-11"
-  - url: "https://www.starlette.io/middleware/"
-    verified: "2026-04-11"
+- url: https://fastapi.tiangolo.com/tutorial/middleware/
+  verified: '2026-04-11'
+- url: https://www.starlette.io/middleware/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

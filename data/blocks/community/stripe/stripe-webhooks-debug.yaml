@@ -1,29 +1,37 @@
-slug: "stripe-webhooks-debug"
-version: "1.0.0"
+slug: stripe-webhooks-debug
+version: 1.0.0
 domain: stripe
 intent: debug
-last_verified: "2026-04-11"
-tags: [stripe, webhooks, debugging, payments, api]
+last_verified: '2026-04-11'
+tags:
+- stripe
+- webhooks
+- debugging
+- payments
+- api
 context_weight: 750
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["stripe-checkout-build"]
-
+requires:
+- stripe-checkout-build
 constraints:
-  - "Use the Stripe CLI (stripe listen --forward-to) to test webhooks locally"
-  - "Check the 'Webhook Endpoints' tab in the Stripe Dashboard for delivery logs and failure reasons"
-  - "Verify the 'Stripe-Signature' header using the webhook secret (whsec_...) specifically for your environment"
-  - "Handle events idempotently — Stripe may send the same event more than once"
-  - "Return a 200 OK response immediately after receiving the event to prevent Stripe from retrying"
-
+- Use the Stripe CLI (stripe listen --forward-to) to test webhooks locally
+- Check the 'Webhook Endpoints' tab in the Stripe Dashboard for delivery logs and
+  failure reasons
+- Verify the 'Stripe-Signature' header using the webhook secret (whsec_...) specifically
+  for your environment
+- Handle events idempotently — Stripe may send the same event more than once
+- Return a 200 OK response immediately after receiving the event to prevent Stripe
+  from retrying
 anti_patterns:
-  - "Do not perform long-running tasks directly in the webhook handler — use a background worker"
-  - "Do not use the secret API key (sk_...) in place of the webhook signing secret (whsec_...)"
-  - "Do not ignore events you don't recognize — simply log them and return 200 OK"
-
+- Do not perform long-running tasks directly in the webhook handler — use a background
+  worker
+- Do not use the secret API key (sk_...) in place of the webhook signing secret (whsec_...)
+- Do not ignore events you don't recognize — simply log them and return 200 OK
 doc_anchors:
-  - url: "https://stripe.com/docs/webhooks/test"
-    verified: "2026-04-11"
-  - url: "https://stripe.com/docs/webhooks/best-practices"
-    verified: "2026-04-11"
+- url: https://stripe.com/docs/webhooks/test
+  verified: '2026-04-11'
+- url: https://stripe.com/docs/webhooks/best-practices
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

@@ -1,29 +1,39 @@
-slug: "nextjs-seo-review"
-version: "1.0.0"
+slug: nextjs-seo-review
+version: 1.0.0
 domain: nextjs
 intent: review
-last_verified: "2026-04-11"
-tags: [nextjs, seo, review, web, app-router]
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- seo
+- review
+- web
+- app-router
 context_weight: 750
-provides: [seo-config]
+provides:
+- seo-config
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["nextjs15-approuter-build"]
-
+requires:
+- nextjs15-approuter-build
 constraints:
-  - "Export a static metadata object or a dynamic generateMetadata function from every page.tsx"
-  - "Use the Metadata API for canonical URLs, openGraph tags, and twitter cards"
-  - "Generate a sitemap.xml dynamically using the sitemap.ts file convention"
-  - "Use robots.ts to manage search engine crawling instructions"
-  - "Ensure every image has a descriptive 'alt' tag and uses next/image for optimized delivery"
-
+- Export a static metadata object or a dynamic generateMetadata function from every
+  page.tsx
+- Use the Metadata API for canonical URLs, openGraph tags, and twitter cards
+- Generate a sitemap.xml dynamically using the sitemap.ts file convention
+- Use robots.ts to manage search engine crawling instructions
+- Ensure every image has a descriptive 'alt' tag and uses next/image for optimized
+  delivery
 anti_patterns:
-  - "Do not use next/head in the App Router — it is legacy and metadata is now handled by the API"
-  - "Do not forget to set a title template in the root layout.tsx to ensure consistent branding"
-  - "Do not use Client Components for SEO-critical content if it can be rendered on the server"
-
+- Do not use next/head in the App Router — it is legacy and metadata is now handled
+  by the API
+- Do not forget to set a title template in the root layout.tsx to ensure consistent
+  branding
+- Do not use Client Components for SEO-critical content if it can be rendered on the
+  server
 doc_anchors:
-  - url: "https://nextjs.org/docs/app/building-your-application/optimizing/metadata"
-    verified: "2026-04-11"
-  - url: "https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap"
-    verified: "2026-04-11"
+- url: https://nextjs.org/docs/app/building-your-application/optimizing/metadata
+  verified: '2026-04-11'
+- url: https://nextjs.org/docs/app/api-reference/file-conventions/metadata/sitemap
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

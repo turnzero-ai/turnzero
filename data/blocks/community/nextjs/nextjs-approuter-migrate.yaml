@@ -1,28 +1,37 @@
-slug: "nextjs-approuter-migrate"
-version: "1.0.0"
+slug: nextjs-approuter-migrate
+version: 1.0.0
 domain: nextjs
 intent: migrate
-last_verified: "2026-04-11"
-tags: [nextjs, approuter, migration, react]
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- approuter
+- migration
+- react
 context_weight: 850
-provides: ["nextjs-migration"]
-conflicts_with_tags: ["nextjs-migration"]
+provides:
+- nextjs-migration
+conflicts_with_tags:
+- nextjs-migration
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Move pages/ to app/ directory structure — files like pages/index.tsx become app/page.tsx"
-  - "Replace _app.tsx and _document.tsx with a single app/layout.tsx root layout"
-  - "Convert getServerSideProps and getStaticProps to direct async data fetching inside Server Components"
-  - "Use next/navigation (useRouter, usePathname) instead of next/router in all components moved to app/"
-  - "Add 'use client' directive to the top of files that use state, effects, or browser APIs during migration"
-
+- Move pages/ to app/ directory structure — files like pages/index.tsx become app/page.tsx
+- Replace _app.tsx and _document.tsx with a single app/layout.tsx root layout
+- Convert getServerSideProps and getStaticProps to direct async data fetching inside
+  Server Components
+- Use next/navigation (useRouter, usePathname) instead of next/router in all components
+  moved to app/
+- Add 'use client' directive to the top of files that use state, effects, or browser
+  APIs during migration
 anti_patterns:
-  - "Do not keep next/router imports in components within the app/ directory — it will throw a context error"
-  - "Do not use <a> tags for internal navigation — replace with next/link <Link> components"
-  - "Do not attempt to use the 'use client' directive in layout.tsx if you need to fetch data on the server"
-  - "Do not use the Head component from next/head — use the Metadata API instead"
-
+- Do not keep next/router imports in components within the app/ directory — it will
+  throw a context error
+- Do not use <a> tags for internal navigation — replace with next/link <Link> components
+- Do not attempt to use the 'use client' directive in layout.tsx if you need to fetch
+  data on the server
+- Do not use the Head component from next/head — use the Metadata API instead
 doc_anchors:
-  - url: "https://nextjs.org/docs/app/building-your-application/upgrading/app-router-migration-guide"
-    verified: "2026-04-11"
+- url: https://nextjs.org/docs/app/building-your-application/upgrading/app-router-migration-guide
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

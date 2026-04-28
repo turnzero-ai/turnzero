@@ -1,29 +1,36 @@
-slug: "react-native-performance-review"
-version: "1.0.0"
+slug: react-native-performance-review
+version: 1.0.0
 domain: react-native
 intent: review
-last_verified: "2026-04-11"
-tags: [react-native, performance, review, mobile]
+last_verified: '2026-04-11'
+tags:
+- react-native
+- performance
+- review
+- mobile
 context_weight: 900
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Use FlashList from @shopify/flash-list instead of FlatList for significantly better list performance"
-  - "Memoize expensive computations with useMemo and callbacks with useCallback, especially when passed to sub-components"
-  - "Avoid anonymous functions in renderItem of lists — they trigger re-renders on every pass"
-  - "Use the Hermes engine for faster app start-up and reduced memory usage"
-  - "Profile the app using the React Native Debugger or Flipper to identify JS thread bottlenecks"
-
+- Use FlashList from @shopify/flash-list instead of FlatList for significantly better
+  list performance
+- Memoize expensive computations with useMemo and callbacks with useCallback, especially
+  when passed to sub-components
+- Avoid anonymous functions in renderItem of lists — they trigger re-renders on every
+  pass
+- Use the Hermes engine for faster app start-up and reduced memory usage
+- Profile the app using the React Native Debugger or Flipper to identify JS thread
+  bottlenecks
 anti_patterns:
-  - "Do not perform heavy logic or data transformation on the JS thread during animations"
-  - "Do not use large, unoptimized images — use react-native-fast-image for better caching and performance"
-  - "Do not nest ScrollViews in the same direction — it breaks scroll physics and performance"
-
+- Do not perform heavy logic or data transformation on the JS thread during animations
+- Do not use large, unoptimized images — use react-native-fast-image for better caching
+  and performance
+- Do not nest ScrollViews in the same direction — it breaks scroll physics and performance
 doc_anchors:
-  - url: "https://reactnative.dev/docs/performance"
-    verified: "2026-04-11"
-  - url: "https://shopify.github.io/flash-list/docs/performance"
-    verified: "2026-04-11"
+- url: https://reactnative.dev/docs/performance
+  verified: '2026-04-11'
+- url: https://shopify.github.io/flash-list/docs/performance
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

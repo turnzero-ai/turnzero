@@ -32,3 +32,4 @@ doc_anchors:
 - url: https://nextjs.org/docs/app/building-your-application/configuring/environment-variables
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

@@ -27,3 +27,4 @@ anti_patterns:
 - Do not silently ignore exp, nbf, or iss validation failures
 doc_anchors: []
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

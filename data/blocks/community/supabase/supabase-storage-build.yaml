@@ -1,29 +1,41 @@
-slug: "supabase-storage-build"
-version: "1.0.0"
+slug: supabase-storage-build
+version: 1.0.0
 domain: supabase
 intent: build
-last_verified: "2026-04-11"
-tags: [supabase, storage, files, build, upload]
+last_verified: '2026-04-11'
+tags:
+- supabase
+- storage
+- files
+- build
+- upload
 context_weight: 750
-provides: [file-storage]
-conflicts_with_tags: [file-storage]
+provides:
+- file-storage
+conflicts_with_tags:
+- file-storage
 conflicts_with: []
-requires: ["supabase-auth-pkce-build"]
-
+requires:
+- supabase-auth-pkce-build
 constraints:
-  - "Use the Supabase Storage API for uploading and managing files (images, documents, etc.)"
-  - "Define RLS policies for storage buckets to control who can upload, download, or delete files"
-  - "Use signed URLs (createSignedUrl) for private files that should not be publicly accessible"
-  - "Implement client-side image transformation using the 'transform' option if using Supabase's image optimization service"
-  - "Organize files into folders within buckets for better management and policy scoping"
-
+- Use the Supabase Storage API for uploading and managing files (images, documents,
+  etc.)
+- Define RLS policies for storage buckets to control who can upload, download, or
+  delete files
+- Use signed URLs (createSignedUrl) for private files that should not be publicly
+  accessible
+- Implement client-side image transformation using the 'transform' option if using
+  Supabase's image optimization service
+- Organize files into folders within buckets for better management and policy scoping
 anti_patterns:
-  - "Do not make all buckets public unless the data is truly non-sensitive"
-  - "Do not store files directly in database bytea columns if they are larger than a few kilobytes"
-  - "Do not forget to handle file size and type validation on the client side before uploading"
-
+- Do not make all buckets public unless the data is truly non-sensitive
+- Do not store files directly in database bytea columns if they are larger than a
+  few kilobytes
+- Do not forget to handle file size and type validation on the client side before
+  uploading
 doc_anchors:
-  - url: "https://supabase.com/docs/guides/storage"
-    verified: "2026-04-11"
-  - url: "https://supabase.com/docs/guides/storage/security/access-control"
-    verified: "2026-04-11"
+- url: https://supabase.com/docs/guides/storage
+  verified: '2026-04-11'
+- url: https://supabase.com/docs/guides/storage/security/access-control
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

@@ -1,29 +1,40 @@
-slug: "rest-api-rate-limiting-build"
-version: "1.0.0"
+slug: rest-api-rate-limiting-build
+version: 1.0.0
 domain: rest-api
 intent: build
-last_verified: "2026-04-11"
-tags: [api, rest, performance, security, build, ratelimit]
+last_verified: '2026-04-11'
+tags:
+- api
+- rest
+- performance
+- security
+- build
+- ratelimit
 context_weight: 800
-provides: [api-rate-limiting]
+provides:
+- api-rate-limiting
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["rest-api-design-review"]
-
+requires:
+- rest-api-design-review
 constraints:
-  - "Implement rate limiting using a standard algorithm like Token Bucket or Leaky Bucket"
-  - "Use a fast, external store (e.g., Redis) to track request counts across multiple application instances"
-  - "Return a 429 Too Many Requests status code when the limit is exceeded"
-  - "Include informative HTTP headers: X-RateLimit-Limit, X-RateLimit-Remaining, and X-RateLimit-Reset"
-  - "Allow for different rate limits based on authentication level (e.g., higher limits for paid users)"
-
+- Implement rate limiting using a standard algorithm like Token Bucket or Leaky Bucket
+- Use a fast, external store (e.g., Redis) to track request counts across multiple
+  application instances
+- Return a 429 Too Many Requests status code when the limit is exceeded
+- 'Include informative HTTP headers: X-RateLimit-Limit, X-RateLimit-Remaining, and
+  X-RateLimit-Reset'
+- Allow for different rate limits based on authentication level (e.g., higher limits
+  for paid users)
 anti_patterns:
-  - "Do not store rate limit state in-memory if you have more than one application server"
-  - "Do not apply the same rate limit to all endpoints — expensive endpoints (e.g., search) should have stricter limits"
-  - "Do not forget to handle 'burst' traffic gracefully to avoid blocking legitimate users during short peaks"
-
+- Do not store rate limit state in-memory if you have more than one application server
+- Do not apply the same rate limit to all endpoints — expensive endpoints (e.g., search)
+  should have stricter limits
+- Do not forget to handle 'burst' traffic gracefully to avoid blocking legitimate
+  users during short peaks
 doc_anchors:
-  - url: "https://stripe.com/blog/rate-limiters"
-    verified: "2026-04-11"
-  - url: "https://redis.io/commands/incr/#pattern-rate-limiter"
-    verified: "2026-04-11"
+- url: https://stripe.com/blog/rate-limiters
+  verified: '2026-04-11'
+- url: https://redis.io/commands/incr/#pattern-rate-limiter
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

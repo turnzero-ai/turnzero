@@ -27,3 +27,4 @@ doc_anchors:
 - url: https://www.rfc-editor.org/rfc/rfc8594
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

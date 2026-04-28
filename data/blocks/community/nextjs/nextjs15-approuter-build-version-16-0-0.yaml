@@ -20,3 +20,4 @@ anti_patterns:
 doc_anchors:
 - url: https://nextjs.org/docs/api-routes/advanced/app-router
   verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

@@ -1,27 +1,41 @@
 slug: flask-app-factory-build
-version: "1.0.0"
+version: 1.0.0
 domain: flask
 intent: build
-title: "Flask application factory — build"
-description: "Prevents circular imports and single-instance pitfalls in Flask apps"
-last_verified: "2026-04-18"
-tags: [flask, application-factory, blueprints, extensions, circular-imports]
+title: Flask application factory — build
+description: Prevents circular imports and single-instance pitfalls in Flask apps
+last_verified: '2026-04-18'
+tags:
+- flask
+- application-factory
+- blueprints
+- extensions
+- circular-imports
 context_weight: 850
 conflicts_with: []
 requires: []
 constraints:
-  - "Use the application factory pattern: def create_app(config=None): app = Flask(__name__); return app — never create app at module level in large projects"
-  - "Register extensions (db, migrate, login_manager) with init_app(app) inside the factory, not at import time"
-  - "Organise routes into Blueprints registered inside create_app(); never import blueprints at the top of the factory file"
-  - "Use current_app proxy inside request context; never import app directly from the factory module — causes circular imports"
-  - "Store configuration in a class hierarchy (DevelopmentConfig, ProductionConfig) and load with app.config.from_object()"
+- 'Use the application factory pattern: def create_app(config=None): app = Flask(__name__);
+  return app — never create app at module level in large projects'
+- Register extensions (db, migrate, login_manager) with init_app(app) inside the factory,
+  not at import time
+- Organise routes into Blueprints registered inside create_app(); never import blueprints
+  at the top of the factory file
+- Use current_app proxy inside request context; never import app directly from the
+  factory module — causes circular imports
+- Store configuration in a class hierarchy (DevelopmentConfig, ProductionConfig) and
+  load with app.config.from_object()
 anti_patterns:
-  - "Do not create the Flask app at module level (app = Flask(__name__) at the top of __init__.py) in multi-module apps — makes testing and multiple instances impossible"
-  - "Do not call db = SQLAlchemy(app) at import time — use db = SQLAlchemy() then db.init_app(app) in the factory"
-  - "Do not import the app object from another module inside a blueprint — use current_app from flask instead"
-  - "Do not put all routes in a single file — use Blueprints to split by feature domain"
+- Do not create the Flask app at module level (app = Flask(__name__) at the top of
+  __init__.py) in multi-module apps — makes testing and multiple instances impossible
+- Do not call db = SQLAlchemy(app) at import time — use db = SQLAlchemy() then db.init_app(app)
+  in the factory
+- Do not import the app object from another module inside a blueprint — use current_app
+  from flask instead
+- Do not put all routes in a single file — use Blueprints to split by feature domain
 doc_anchors:
-  - url: "https://flask.palletsprojects.com/en/3.0.x/patterns/appfactories/"
-    verified: "2026-04-18"
-  - url: "https://flask.palletsprojects.com/en/3.0.x/blueprints/"
-    verified: "2026-04-18"
+- url: https://flask.palletsprojects.com/en/3.0.x/patterns/appfactories/
+  verified: '2026-04-18'
+- url: https://flask.palletsprojects.com/en/3.0.x/blueprints/
+  verified: '2026-04-18'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

@@ -14,3 +14,4 @@ anti_patterns:
 - Do not pass err=True to console.print()
 - Create a dedicated stderr console
 doc_anchors: []
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

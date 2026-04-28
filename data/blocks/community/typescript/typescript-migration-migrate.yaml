@@ -1,27 +1,38 @@
-slug: "typescript-migration-migrate"
-version: "1.0.0"
+slug: typescript-migration-migrate
+version: 1.0.0
 domain: typescript
 intent: migrate
-last_verified: "2026-04-11"
-tags: [typescript, migration, javascript, refactor]
+last_verified: '2026-04-11'
+tags:
+- typescript
+- migration
+- javascript
+- refactor
 context_weight: 800
-provides: [typescript-config]
+provides:
+- typescript-config
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["typescript-strict-build"]
-
+requires:
+- typescript-strict-build
 constraints:
-  - "Enable 'allowJs' and 'checkJs' in tsconfig.json to allow a gradual migration from JavaScript to TypeScript"
-  - "Use 'JSDoc' type annotations in JS files to get type checking benefits before fully converting to .ts"
-  - "Start by converting leaf modules (files with no dependencies) and work your way up the dependency tree"
-  - "Use 'unknown' instead of 'any' during the initial migration to maintain a higher level of safety"
-  - "Install type definitions (@types/...) for all third-party libraries used in the project"
-
+- Enable 'allowJs' and 'checkJs' in tsconfig.json to allow a gradual migration from
+  JavaScript to TypeScript
+- Use 'JSDoc' type annotations in JS files to get type checking benefits before fully
+  converting to .ts
+- Start by converting leaf modules (files with no dependencies) and work your way
+  up the dependency tree
+- Use 'unknown' instead of 'any' during the initial migration to maintain a higher
+  level of safety
+- Install type definitions (@types/...) for all third-party libraries used in the
+  project
 anti_patterns:
-  - "Do not try to convert the entire codebase at once — a phased approach is much safer and less disruptive"
-  - "Do not use 'any' as a shortcut to suppress migration errors — fix the types or use @ts-ignore with a TODO"
-  - "Do not forget to update your build pipeline and tests to support TypeScript files"
-
+- Do not try to convert the entire codebase at once — a phased approach is much safer
+  and less disruptive
+- Do not use 'any' as a shortcut to suppress migration errors — fix the types or use
+  @ts-ignore with a TODO
+- Do not forget to update your build pipeline and tests to support TypeScript files
 doc_anchors:
-  - url: "https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html"
-    verified: "2026-04-11"
+- url: https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

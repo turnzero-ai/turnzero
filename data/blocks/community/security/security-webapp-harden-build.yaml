@@ -1,34 +1,49 @@
-slug: "security-webapp-harden-build"
-version: "1.0.0"
+slug: security-webapp-harden-build
+version: 1.0.0
 domain: security
 intent: build
-last_verified: "2026-04-18"
-tags: [security, owasp, web, xss, csrf, headers, injection]
+last_verified: '2026-04-18'
+tags:
+- security
+- owasp
+- web
+- xss
+- csrf
+- headers
+- injection
 context_weight: 1100
-provides: [webapp-security-baseline]
+provides:
+- webapp-security-baseline
 conflicts_with: []
 conflicts_with_tags: []
 requires: []
-
 constraints:
-  - "Set security headers on every response: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security"
-  - "Validate and sanitise all user input server-side — client-side validation is UX, not security"
-  - "Use parameterised queries / prepared statements for all database access — never interpolate user input into SQL"
-  - "Implement CSRF protection for any state-changing request (SameSite cookie attribute + CSRF token)"
-  - "Enforce HTTPS everywhere; redirect HTTP → HTTPS at the load balancer or application layer"
-  - "Rate-limit authentication endpoints to mitigate credential stuffing and brute force"
-
+- 'Set security headers on every response: Content-Security-Policy, X-Frame-Options,
+  X-Content-Type-Options, Strict-Transport-Security'
+- Validate and sanitise all user input server-side — client-side validation is UX,
+  not security
+- Use parameterised queries / prepared statements for all database access — never
+  interpolate user input into SQL
+- Implement CSRF protection for any state-changing request (SameSite cookie attribute
+  + CSRF token)
+- Enforce HTTPS everywhere; redirect HTTP → HTTPS at the load balancer or application
+  layer
+- Rate-limit authentication endpoints to mitigate credential stuffing and brute force
 anti_patterns:
-  - "Do not trust the Origin or Referer header alone for CSRF protection — they can be spoofed"
-  - "Do not use innerHTML or dangerouslySetInnerHTML with unsanitised user content — classic XSS vector"
-  - "Do not expose stack traces or internal error details to the client in production"
-  - "Do not rely on security through obscurity (hidden endpoints, non-standard ports) as a primary control"
-  - "Do not disable CORS restrictions globally (Access-Control-Allow-Origin: *) for authenticated endpoints"
-
+- Do not trust the Origin or Referer header alone for CSRF protection — they can be
+  spoofed
+- Do not use innerHTML or dangerouslySetInnerHTML with unsanitised user content —
+  classic XSS vector
+- Do not expose stack traces or internal error details to the client in production
+- Do not rely on security through obscurity (hidden endpoints, non-standard ports)
+  as a primary control
+- 'Do not disable CORS restrictions globally (Access-Control-Allow-Origin: *) for
+  authenticated endpoints'
 doc_anchors:
-  - url: "https://owasp.org/www-project-top-ten/"
-    verified: "2026-04-18"
-  - url: "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html"
-    verified: "2026-04-18"
-  - url: "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html"
-    verified: "2026-04-18"
+- url: https://owasp.org/www-project-top-ten/
+  verified: '2026-04-18'
+- url: https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html
+  verified: '2026-04-18'
+- url: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+  verified: '2026-04-18'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

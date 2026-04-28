@@ -27,3 +27,4 @@ doc_anchors:
 - url: https://guides.rubyonrails.org/active_record_querying.html#eager-loading-associations
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

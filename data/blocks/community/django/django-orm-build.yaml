@@ -1,27 +1,43 @@
 slug: django-orm-build
-version: "1.0.0"
+version: 1.0.0
 domain: django
 intent: build
-title: "Django ORM — build"
-description: "Prevents N+1 queries and QuerySet misuse with Django ORM"
-last_verified: "2026-04-18"
-tags: [django, orm, queryset, database, performance, n+1]
+title: Django ORM — build
+description: Prevents N+1 queries and QuerySet misuse with Django ORM
+last_verified: '2026-04-18'
+tags:
+- django
+- orm
+- queryset
+- database
+- performance
+- n+1
 context_weight: 950
 conflicts_with: []
 requires: []
 constraints:
-  - "Use select_related() for ForeignKey/OneToOne traversal and prefetch_related() for ManyToMany/reverse FK — never traverse relations in a loop"
-  - "QuerySets are lazy; they execute only when iterated, sliced, or passed to len()/list() — assign to a variable and reuse rather than re-querying"
-  - "Use values() or values_list() when you only need specific fields; use defer()/only() to exclude large fields like TextField"
-  - "Filter at the database level with .filter()/.exclude() — never load all rows and filter in Python"
-  - "Use .exists() instead of .count() or bool(queryset) to check for the presence of rows"
+- Use select_related() for ForeignKey/OneToOne traversal and prefetch_related() for
+  ManyToMany/reverse FK — never traverse relations in a loop
+- QuerySets are lazy; they execute only when iterated, sliced, or passed to len()/list()
+  — assign to a variable and reuse rather than re-querying
+- Use values() or values_list() when you only need specific fields; use defer()/only()
+  to exclude large fields like TextField
+- Filter at the database level with .filter()/.exclude() — never load all rows and
+  filter in Python
+- Use .exists() instead of .count() or bool(queryset) to check for the presence of
+  rows
 anti_patterns:
-  - "Do not call queryset methods (filter, order_by) inside a for loop over another queryset — each call hits the database"
-  - "Do not use len(queryset) to check if results exist — use .exists() which generates SELECT 1"
-  - "Do not access related objects in templates or serializers without prefetching — Django Debug Toolbar will show dozens of identical queries"
-  - "Do not use .all() on a manager inside a view without .select_related/.prefetch_related when the template traverses relations"
+- Do not call queryset methods (filter, order_by) inside a for loop over another queryset
+  — each call hits the database
+- Do not use len(queryset) to check if results exist — use .exists() which generates
+  SELECT 1
+- Do not access related objects in templates or serializers without prefetching —
+  Django Debug Toolbar will show dozens of identical queries
+- Do not use .all() on a manager inside a view without .select_related/.prefetch_related
+  when the template traverses relations
 doc_anchors:
-  - url: "https://docs.djangoproject.com/en/5.0/ref/models/querysets/"
-    verified: "2026-04-18"
-  - url: "https://docs.djangoproject.com/en/5.0/topics/db/optimization/"
-    verified: "2026-04-18"
+- url: https://docs.djangoproject.com/en/5.0/ref/models/querysets/
+  verified: '2026-04-18'
+- url: https://docs.djangoproject.com/en/5.0/topics/db/optimization/
+  verified: '2026-04-18'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

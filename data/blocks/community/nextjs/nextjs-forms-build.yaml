@@ -1,29 +1,41 @@
-slug: "nextjs-forms-build"
-version: "1.0.0"
+slug: nextjs-forms-build
+version: 1.0.0
 domain: nextjs
 intent: build
-last_verified: "2026-04-11"
-tags: [nextjs, forms, server-actions, react, build]
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- forms
+- server-actions
+- react
+- build
 context_weight: 800
-provides: [nextjs-forms]
+provides:
+- nextjs-forms
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["nextjs15-approuter-build"]
-
+requires:
+- nextjs15-approuter-build
 constraints:
-  - "Use Server Actions (action={myAction}) for form submissions instead of manual API route calls"
-  - "Use useActionState (formerly useFormState) to handle server-side validation errors and pending states"
-  - "Implement client-side validation using zod and a library like react-hook-form for a better UX"
-  - "Always validate data on the server side using zod within the Server Action — client validation is for UX only"
-  - "Use useFormStatus to access the pending state of a form from within child components"
-
+- Use Server Actions (action={myAction}) for form submissions instead of manual API
+  route calls
+- Use useActionState (formerly useFormState) to handle server-side validation errors
+  and pending states
+- Implement client-side validation using zod and a library like react-hook-form for
+  a better UX
+- Always validate data on the server side using zod within the Server Action — client
+  validation is for UX only
+- Use useFormStatus to access the pending state of a form from within child components
 anti_patterns:
-  - "Do not use preventDefault() on forms when using Server Actions — let Next.js handle the submission"
-  - "Do not store sensitive data in hidden form fields — use encrypted cookies or session state"
-  - "Do not forget to handle the case where JS is disabled (Progressive Enhancement) by ensuring the action works without 'use client'"
-
+- Do not use preventDefault() on forms when using Server Actions — let Next.js handle
+  the submission
+- Do not store sensitive data in hidden form fields — use encrypted cookies or session
+  state
+- Do not forget to handle the case where JS is disabled (Progressive Enhancement)
+  by ensuring the action works without 'use client'
 doc_anchors:
-  - url: "https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations#forms"
-    verified: "2026-04-11"
-  - url: "https://react.dev/reference/react/useActionState"
-    verified: "2026-04-11"
+- url: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations#forms
+  verified: '2026-04-11'
+- url: https://react.dev/reference/react/useActionState
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

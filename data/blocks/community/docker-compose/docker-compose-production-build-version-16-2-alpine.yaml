@@ -22,3 +22,4 @@ anti_patterns:
 doc_anchors:
 - url: https://docs.docker.com/compose/reference/config-files/
   verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

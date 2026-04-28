@@ -1,30 +1,43 @@
-slug: "security-supply-chain-review"
-version: "1.0.0"
+slug: security-supply-chain-review
+version: 1.0.0
 domain: security
 intent: review
-last_verified: "2026-04-18"
-tags: [security, dependencies, supply-chain, sbom, audit, cve]
+last_verified: '2026-04-18'
+tags:
+- security
+- dependencies
+- supply-chain
+- sbom
+- audit
+- cve
 context_weight: 850
-provides: [supply-chain-security]
+provides:
+- supply-chain-security
 conflicts_with: []
 conflicts_with_tags: []
 requires: []
-
 constraints:
-  - "Pin dependency versions exactly in production lock files (package-lock.json, poetry.lock, cargo.lock) — never use unbounded ranges in prod"
-  - "Run a vulnerability scan (npm audit, pip-audit, trivy, snyk) as part of CI on every pull request"
-  - "Review the transitive dependency tree, not just direct dependencies — most supply chain attacks target transitive deps"
-  - "Verify package integrity with checksums or signed releases where available (npm provenance, PyPI attestations)"
-  - "Remove unused dependencies — every dependency is an attack surface"
-
+- Pin dependency versions exactly in production lock files (package-lock.json, poetry.lock,
+  cargo.lock) — never use unbounded ranges in prod
+- Run a vulnerability scan (npm audit, pip-audit, trivy, snyk) as part of CI on every
+  pull request
+- Review the transitive dependency tree, not just direct dependencies — most supply
+  chain attacks target transitive deps
+- Verify package integrity with checksums or signed releases where available (npm
+  provenance, PyPI attestations)
+- Remove unused dependencies — every dependency is an attack surface
 anti_patterns:
-  - "Do not install packages from untrusted or recently-published sources without reviewing source code first"
-  - "Do not ignore high/critical CVEs with a blanket suppress — triage and track them with a deadline"
-  - "Do not run npm install or pip install in CI without a lock file — it may silently pull a patched (or compromised) newer version"
-  - "Do not grant CI/CD pipelines write access to production infra unless strictly required — scope to the minimum needed for the job"
-
+- Do not install packages from untrusted or recently-published sources without reviewing
+  source code first
+- Do not ignore high/critical CVEs with a blanket suppress — triage and track them
+  with a deadline
+- Do not run npm install or pip install in CI without a lock file — it may silently
+  pull a patched (or compromised) newer version
+- Do not grant CI/CD pipelines write access to production infra unless strictly required
+  — scope to the minimum needed for the job
 doc_anchors:
-  - url: "https://owasp.org/www-project-dependency-check/"
-    verified: "2026-04-18"
-  - url: "https://slsa.dev/spec/v1.0/threats"
-    verified: "2026-04-18"
+- url: https://owasp.org/www-project-dependency-check/
+  verified: '2026-04-18'
+- url: https://slsa.dev/spec/v1.0/threats
+  verified: '2026-04-18'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

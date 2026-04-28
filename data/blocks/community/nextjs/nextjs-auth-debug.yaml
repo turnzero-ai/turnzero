@@ -1,29 +1,40 @@
-slug: "nextjs-auth-debug"
-version: "1.0.0"
+slug: nextjs-auth-debug
+version: 1.0.0
 domain: nextjs
 intent: debug
-last_verified: "2026-04-11"
-tags: [nextjs, auth, debugging, middleware, cookies]
+last_verified: '2026-04-11'
+tags:
+- nextjs
+- auth
+- debugging
+- middleware
+- cookies
 context_weight: 850
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["nextjs15-approuter-build"]
-
+requires:
+- nextjs15-approuter-build
 constraints:
-  - "Check the middleware.ts file: ensure the matcher includes all protected routes and excludes public assets"
-  - "Verify cookie configuration: 'httpOnly', 'secure', and 'sameSite' attributes must be set correctly for cross-environment consistency"
-  - "Debug 'session not found' errors by inspecting the request headers in the terminal (server-side) vs browser (client-side)"
-  - "Ensure that the auth secret/provider environment variables are correctly loaded in the production environment"
-  - "Use the Auth.js (formerly NextAuth) debug mode (debug: true) to log detailed internal lifecycle events"
-
+- 'Check the middleware.ts file: ensure the matcher includes all protected routes
+  and excludes public assets'
+- 'Verify cookie configuration: ''httpOnly'', ''secure'', and ''sameSite'' attributes
+  must be set correctly for cross-environment consistency'
+- Debug 'session not found' errors by inspecting the request headers in the terminal
+  (server-side) vs browser (client-side)
+- Ensure that the auth secret/provider environment variables are correctly loaded
+  in the production environment
+- 'Use the Auth.js (formerly NextAuth) debug mode (debug: true) to log detailed internal
+  lifecycle events'
 anti_patterns:
-  - "Do not rely on client-side checks (useSession) for security — always verify the session on the server (getServerSession or middleware)"
-  - "Do not share auth secrets across different environments (dev/staging/prod)"
-  - "Do not forget to handle token expiration and refresh logic gracefully to avoid unexpected logouts"
-
+- Do not rely on client-side checks (useSession) for security — always verify the
+  session on the server (getServerSession or middleware)
+- Do not share auth secrets across different environments (dev/staging/prod)
+- Do not forget to handle token expiration and refresh logic gracefully to avoid unexpected
+  logouts
 doc_anchors:
-  - url: "https://authjs.dev/guides/debugging"
-    verified: "2026-04-11"
-  - url: "https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher"
-    verified: "2026-04-11"
+- url: https://authjs.dev/guides/debugging
+  verified: '2026-04-11'
+- url: https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

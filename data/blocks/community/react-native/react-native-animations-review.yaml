@@ -1,27 +1,37 @@
-slug: "react-native-animations-review"
-version: "1.0.0"
+slug: react-native-animations-review
+version: 1.0.0
 domain: react-native
 intent: review
-last_verified: "2026-04-11"
-tags: [react-native, animations, reanimated, performance, review]
+last_verified: '2026-04-11'
+tags:
+- react-native
+- animations
+- reanimated
+- performance
+- review
 context_weight: 850
-provides: [mobile-animations]
+provides:
+- mobile-animations
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["react-native-performance-review"]
-
+requires:
+- react-native-performance-review
 constraints:
-  - "Use react-native-reanimated for complex animations to ensure they run on the UI thread at 60fps"
-  - "Prefer declarative animations over imperative ones for better performance and predictability"
-  - "Review the use of useSharedValue and useAnimatedStyle: they are the core primitives for Reanimated v2+"
-  - "Use Layout Transitions (Layout.springify()) for smooth entry/exit and layout change animations"
-  - "Ensure that heavy JS calculations are not performed inside animation frame callbacks"
-
+- Use react-native-reanimated for complex animations to ensure they run on the UI
+  thread at 60fps
+- Prefer declarative animations over imperative ones for better performance and predictability
+- 'Review the use of useSharedValue and useAnimatedStyle: they are the core primitives
+  for Reanimated v2+'
+- Use Layout Transitions (Layout.springify()) for smooth entry/exit and layout change
+  animations
+- Ensure that heavy JS calculations are not performed inside animation frame callbacks
 anti_patterns:
-  - "Do not use the standard Animated API for high-performance gestures or complex transitions"
-  - "Do not trigger React state updates (setState) inside an animation loop if a shared value can be used instead"
-  - "Do not forget to use the 'worklet' directive for functions that must run on the UI thread"
-
+- Do not use the standard Animated API for high-performance gestures or complex transitions
+- Do not trigger React state updates (setState) inside an animation loop if a shared
+  value can be used instead
+- Do not forget to use the 'worklet' directive for functions that must run on the
+  UI thread
 doc_anchors:
-  - url: "https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started"
-    verified: "2026-04-11"
+- url: https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

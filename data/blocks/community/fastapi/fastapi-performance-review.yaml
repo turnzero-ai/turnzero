@@ -1,29 +1,38 @@
-slug: "fastapi-performance-review"
-version: "1.0.0"
+slug: fastapi-performance-review
+version: 1.0.0
 domain: fastapi
 intent: review
-last_verified: "2026-04-11"
-tags: [fastapi, performance, review, python, optimization]
+last_verified: '2026-04-11'
+tags:
+- fastapi
+- performance
+- review
+- python
+- optimization
 context_weight: 800
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["fastapi-async-build"]
-
+requires:
+- fastapi-async-build
 constraints:
-  - "Use ujson or orjson for faster JSON serialization/deserialization by configuring the response_class"
-  - "Avoid performing heavy CPU-bound tasks in the main event loop — offload to a thread pool or task queue (Celery/RQ)"
-  - "Implement connection pooling for database and external service clients"
-  - "Use Response models with 'exclude_unset' or 'exclude_defaults' to reduce payload size"
-  - "Configure Gunicorn/Uvicorn with the appropriate number of workers (typically 2 * cores + 1)"
-
+- Use ujson or orjson for faster JSON serialization/deserialization by configuring
+  the response_class
+- Avoid performing heavy CPU-bound tasks in the main event loop — offload to a thread
+  pool or task queue (Celery/RQ)
+- Implement connection pooling for database and external service clients
+- Use Response models with 'exclude_unset' or 'exclude_defaults' to reduce payload
+  size
+- Configure Gunicorn/Uvicorn with the appropriate number of workers (typically 2 *
+  cores + 1)
 anti_patterns:
-  - "Do not call blocking sync code inside 'async def' functions — use 'def' or run_in_executor"
-  - "Do not perform redundant database queries — use select_inload or joinedload for relationships"
-  - "Do not keep the application in debug/reload mode in production"
-
+- Do not call blocking sync code inside 'async def' functions — use 'def' or run_in_executor
+- Do not perform redundant database queries — use select_inload or joinedload for
+  relationships
+- Do not keep the application in debug/reload mode in production
 doc_anchors:
-  - url: "https://fastapi.tiangolo.com/advanced/custom-response/#orjsonresponse"
-    verified: "2026-04-11"
-  - url: "https://www.uvicorn.org/deployment/"
-    verified: "2026-04-11"
+- url: https://fastapi.tiangolo.com/advanced/custom-response/#orjsonresponse
+  verified: '2026-04-11'
+- url: https://www.uvicorn.org/deployment/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

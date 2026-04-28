@@ -1,29 +1,38 @@
-slug: "typescript-react-review"
-version: "1.0.0"
+slug: typescript-react-review
+version: 1.0.0
 domain: typescript
 intent: review
-last_verified: "2026-04-11"
-tags: [typescript, react, review, types, frontend]
+last_verified: '2026-04-11'
+tags:
+- typescript
+- react
+- review
+- types
+- frontend
 context_weight: 850
-provides: [react-ts-config]
+provides:
+- react-ts-config
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["typescript-strict-build"]
-
+requires:
+- typescript-strict-build
 constraints:
-  - "Use React.FC or function components with explicit prop types — avoid 'any' for component props"
-  - "Use the 'ComponentPropsWithoutRef' or 'ComponentPropsWithRef' helper for wrapping native HTML elements"
-  - "Prefer interfaces for prop definitions to allow for declaration merging and better IDE hints"
-  - "Ensure event handlers are typed correctly (e.g., React.ChangeEvent<HTMLInputElement>)"
-  - "Use discriminated unions for complex state in useReducer or Redux-like structures"
-
+- Use React.FC or function components with explicit prop types — avoid 'any' for component
+  props
+- Use the 'ComponentPropsWithoutRef' or 'ComponentPropsWithRef' helper for wrapping
+  native HTML elements
+- Prefer interfaces for prop definitions to allow for declaration merging and better
+  IDE hints
+- Ensure event handlers are typed correctly (e.g., React.ChangeEvent<HTMLInputElement>)
+- Use discriminated unions for complex state in useReducer or Redux-like structures
 anti_patterns:
-  - "Do not use 'React.Node' for props that should be 'React.ReactElement' or vice-versa"
-  - "Do not use 'Function' or 'Object' as types — be specific about the structure"
-  - "Do not cast types using 'as' during component rendering — handle the null/undefined cases explicitly"
-
+- Do not use 'React.Node' for props that should be 'React.ReactElement' or vice-versa
+- Do not use 'Function' or 'Object' as types — be specific about the structure
+- Do not cast types using 'as' during component rendering — handle the null/undefined
+  cases explicitly
 doc_anchors:
-  - url: "https://react-typescript-cheatsheet.netlify.app/"
-    verified: "2026-04-11"
-  - url: "https://www.typescriptlang.org/docs/handbook/react.html"
-    verified: "2026-04-11"
+- url: https://react-typescript-cheatsheet.netlify.app/
+  verified: '2026-04-11'
+- url: https://www.typescriptlang.org/docs/handbook/react.html
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

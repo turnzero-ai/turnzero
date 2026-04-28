@@ -1,33 +1,48 @@
-slug: "langchain-lcel-build"
-version: "1.0.0"
+slug: langchain-lcel-build
+version: 1.0.0
 domain: langchain
 intent: build
-last_verified: "2026-04-11"
-tags: [langchain, lcel, python, llm, chains]
+last_verified: '2026-04-11'
+tags:
+- langchain
+- lcel
+- python
+- llm
+- chains
 context_weight: 700
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
 requires: []
-
 constraints:
-  - "Use LCEL (LangChain Expression Language) with the pipe operator (|) for all new chains — legacy Chain classes (LLMChain, SequentialChain) are deprecated"
-  - "Use ainvoke() / astream() not invoke() / stream() in async contexts — the sync versions block the event loop"
-  - "Pin the exact LangChain version in requirements: langchain==0.x.y and langchain-core==0.x.y — minor versions regularly introduce breaking changes"
-  - "Use RunnablePassthrough to forward inputs unchanged through a chain step: {\"context\": retriever, \"question\": RunnablePassthrough()}"
-  - "Use ChatPromptTemplate.from_messages() not PromptTemplate for chat models — chat models expect a list of (role, content) pairs"
-  - "Specify the model name explicitly in every LLM instantiation: ChatOpenAI(model='gpt-4o') not ChatOpenAI() — defaults change across package versions"
-  - "Use LangSmith tracing in development: set LANGCHAIN_TRACING_V2=true and LANGCHAIN_API_KEY — it shows exactly what's being sent to the model"
-
+- Use LCEL (LangChain Expression Language) with the pipe operator (|) for all new
+  chains — legacy Chain classes (LLMChain, SequentialChain) are deprecated
+- Use ainvoke() / astream() not invoke() / stream() in async contexts — the sync versions
+  block the event loop
+- 'Pin the exact LangChain version in requirements: langchain==0.x.y and langchain-core==0.x.y
+  — minor versions regularly introduce breaking changes'
+- 'Use RunnablePassthrough to forward inputs unchanged through a chain step: {"context":
+  retriever, "question": RunnablePassthrough()}'
+- Use ChatPromptTemplate.from_messages() not PromptTemplate for chat models — chat
+  models expect a list of (role, content) pairs
+- 'Specify the model name explicitly in every LLM instantiation: ChatOpenAI(model=''gpt-4o'')
+  not ChatOpenAI() — defaults change across package versions'
+- 'Use LangSmith tracing in development: set LANGCHAIN_TRACING_V2=true and LANGCHAIN_API_KEY
+  — it shows exactly what''s being sent to the model'
 anti_patterns:
-  - "Do not use LLMChain, SequentialChain, or TransformChain — these are legacy and will be removed; rewrite with LCEL"
-  - "Do not load documents and embed them inside a route handler on every request — build the vector store once at startup or as a separate job"
-  - "Do not use ConversationBufferMemory for production chat history — it grows unboundedly; use ConversationBufferWindowMemory or an external store"
-  - "Do not catch all LangChain exceptions silently — the library raises distinct errors for rate limits, context length, and content policy; handle them separately"
-  - "Do not hardcode the OpenAI API key in source — read from environment variables via os.environ or python-dotenv"
-
+- Do not use LLMChain, SequentialChain, or TransformChain — these are legacy and will
+  be removed; rewrite with LCEL
+- Do not load documents and embed them inside a route handler on every request — build
+  the vector store once at startup or as a separate job
+- Do not use ConversationBufferMemory for production chat history — it grows unboundedly;
+  use ConversationBufferWindowMemory or an external store
+- Do not catch all LangChain exceptions silently — the library raises distinct errors
+  for rate limits, context length, and content policy; handle them separately
+- Do not hardcode the OpenAI API key in source — read from environment variables via
+  os.environ or python-dotenv
 doc_anchors:
-  - url: "https://python.langchain.com/docs/expression_language/"
-    verified: "2026-04-11"
-  - url: "https://python.langchain.com/docs/versions/migrating_chains/"
-    verified: "2026-04-11"
+- url: https://python.langchain.com/docs/expression_language/
+  verified: '2026-04-11'
+- url: https://python.langchain.com/docs/versions/migrating_chains/
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

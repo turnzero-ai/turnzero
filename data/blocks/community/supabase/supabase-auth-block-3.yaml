@@ -16,3 +16,4 @@ anti_patterns:
 - Avoid using the PKCE flow for auth without proper setup
 - Don't use the PKCE flow for auth without proper setup
 doc_anchors: []
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

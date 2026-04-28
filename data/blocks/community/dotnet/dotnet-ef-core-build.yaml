@@ -29,3 +29,4 @@ doc_anchors:
 - url: https://learn.microsoft.com/en-us/ef/core/
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

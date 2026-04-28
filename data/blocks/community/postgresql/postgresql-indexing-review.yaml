@@ -1,29 +1,41 @@
-slug: "postgresql-indexing-review"
-version: "1.0.0"
+slug: postgresql-indexing-review
+version: 1.0.0
 domain: postgresql
 intent: review
-last_verified: "2026-04-11"
-tags: [postgresql, indexing, performance, review, sql]
+last_verified: '2026-04-11'
+tags:
+- postgresql
+- indexing
+- performance
+- review
+- sql
 context_weight: 800
-provides: [db-indexing]
+provides:
+- db-indexing
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["postgresql-patterns-build"]
-
+requires:
+- postgresql-patterns-build
 constraints:
-  - "Review the output of EXPLAIN ANALYZE to identify sequential scans where an index should be used"
-  - "Ensure that foreign key columns are indexed to speed up joins and prevent locking issues"
-  - "Use partial indexes (WHERE clause) for queries that only target a specific subset of data"
-  - "Consider covering indexes (INCLUDE clause) to allow index-only scans for frequently accessed columns"
-  - "Audit unused indexes using pg_stat_user_indexes — they slow down writes and consume disk space"
-
+- Review the output of EXPLAIN ANALYZE to identify sequential scans where an index
+  should be used
+- Ensure that foreign key columns are indexed to speed up joins and prevent locking
+  issues
+- Use partial indexes (WHERE clause) for queries that only target a specific subset
+  of data
+- Consider covering indexes (INCLUDE clause) to allow index-only scans for frequently
+  accessed columns
+- Audit unused indexes using pg_stat_user_indexes — they slow down writes and consume
+  disk space
 anti_patterns:
-  - "Do not over-index: every index adds overhead to INSERT, UPDATE, and DELETE operations"
-  - "Do not index columns with very low cardinality (e.g., boolean flags) unless part of a composite or partial index"
-  - "Do not forget that functional indexes (e.g., on lower(email)) are required if your queries use those functions"
-
+- 'Do not over-index: every index adds overhead to INSERT, UPDATE, and DELETE operations'
+- Do not index columns with very low cardinality (e.g., boolean flags) unless part
+  of a composite or partial index
+- Do not forget that functional indexes (e.g., on lower(email)) are required if your
+  queries use those functions
 doc_anchors:
-  - url: "https://www.postgresql.org/docs/current/indexes.html"
-    verified: "2026-04-11"
-  - url: "https://www.postgresql.org/docs/current/using-explain.html"
-    verified: "2026-04-11"
+- url: https://www.postgresql.org/docs/current/indexes.html
+  verified: '2026-04-11'
+- url: https://www.postgresql.org/docs/current/using-explain.html
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

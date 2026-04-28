@@ -28,3 +28,4 @@ doc_anchors:
 - url: https://nginx.org/en/docs/http/ngx_http_headers_module.html
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

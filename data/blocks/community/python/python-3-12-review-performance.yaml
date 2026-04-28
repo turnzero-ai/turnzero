@@ -14,3 +14,4 @@ anti_patterns:
 - Remove "new" from build signals
 - Remove "issue" from debug signals
 doc_anchors: []
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

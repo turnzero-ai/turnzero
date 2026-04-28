@@ -1,29 +1,39 @@
-slug: "postgresql-migration-migrate"
-version: "1.0.0"
+slug: postgresql-migration-migrate
+version: 1.0.0
 domain: postgresql
 intent: migrate
-last_verified: "2026-04-11"
-tags: [postgresql, database, migration, sql, safety]
+last_verified: '2026-04-11'
+tags:
+- postgresql
+- database
+- migration
+- sql
+- safety
 context_weight: 850
-provides: [db-migration]
+provides:
+- db-migration
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["postgresql-patterns-build"]
-
+requires:
+- postgresql-patterns-build
 constraints:
-  - "Use 'CREATE INDEX CONCURRENTLY' to add indexes without locking the table"
-  - "Set a short 'lock_timeout' before running migrations to prevent blocking application traffic"
-  - "Always add new columns as nullable first, or provide a default value that doesn't require a full table rewrite"
-  - "Use separate migrations for 'adding' vs 'deleting' data to allow for zero-downtime rollbacks"
-  - "Perform heavy data transformations in batches, not in a single migration transaction"
-
+- Use 'CREATE INDEX CONCURRENTLY' to add indexes without locking the table
+- Set a short 'lock_timeout' before running migrations to prevent blocking application
+  traffic
+- Always add new columns as nullable first, or provide a default value that doesn't
+  require a full table rewrite
+- Use separate migrations for 'adding' vs 'deleting' data to allow for zero-downtime
+  rollbacks
+- Perform heavy data transformations in batches, not in a single migration transaction
 anti_patterns:
-  - "Do not rename columns or tables directly in a live system — use the 'Add -> Dual Write -> Remove' pattern"
-  - "Do not use SELECT * in application code, as it breaks when columns are added or removed during migration"
-  - "Do not run migrations that require exclusive locks during peak traffic hours"
-
+- Do not rename columns or tables directly in a live system — use the 'Add -> Dual
+  Write -> Remove' pattern
+- Do not use SELECT * in application code, as it breaks when columns are added or
+  removed during migration
+- Do not run migrations that require exclusive locks during peak traffic hours
 doc_anchors:
-  - url: "https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY"
-    verified: "2026-04-11"
-  - url: "https://github.com/ankane/strong_migrations"
-    verified: "2026-04-11"
+- url: https://www.postgresql.org/docs/current/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY
+  verified: '2026-04-11'
+- url: https://github.com/ankane/strong_migrations
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

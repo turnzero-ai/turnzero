@@ -134,6 +134,11 @@ class Block:
         if self.constraints:
             for c in self.constraints:
                 lines.append(f"- {c}")
+
+        if self.rationale:
+            lines.append("")
+            lines.append("# RATIONALE")
+            lines.append(self.rationale)
         
         if self.anti_patterns:
             lines.append("")
@@ -176,6 +181,12 @@ def load_block(path: Path) -> Block:
     # id is deprecated in favor of slug, but supported for now
     slug = str(raw.get("slug", raw.get("id", path.stem)))
 
+    anti_patterns = [str(a) for a in raw.get("anti_patterns", [])]
+    rationale = raw.get("rationale")
+
+    if anti_patterns and not rationale:
+        raise ValueError(f"Block '{slug}' has anti_patterns but is missing a 'rationale'.")
+
     return Block(
         slug=slug,
         hash=str(raw.get("hash", compute_content_hash(raw))),
@@ -186,7 +197,7 @@ def load_block(path: Path) -> Block:
         tags=[str(t) for t in raw.get("tags", [])],
         context_weight=int(raw.get("context_weight", raw.get("token_budget", 500))),
         constraints=[str(c) for c in raw.get("constraints", [])],
-        anti_patterns=[str(a) for a in raw.get("anti_patterns", [])],
+        anti_patterns=anti_patterns,
         doc_anchors=[
             DocAnchor(url=str(a["url"]), verified=str(a.get("verified", "")))
             for a in raw.get("doc_anchors", [])
@@ -197,7 +208,7 @@ def load_block(path: Path) -> Block:
         requires=[str(r) for r in raw.get("requires", [])],
         confidence=float(raw.get("confidence", 1.0)),
         verification_level=str(raw.get("verification_level", "curated")),
-        rationale=raw.get("rationale"),
+        rationale=rationale,
         archived=bool(raw.get("archived", False)),
     )
 

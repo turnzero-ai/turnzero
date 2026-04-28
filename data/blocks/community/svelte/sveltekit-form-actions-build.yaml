@@ -30,3 +30,4 @@ doc_anchors:
 - url: https://kit.svelte.dev/docs/form-actions
   verified: '2026-04-26'
 archived: false
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'

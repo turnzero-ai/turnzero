@@ -1,29 +1,39 @@
-slug: "supabase-rls-debug"
-version: "1.0.0"
+slug: supabase-rls-debug
+version: 1.0.0
 domain: supabase
 intent: debug
-last_verified: "2026-04-11"
-tags: [supabase, rls, debugging, security, postgresql]
+last_verified: '2026-04-11'
+tags:
+- supabase
+- rls
+- debugging
+- security
+- postgresql
 context_weight: 800
 provides: []
 conflicts_with_tags: []
 conflicts_with: []
-requires: ["supabase-auth-pkce-build"]
-
+requires:
+- supabase-auth-pkce-build
 constraints:
-  - "Use the Supabase Dashboard SQL Editor or 'Explain' to debug why an RLS policy is blocking access"
-  - "Verify that 'auth.uid()' is correctly returning the user ID by checking the JWT session in the client"
-  - "Check if 'Row Level Security' is actually enabled on the table (ALTER TABLE ... ENABLE ROW LEVEL SECURITY)"
-  - "Test policies using the 'Impersonate' feature in the Supabase Dashboard"
-  - "Ensure policies for SELECT, INSERT, UPDATE, and DELETE are all defined or covered by a 'FOR ALL' policy"
-
+- Use the Supabase Dashboard SQL Editor or 'Explain' to debug why an RLS policy is
+  blocking access
+- Verify that 'auth.uid()' is correctly returning the user ID by checking the JWT
+  session in the client
+- Check if 'Row Level Security' is actually enabled on the table (ALTER TABLE ...
+  ENABLE ROW LEVEL SECURITY)
+- Test policies using the 'Impersonate' feature in the Supabase Dashboard
+- Ensure policies for SELECT, INSERT, UPDATE, and DELETE are all defined or covered
+  by a 'FOR ALL' policy
 anti_patterns:
-  - "Do not assume a policy is working without testing it with an unauthenticated or different user"
-  - "Do not use complex joins inside RLS policies — they can drastically slow down every query"
-  - "Do not forget that RLS policies do not apply to the service_role key or table owners"
-
+- Do not assume a policy is working without testing it with an unauthenticated or
+  different user
+- Do not use complex joins inside RLS policies — they can drastically slow down every
+  query
+- Do not forget that RLS policies do not apply to the service_role key or table owners
 doc_anchors:
-  - url: "https://supabase.com/docs/guides/auth/row-level-security"
-    verified: "2026-04-11"
-  - url: "https://supabase.com/docs/guides/database/postgres/row-level-security"
-    verified: "2026-04-11"
+- url: https://supabase.com/docs/guides/auth/row-level-security
+  verified: '2026-04-11'
+- url: https://supabase.com/docs/guides/database/postgres/row-level-security
+  verified: '2026-04-11'
+rationale: 'TODO: Add research-backed rationale for these anti-patterns.'
