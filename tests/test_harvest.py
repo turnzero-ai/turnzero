@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -139,7 +140,8 @@ def test_parse_invalid_yaml_raises() -> None:
 # ---------------------------------------------------------------------------
 
 def test_normalise_fills_defaults() -> None:
-    raw: dict = {"id": "test-build", "stack": "python", "intent": "build"}
+    raw: dict[str, Any] = {
+"id": "test-build", "stack": "python", "intent": "build"}
     result = _normalise(raw)
     assert result["version"] == "1.0.0"
     assert result["conflicts_with"] == []
@@ -151,25 +153,28 @@ def test_normalise_fills_defaults() -> None:
 
 
 def test_normalise_invalid_intent_defaults_to_build() -> None:
-    raw: dict = {"id": "x", "stack": "python", "intent": "nonsense"}
+    raw: dict[str, Any] = {
+"id": "x", "stack": "python", "intent": "nonsense"}
     result = _normalise(raw)
     assert result["intent"] == "build"
 
 
 def test_normalise_generates_id_when_missing() -> None:
-    raw: dict = {"stack": "rust", "intent": "migrate"}
+    raw: dict[str, Any] = {
+"stack": "rust", "intent": "migrate"}
     result = _normalise(raw)
     assert result["id"] == "rust-migrate-extracted"
 
 
 def test_normalise_generates_id_when_placeholder() -> None:
-    raw: dict = {"id": "<descriptive-slug>-<intent>", "stack": "go", "intent": "review"}
+    raw: dict[str, Any] = {
+"id": "<descriptive-slug>-<intent>", "stack": "go", "intent": "review"}
     result = _normalise(raw)
     assert result["id"] == "go-review-extracted"
 
 
 def test_normalise_preserves_existing_values() -> None:
-    raw: dict = {
+    raw: dict[str, Any] = {
         "id": "custom-id",
         "stack": "rust",
         "intent": "debug",

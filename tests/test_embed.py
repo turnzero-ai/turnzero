@@ -24,7 +24,7 @@ def test_embed_ollama_uses_httpx_not_ollama_package(monkeypatch: pytest.MonkeyPa
     """ollama backend must work without the ollama Python package installed."""
     monkeypatch.delenv("OLLAMA_HOST", raising=False)
 
-    vec = list(range(EMBEDDING_DIM))
+    vec = [float(i) for i in range(EMBEDDING_DIM)]
     with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
         result = _embed_ollama("test prompt")
 
@@ -39,7 +39,7 @@ def test_embed_ollama_uses_httpx_not_ollama_package(monkeypatch: pytest.MonkeyPa
 def test_embed_ollama_respects_ollama_host_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_HOST", "http://my-server:12345")
 
-    vec = list(range(EMBEDDING_DIM))
+    vec = [float(i) for i in range(EMBEDDING_DIM)]
     with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
         _embed_ollama("test prompt")
 
@@ -51,7 +51,7 @@ def test_embed_ollama_respects_ollama_host_env(monkeypatch: pytest.MonkeyPatch) 
 def test_embed_ollama_host_without_scheme(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_HOST", "my-server:12345")
 
-    vec = list(range(EMBEDDING_DIM))
+    vec = [float(i) for i in range(EMBEDDING_DIM)]
     with patch("httpx.post", return_value=_fake_ollama_response(vec)) as mock_post:
         _embed_ollama("test prompt")
 

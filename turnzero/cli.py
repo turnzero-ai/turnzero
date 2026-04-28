@@ -44,6 +44,17 @@ app.add_typer(source_app, name="source")
 console = Console()
 err_console = Console(stderr=True)
 
+DEFAULT_THRESHOLD = 0.70
+MIN_HARVEST_WORDS = 100
+STALENESS_THRESHOLD = 0.70
+MAX_PREVIEW_CONSTRAINTS = 3
+MAX_PREVIEW_ANTI_PATTERNS = 2
+PREVIEW_TEXT_LIMIT = 90
+HTTP_OK = 200
+LOW_CONFIDENCE_THRESHOLD = 0.70
+THRESHOLD_TEST_GOOD_RECALL = 0.80
+THRESHOLD_TEST_WARN_RECALL = 0.60
+
 
 # ---------------------------------------------------------------------------
 # Path helpers
@@ -96,7 +107,7 @@ def _index_path() -> Path:
 def preview(
     prompt: str = typer.Argument(..., help="Opening prompt to preview injection for."),
     top_k: int = typer.Option(3, "--top-k", "-k", help="Max blocks to show."),
-    threshold: float = typer.Option(0.70, "--threshold", "-t", help="Minimum similarity score."),
+    threshold: float = typer.Option(DEFAULT_THRESHOLD, "--threshold", "-t", help="Minimum similarity score."),
 ) -> None:
     """Preview which Expert Priors would be injected for a prompt.
 
@@ -151,17 +162,17 @@ def preview(
 
         if constraints:
             console.print("    [green]constraints:[/green]")
-            for c in constraints[:3]:
+            for c in constraints[:MAX_PREVIEW_CONSTRAINTS]:
                 console.print(f"      • {c}")
-            if len(constraints) > 3:
-                console.print(f"      [dim]… +{len(constraints) - 3} more[/dim]")
+            if len(constraints) > MAX_PREVIEW_CONSTRAINTS:
+                console.print(f"      [dim]… +{len(constraints) - MAX_PREVIEW_CONSTRAINTS} more[/dim]")
 
         if anti_patterns:
             console.print("    [red]anti-patterns:[/red]")
-            for a in anti_patterns[:2]:
+            for a in anti_patterns[:MAX_PREVIEW_ANTI_PATTERNS]:
                 console.print(f"      • {a}")
-            if len(anti_patterns) > 2:
-                console.print(f"      [dim]… +{len(anti_patterns) - 2} more[/dim]")
+            if len(anti_patterns) > MAX_PREVIEW_ANTI_PATTERNS:
+                console.print(f"      [dim]… +{len(anti_patterns) - MAX_PREVIEW_ANTI_PATTERNS} more[/dim]")
 
         console.print()
 
@@ -504,8 +515,9 @@ def setup(
     import shutil
     import subprocess
     import sys
-    import httpx
     import time
+
+    import httpx
 
     claude_dir = Path.home() / ".claude"
     claude_dir.mkdir(exist_ok=True)
@@ -567,21 +579,20 @@ def setup(
             
             # Server is running, check for model
             result = subprocess.run(
-                ["ollama", "list"], capture_output=True, text=True, timeout=5
+                ["ollama", "list"], capture_output=True, text=True, timeout=5, check=False
             )
             if "nomic-embed-text" in result.stdout:
                 console.print("[green]✓[/green] Embedding backend: ollama (nomic-embed-text)")
                 ollama_ok = True
+            elif interactive and typer.confirm("\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"):
+                console.print("Pulling nomic-embed-text…")
+                # Use subprocess directly to show progress if possible, 
+                # or just wait.
+                subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
+                console.print("[green]✓[/green] nomic-embed-text pulled")
+                ollama_ok = True
             else:
-                if interactive and typer.confirm("\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"):
-                    console.print("Pulling nomic-embed-text…")
-                    # Use subprocess directly to show progress if possible, 
-                    # or just wait.
-                    subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
-                    console.print("[green]✓[/green] nomic-embed-text pulled")
-                    ollama_ok = True
-                else:
-                    console.print("[yellow]⚠[/yellow] nomic-embed-text missing. Run: [cyan]ollama pull nomic-embed-text[/cyan]")
+                console.print("[yellow]⚠[/yellow] nomic-embed-text missing. Run: [cyan]ollama pull nomic-embed-text[/cyan]")
         except (httpx.ConnectError, httpx.TimeoutException):
             console.print("[yellow]⚠[/yellow] ollama is installed but the server is not running.")
             if interactive and typer.confirm("Attempt to start ollama server?"):
@@ -598,7 +609,7 @@ def setup(
                     time.sleep(1)
                     try:
                         with httpx.Client(timeout=1.0) as client:
-                            if client.get(f"{host}/api/tags").status_code == 200:
+                            if client.get(f"{host}/api/tags").status_code == HTTP_OK:
                                 break
                     except Exception:
                         pass
@@ -733,7 +744,7 @@ def setup(
 def query(
     prompt: str = typer.Argument(..., help="Opening prompt to find blocks for."),
     top_k: int = typer.Option(3, "--top-k", "-k", help="Maximum blocks to return."),
-    threshold: float = typer.Option(0.70, "--threshold", "-t", help="Minimum cosine similarity."),
+    threshold: float = typer.Option(DEFAULT_THRESHOLD, "--threshold", "-t", help="Minimum cosine similarity."),
     context_weight: int = typer.Option(4000, "--weight", help="Max total weight across injected blocks."),
     interactive: bool = typer.Option(False, "--interactive", "-i", help="Confirm each block before including."),
     strict_intent: bool = typer.Option(True, "--strict/--no-strict", help="Only return blocks matching detected intent."),
@@ -782,8 +793,8 @@ def query(
         )
         console.print(f"     [dim]{', '.join(block.tags)}[/dim]")
         if block.constraints:
-            preview = block.constraints[0][:90]
-            console.print(f"     [dim]\"{preview}{'...' if len(block.constraints[0]) > 90 else ''}\"[/dim]")
+            preview = block.constraints[0][:PREVIEW_TEXT_LIMIT]
+            console.print(f"     [dim]\"{preview}{'...' if len(block.constraints[0]) > PREVIEW_TEXT_LIMIT else ''}\"[/dim]")
         console.print()
 
         if interactive:
@@ -1244,7 +1255,7 @@ def harvest(
         try:
             conversation = load_conversation(session_path)
             word_count = len(conversation.split())
-            if word_count < 100:
+            if word_count < MIN_HARVEST_WORDS:
                 return session_path, [], None, f"Too short ({word_count} words)"
             if is_self_referential(conversation):
                 return session_path, [], None, "self-referential session"
@@ -1345,10 +1356,14 @@ def review() -> None:
         all_blocks = load_all_blocks(_blocks_dir())
         low_conf = [
             b for b in all_blocks.values()
-            if b.confidence < 0.7 and not b.archived
+            if b.confidence < LOW_CONFIDENCE_THRESHOLD and not b.archived
         ]
         if low_conf:
-            console.print(f"\n[yellow]⚠  {len(low_conf)} low-confidence block(s) in library (confidence < 0.7)[/yellow]")
+            console.print(
+                "\n"
+                f"[yellow]⚠  {len(low_conf)} low-confidence block(s) in library "
+                f"(confidence < {LOW_CONFIDENCE_THRESHOLD:.1f})[/yellow]"
+            )
             console.print("[dim]These were auto-submitted and may contain errors. Verify or archive them.[/dim]\n")
             for block in sorted(low_conf, key=lambda b: b.confidence):
                 console.print(
@@ -1675,7 +1690,11 @@ def threshold_test(
             if results:
                 fires_on.append(results[0][0].slug)
 
-        recall_color = "green" if recall >= 0.80 else ("yellow" if recall >= 0.60 else "red")
+        recall_color = (
+            "green"
+            if recall >= THRESHOLD_TEST_GOOD_RECALL
+            else ("yellow" if recall >= THRESHOLD_TEST_WARN_RECALL else "red")
+        )
         fires_sample = ", ".join(dict.fromkeys(fires_on))[:48]  # deduplicate, truncate
 
         sweep_table.add_row(

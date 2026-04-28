@@ -138,9 +138,9 @@ def test_get_block_error_lists_available() -> None:
 
 def test_inject_block_returns_markdown() -> None:
     text = _inject_block("nextjs15-approuter-build")
-    assert "## Expert Prior:" in text
-    assert "Constraints:" in text
-    assert "Anti-patterns" in text
+    assert "# EXPERT_PRIOR_IDENTITY" in text
+    assert "# SESSION_CONSTRAINTS" in text
+    assert "# ANTI_PATTERNS" in text
 
 
 def test_inject_block_contains_block_id() -> None:

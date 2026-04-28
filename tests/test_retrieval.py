@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import patch
 
 import numpy as np
@@ -250,7 +251,10 @@ def _make_block(slug: str, confidence: float = 1.0, archived: bool = False) -> B
     )
 
 
-def _make_entry(block_id: str, vec: np.ndarray) -> IndexEntry:
+def _make_entry(
+    block_id: str,
+    vec: np.ndarray[Any, np.dtype[np.float32]],
+) -> IndexEntry:
     return IndexEntry(
         block_id=block_id,
         embedding=vec,

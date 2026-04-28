@@ -23,6 +23,11 @@ from typing import Any
 
 import yaml
 
+MIN_TURN_WORDS = 3
+MIN_CONTEXT_WEIGHT = 50
+MIN_SESSION_WORDS = 5
+SELF_REF_HITS_THRESHOLD = 4
+
 # ---------------------------------------------------------------------------
 # Extraction prompt
 # ---------------------------------------------------------------------------
@@ -223,7 +228,7 @@ def _parse_chatgpt_mapping(mapping: Any) -> str:
         content_obj = msg.get("content") or {}
         parts = content_obj.get("parts", [])
         text = " ".join(str(p) for p in parts if isinstance(p, str)).strip()
-        if author in ("user", "assistant") and text and len(text.split()) >= 3:
+        if author in ("user", "assistant") and text and len(text.split()) >= MIN_TURN_WORDS:
             label = "User" if author == "user" else "Assistant"
             turns.append(f"{label}: {text}")
         for child_id in children.get(node_id, []):
@@ -256,7 +261,7 @@ def _parse_markdown_conversation(text: str) -> str:
         while i + 1 < len(chunks):
             role = chunks[i].strip().lower()
             content = chunks[i + 1].strip()
-            if content and len(content.split()) >= 3:
+            if content and len(content.split()) >= MIN_TURN_WORDS:
                 label = "User" if role in ("user", "human") else "Assistant"
                 turns.append(f"{label}: {content}")
             i += 2
@@ -311,7 +316,7 @@ def convert_claude_session(jsonl_path: Path) -> str:
         else:
             continue
 
-        if not text or len(text.split()) < 5:
+        if not text or len(text.split()) < MIN_SESSION_WORDS:
             continue
 
         label = "User" if role == "user" else "Assistant"
@@ -413,7 +418,7 @@ def is_self_referential(conversation: str, threshold: float = 0.015) -> bool:
         return False
     hits = sum(1 for term in _SELF_REF_TERMS if term in lower)
     density = hits / len(words)
-    return density > threshold or hits >= 4
+    return density > threshold or hits >= SELF_REF_HITS_THRESHOLD
 
 
 # ---------------------------------------------------------------------------
@@ -425,7 +430,7 @@ def validate_candidate(candidate: dict[str, Any]) -> str | None:
 
     Checks:
     - No placeholder text (<...>) in constraints or anti_patterns
-    - context_weight >= 50 (anything lower is effectively empty)
+    - context_weight >= MIN_CONTEXT_WEIGHT (anything lower is effectively empty)
     - No empty or placeholder URLs in doc_anchors
     """
     for field in ("constraints", "anti_patterns"):
@@ -433,7 +438,7 @@ def validate_candidate(candidate: dict[str, Any]) -> str | None:
             if "<" in str(item) and ">" in str(item):
                 return f"placeholder text in {field}: {str(item)[:60]}"
 
-    if int(candidate.get("context_weight", 0)) < 50:
+    if int(candidate.get("context_weight", 0)) < MIN_CONTEXT_WEIGHT:
         return f"context_weight too low ({candidate.get('context_weight')})"
 
     for anchor in candidate.get("doc_anchors", []):
@@ -623,11 +628,11 @@ def parse_candidates(raw_yaml: str) -> list[dict[str, Any]]:
     errors: list[str] = []
 
     for chunk in chunks:
-        chunk = chunk.strip()
-        if not chunk:
+        stripped_chunk = chunk.strip()
+        if not stripped_chunk:
             continue
         try:
-            doc = yaml.safe_load(chunk)
+            doc = yaml.safe_load(stripped_chunk)
         except yaml.YAMLError:
             errors.append(chunk[:60])
             continue

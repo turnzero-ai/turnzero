@@ -17,11 +17,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from turnzero.blocks import load_all_blocks
-from turnzero.retrieval import load_index
+from turnzero.blocks import Block, load_all_blocks
+from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
 
 # ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture(scope="module")
-def retrieval_fixtures():  # type: ignore[return]
+def retrieval_fixtures() -> tuple[dict[str, Block], list[IndexEntry]]:
     """Load blocks and index once for all precision tests."""
     if not INDEX_PATH.exists():
         pytest.skip("Index not built — run: turnzero index build")
@@ -55,7 +56,7 @@ def retrieval_fixtures():  # type: ignore[return]
 
 
 @pytest.fixture(scope="module")
-def validation_set() -> list[dict]:
+def validation_set() -> list[dict[str, Any]]:
     if not VALIDATION_PATH.exists():
         pytest.skip(f"Validation set not found: {VALIDATION_PATH}")
     with VALIDATION_PATH.open(encoding="utf-8") as f:
@@ -95,7 +96,7 @@ def test_top1_retrieval(
     prompt: str,
     expected_top: str,
     all_relevant: list[str],
-    retrieval_fixtures,  # type: ignore[no-untyped-def]
+    retrieval_fixtures: tuple[dict[str, Block], list[IndexEntry]],
 ) -> None:
     """Correct domain fires for this prompt in top-K results.
 
@@ -113,7 +114,7 @@ def test_top1_retrieval(
         f"Check that the index is built and threshold ({THRESHOLD}) is appropriate."
     )
     # Accept exact match OR any block whose ID shares a domain prefix with expected
-    expected_domain = expected_top.split("-")[0]
+    expected_domain = expected_top.split("-", maxsplit=1)[0]
     domain_match = any(
         rid == expected_top or rid.startswith(expected_domain)
         for rid in retrieved_ids
@@ -129,7 +130,10 @@ def test_top1_retrieval(
 # Aggregate Hit Rate@K test (must meet 0.70 target)
 # ---------------------------------------------------------------------------
 
-def test_hit_rate_at_k(retrieval_fixtures, validation_set) -> None:  # type: ignore[no-untyped-def]
+def test_hit_rate_at_k(
+    retrieval_fixtures: tuple[dict[str, Block], list[IndexEntry]],
+    validation_set: list[dict[str, Any]],
+) -> None:
     """Hit Rate@3 across all validation queries must be >= 0.70.
 
     Hit Rate@K = fraction of queries where at least one relevant block

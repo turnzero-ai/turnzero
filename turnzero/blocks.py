@@ -88,11 +88,11 @@ class Block:
         role = f"Expert {domain_title} {self.intent.title()} Assistant"
         
         lines: list[str] = [
-            f"# EXPERT_PRIOR_IDENTITY",
+            "# EXPERT_PRIOR_IDENTITY",
             f"Role: {role}",
             f"Slug: {self.slug} (v{self.version})",
             "",
-            f"# SESSION_CONSTRAINTS",
+            "# SESSION_CONSTRAINTS",
         ]
         
         if self.constraints:
@@ -101,7 +101,7 @@ class Block:
         
         if self.anti_patterns:
             lines.append("")
-            lines.append(f"# ANTI_PATTERNS")
+            lines.append("# ANTI_PATTERNS")
             for a in self.anti_patterns:
                 # Ensure every anti-pattern starts with "Do not" as per mandate
                 prefix = "" if a.lower().startswith("do not") else "Do not: "
@@ -109,13 +109,13 @@ class Block:
 
         lines.extend([
             "",
-            f"# VALIDATION_TASK",
+            "# VALIDATION_TASK",
             f"Prioritize the constraints and anti-patterns above for the duration of this {self.domain} {self.intent} session.",
         ])
 
         if self.doc_anchors:
             lines.append("")
-            lines.append(f"# REFERENCE_DOCS")
+            lines.append("# REFERENCE_DOCS")
             for anchor in self.doc_anchors:
                 lines.append(f"- {anchor.url}")
                 

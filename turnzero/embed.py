@@ -5,11 +5,13 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+from typing import Any
 
 import numpy as np
 
 # Dimension produced by nomic-embed-text. All backends are normalised to this.
 EMBEDDING_DIM = 768
+HTTP_OK = 200
 
 
 def get_model_id() -> str:
@@ -31,12 +33,12 @@ def _is_ollama_running() -> bool:
     host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
     try:
         with httpx.Client(timeout=0.5) as client:
-            return client.get(f"{host}/api/tags").status_code == 200
+            return client.get(f"{host}/api/tags").status_code == HTTP_OK
     except Exception:
         return False
 
 
-def embed(text: str) -> np.ndarray:
+def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Embed text, returning a float32 ndarray of shape (768,).
 
     Fallback chain:
@@ -66,7 +68,7 @@ def embed(text: str) -> np.ndarray:
     )
 
 
-def _embed_ollama(text: str) -> np.ndarray:
+def _embed_ollama(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     import httpx
 
     host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
@@ -85,7 +87,7 @@ def _embed_ollama(text: str) -> np.ndarray:
         raise RuntimeError(f"ollama unavailable: {e}") from e
 
 
-def _embed_test(text: str) -> np.ndarray:
+def _embed_test(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Deterministic local embedding used only in tests."""
     vec = np.zeros(EMBEDDING_DIM, dtype=np.float32)
     tokens = [t for t in re.split(r"[^a-z0-9]+", text.lower()) if t]
@@ -104,7 +106,7 @@ def _embed_test(text: str) -> np.ndarray:
     return vec
 
 
-def _embed_openai(text: str) -> np.ndarray:
+def _embed_openai(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     import httpx
 
     api_key = os.environ["OPENAI_API_KEY"]
@@ -125,7 +127,10 @@ def _embed_openai(text: str) -> np.ndarray:
         raise RuntimeError(f"OpenAI embedding failed: {e}") from e
 
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+def cosine_similarity(
+    a: np.ndarray[Any, np.dtype[np.float32]],
+    b: np.ndarray[Any, np.dtype[np.float32]],
+) -> float:
     """Cosine similarity in [-1, 1]. Returns 0.0 for zero vectors."""
     norm_a = float(np.linalg.norm(a))
     norm_b = float(np.linalg.norm(b))

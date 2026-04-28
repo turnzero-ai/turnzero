@@ -8,6 +8,7 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -96,7 +97,7 @@ _IMPL_ACTION_SIGNALS: frozenset[str] = frozenset({
     "authorize", "authorizing", "provision", "provisioning",
     # Infrastructure
     "terraform", "kubernetes", "kubectl", "helm", "containerize", "containerizing",
-    "orchestrate", "orchestrating", "provision", "provisioning",
+    "orchestrate", "orchestrating",
 })
 
 _IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
@@ -127,10 +128,17 @@ _QUESTION_PATTERNS: frozenset[str] = frozenset({
 })
 
 _ALL_SIGNALS: frozenset[str] = _IMPL_ACTION_SIGNALS | _IMPL_PROBLEM_SIGNALS
+FUZZY_SIGNAL_MIN_LEN = 5
+FUZZY_WORD_MIN_LEN = 4
+FUZZY_MAX_LENGTH_DELTA = 2
+FUZZY_MIN_RATIO = 0.82
+MIN_SUBSTANTIVE_WORD_LEN = 3
+MIN_MULTI_WORD_PROMPT_WORDS = 2
+MIN_SINGLE_WORD_QUESTION_LEN = 3
 
-# Single-word signals long enough for fuzzy matching (≥5 chars).
+# Single-word signals long enough for fuzzy matching.
 _FUZZY_SIGNALS: frozenset[str] = frozenset(
-    s for s in _ALL_SIGNALS if " " not in s and len(s) >= 5
+    s for s in _ALL_SIGNALS if " " not in s and len(s) >= FUZZY_SIGNAL_MIN_LEN
 )
 
 
@@ -139,12 +147,12 @@ def _fuzzy_signal_match(words: list[str]) -> bool:
     from difflib import SequenceMatcher
 
     for word in words:
-        if len(word) < 4:
+        if len(word) < FUZZY_WORD_MIN_LEN:
             continue
         for signal in _FUZZY_SIGNALS:
-            if abs(len(word) - len(signal)) > 2:
+            if abs(len(word) - len(signal)) > FUZZY_MAX_LENGTH_DELTA:
                 continue
-            if SequenceMatcher(None, word, signal).ratio() >= 0.82:
+            if SequenceMatcher(None, word, signal).ratio() >= FUZZY_MIN_RATIO:
                 return True
     return False
 
@@ -158,18 +166,18 @@ def _has_substance(prompt: str, lower: str) -> bool:
     """
     if lower.strip() in _SOCIAL_PATTERNS:
         return False
-    
+
     words = lower.split()
-    if len(words) < 2:
+    if len(words) < MIN_MULTI_WORD_PROMPT_WORDS:
         # Allow single-word "Question?" but not just "Hey"
-        return "?" in lower and len(lower) > 3
+        return "?" in lower and len(lower) > MIN_SINGLE_WORD_QUESTION_LEN
 
     # Professional question starters bypass length checks (e.g. "How to X")
     if any(lower.startswith(q) for q in ["how to", "what is", "should i", "can i"]):
         return True
 
-    # Require at least one substantial word (≥ 3 chars)
-    return any(len(w) >= 3 for w in words)
+    # Require at least one substantial word.
+    return any(len(w) >= MIN_SUBSTANTIVE_WORD_LEN for w in words)
 
 
 def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> bool:
@@ -212,7 +220,7 @@ def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> b
 @dataclass
 class IndexEntry:
     block_id: str
-    embedding: np.ndarray
+    embedding: np.ndarray[Any, np.dtype[np.float32]]
     domain: str
     intent: str
     tags: list[str]

@@ -61,8 +61,15 @@ target-version = "py312"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501", "B904", "B008"]
+select = ["E", "F", "I", "UP", "B", "SIM", "PL"]
+ignore = ["E501", "B904", "B008", "PLC0415", "PLR0913"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["PLR2004"]
+"turnzero/cli.py" = ["PLR0912", "PLR0915"]
+"turnzero/harvest.py" = ["PLR0912"]
+"turnzero/mcp_server.py" = ["PLR0915"]
+"turnzero/retrieval.py" = ["PLR0911", "PLR0912"]
 
 [tool.mypy]
 python_version = "3.12"
