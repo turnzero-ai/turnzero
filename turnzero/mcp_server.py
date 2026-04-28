@@ -497,6 +497,7 @@ def submit_candidate(
     anti_patterns: list[str],
     tags: list[str] | None = None,
     doc_anchors: list[str] | None = None,
+    rationale: str | None = None,
     reason: str = "",
     auto_approve: bool = False,
 ) -> str:
@@ -522,6 +523,7 @@ def submit_candidate(
         anti_patterns: Things the AI should NOT do. Each must start with 'Do not'.
         tags: Optional list of relevant tags.
         doc_anchors: Optional list of official documentation URLs.
+        rationale: Research-backed reason for the constraints and anti-patterns.
         reason: Why this prior is worth adding — what went wrong this session.
         auto_approve: If True, add directly to the block library and rebuild the index.
                       Use when the user explicitly requested this to be remembered.
@@ -546,6 +548,7 @@ def submit_candidate(
         "requires": [],
         "constraints": constraints,
         "anti_patterns": anti_patterns or [],
+        "rationale": rationale,
         "doc_anchors": [{"url": u, "verified": today} for u in (doc_anchors or [])],
         "confidence": confidence,
         "archived": False,
@@ -555,6 +558,7 @@ def submit_candidate(
         "block_id": block_id, "domain": domain, "intent": intent,
         "constraints": constraints, "anti_patterns": anti_patterns or [],
         "tags": tags or [], "doc_anchors": doc_anchors or [],
+        "rationale": rationale,
         "reason": reason, "auto_approve": auto_approve,
     }
     if auto_approve:
