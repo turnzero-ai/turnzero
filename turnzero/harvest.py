@@ -441,6 +441,9 @@ def validate_candidate(candidate: dict[str, Any]) -> str | None:
             if "<" in str(item) and ">" in str(item):
                 return f"placeholder text in {field}: {str(item)[:60]}"
 
+    if candidate.get("anti_patterns") and not candidate.get("rationale"):
+        return "missing rationale (required when anti_patterns are present)"
+
     if int(candidate.get("context_weight", 0)) < MIN_CONTEXT_WEIGHT:
         return f"context_weight too low ({candidate.get('context_weight')})"
 

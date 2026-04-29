@@ -71,6 +71,7 @@ class TestLearningLoop:
                 anti_patterns=[
                     "Do not access related objects in a loop without prefetching -- causes N+1 queries",
                 ],
+                rationale="Iterating over related objects without prefetching causes a database hit per iteration (N+1 problem). select_related joins at the SQL level, while prefetch_related batches the second query.",
                 tags=["django", "orm", "performance"],
                 reason="AI suggested iterating querysets without select_related",
                 auto_approve=True,
@@ -107,6 +108,7 @@ class TestLearningLoop:
                 anti_patterns=[
                     "Do not skip webhook signature verification -- allows spoofed events",
                 ],
+                rationale="Stripe webhook verification ensures the event came from Stripe. Using the raw body is critical because JSON parsing can change the byte representation, causing signature mismatches.",
                 tags=["stripe", "webhooks", "security"],
                 auto_approve=True,
             )
@@ -137,6 +139,7 @@ class TestLearningLoop:
                 intent="build",
                 constraints=["queued block should not appear in retrieval"],
                 anti_patterns=["Do not expect queued blocks in results"],
+                rationale="Testing that unapproved candidates are excluded from retrieval results.",
                 auto_approve=False,
             )
 
@@ -164,6 +167,7 @@ class TestLearningLoop:
                     intent="build",
                     constraints=["Use async def for all route handlers in FastAPI"],
                     anti_patterns=["Do not use sync def for IO-bound FastAPI routes"],
+                    rationale="In FastAPI, sync def routes are run in a thread pool, while async def routes run directly on the event loop. sync def is for blocking CPU work; async def is for IO.",
                     auto_approve=True,
                 )
 
@@ -229,6 +233,10 @@ _MOCK_LLM_YAML = """\
   anti_patterns:
     - Do not use a SQLAlchemy connection pool on top of pgBouncer in transaction mode -- causes pool exhaustion
     - Do not create a new engine per request -- engine must be a module-level singleton
+  rationale: |
+    SQLAlchemy's built-in pooling conflicts with pgBouncer's transaction mode.
+    pool_pre_ping is necessary to avoid stale connection errors.
+    Engine singletons prevent connection leaks.
   doc_anchors: []
 """
 
@@ -375,6 +383,7 @@ class TestInjectionSequence:
                 anti_patterns=[
                     "Do not suppress exhaustive-deps eslint warnings -- they indicate real bugs",
                 ],
+                rationale="Missing dependencies in useEffect cause stale closures and bugs. useCallback prevents unnecessary re-renders when functions are used as dependencies.",
                 tags=["react", "hooks"],
                 auto_approve=True,
             )
