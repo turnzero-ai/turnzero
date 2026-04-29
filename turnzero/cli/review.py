@@ -149,7 +149,7 @@ def review() -> None:
                     f"[bold yellow]Review Library Block: {block.slug}[/bold yellow]"
                 )
                 console.print(
-                    f"[dim]Current Confidence: {block.confidence:.2f} | Level: {block.verification_level}[/dim]\n"
+                    f"[dim]Tier: {block.tier} | Confidence: {block.confidence:.2f} | Level: {block.verification_level}[/dim]\n"
                 )
 
                 # Show content preview
@@ -163,9 +163,9 @@ def review() -> None:
                     default="s",
                 ).strip().lower()
 
-                found_path = blocks_dir / block.domain / f"{block.slug}.yaml"
+                found_path = blocks_dir / block.tier / block.domain / f"{block.slug}.yaml"
                 if not found_path.exists():
-                    # Fallback for flat structure or different sub-nesting
+                    # Fallback for flat structure or bundled
                     found_path = next(
                         blocks_dir.rglob(f"{block.slug}.yaml"), None
                     )  # type: ignore[assignment]
@@ -249,8 +249,9 @@ def review() -> None:
         ).lower()
 
         if action == "a":
-            # Move to data/blocks/local/<domain>/
-            dest_dir = blocks_dir / candidate.get("domain", "unknown")
+            # Automatically route 'persona' domain to the personal tier
+            tier = "personal" if candidate.get("domain") in ("persona", "global") else "local"
+            dest_dir = blocks_dir / tier / candidate.get("domain", "unknown")
             dest_dir.mkdir(parents=True, exist_ok=True)
             dest_path = dest_dir / f"{candidate['id']}.yaml"
             path.rename(dest_path)

@@ -44,7 +44,14 @@ writing, science, or any other field where domain-specific knowledge prevents mi
 An Expert Prior captures:
 - constraints: rules the AI should follow (version-specific, domain-specific)
 - anti_patterns: things the AI should NOT do (the wrong library, the deprecated API)
+- rationale: research-backed explanation of why the rule exists
 - doc_anchors: official documentation URLs referenced in the conversation
+
+PERSONAL PRIORS (domain: persona):
+If the conversation contains the user's idiosyncratic preferences, personal coding 
+style, or project-specific workflow rules (e.g. "I prefer 2-space indents", 
+"Never use comments in my code", "Always use mypy strict"), extract these as 
+Personal Priors with domain: persona.
 
 INTENT RULES (pick exactly one):
 - build:   conversation is about creating something new

@@ -78,6 +78,8 @@ class Block:
     rationale: str | None = None
     # Excluded from retrieval when True; set by auto-archive after 90 days without reinforcement
     archived: bool = False
+    # The storage tier this block belongs to (local, community, team, personal, etc.)
+    tier: str = "unknown"
 
     @property
     def id(self) -> str:
@@ -174,7 +176,7 @@ def compute_content_hash(data: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()[:16]
 
 
-def load_block(path: Path) -> Block:
+def load_block(path: Path, tier: str = "unknown") -> Block:
     """Load and validate a single block YAML file."""
     raw: dict[str, Any] = yaml.safe_load(path.read_text())
 
@@ -210,6 +212,7 @@ def load_block(path: Path) -> Block:
         verification_level=str(raw.get("verification_level", "curated")),
         rationale=rationale,
         archived=bool(raw.get("archived", False)),
+        tier=tier,
     )
 
 
@@ -236,7 +239,9 @@ def load_all_blocks(
         paths = sorted(blocks_dir.rglob("*.yaml"))
 
     for path in paths:
-        block = load_block(path)
+        rel = path.relative_to(blocks_dir)
+        tier = rel.parts[0] if len(rel.parts) > 1 else "unknown"
+        block = load_block(path, tier=tier)
         blocks[block.id] = block
 
     return blocks

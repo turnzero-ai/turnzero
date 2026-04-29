@@ -77,7 +77,7 @@ class TestLearningLoop:
                 auto_approve=True,
             )
 
-            assert "added to library" in result
+            assert "added to local library" in result
             assert "django-orm-select-related-build" in result
 
             suggestions = _list_suggested_blocks(

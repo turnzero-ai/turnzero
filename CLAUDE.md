@@ -19,7 +19,9 @@ TurnZero is at **v0.6.0** (PyPI live).
 
 ## What TurnZero Does
 
-TurnZero eliminates cold-start friction in AI sessions by injecting relevant expert knowledge at the start of a session. It uses a multi-layered retrieval system to ensure that the AI is aligned with the user's technical environment and intent before the first response.
+TurnZero eliminates cold-start friction in AI sessions by injecting relevant context at the start of a session. It uses a dual-injection model:
+1. **Expert Priors:** Domain-specific knowledge retrieved via semantic similarity.
+2. **Personal Priors:** Idiosyncratic user preferences and standards injected **unconditionally** at session start (Turn 0) to establish a **Portable AI Identity**.
 
 Raw prompt text is **never stored** — only embeddings. Injection is always client-side.
 
@@ -160,6 +162,7 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 - `context_weight` = realistic token estimate (word_count × 4)
 - `confidence` = 0.0-1.0; curated blocks = 1.0, AI-submitted start lower
 - `archived` = set to true to exclude from retrieval
+- `tier` = local | community | team | personal (auto-populated from storage path)
 - `last_verified` = ISO date — update whenever the block is re-verified
 - `verification_level` = curated | observed | synthetic
 - `rationale` = required if `anti_patterns` are present; explains the "why" behind the rules.
@@ -167,5 +170,6 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 
 ### MCP tools
 - Tool names: `snake_case` verbs
+- `submit_candidate`: supports `is_personal=True` to route idiosyncratic preferences to the private personal tier.
 - Every tool must catch `RuntimeError` from embedding and return a structured error dict — never crash the MCP server
 - New tools need a matching test in `tests/test_mcp_server.py`

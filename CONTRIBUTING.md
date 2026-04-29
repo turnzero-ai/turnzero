@@ -24,11 +24,13 @@ If you want to share it with the community, open a PR adding the YAML file from 
 
 **The test:** *Would a stranger in the same stack, facing the same problem, be better off knowing this before Turn 0?*
 
-| Good | Bad |
+| Good | Bad (Use Personal Priors instead) |
 |---|---|
-| `Do not use getServerSideProps in App Router` — API removed | "Use PyCharm" — personal preference |
-| `Swiss non-compete clauses unenforceable beyond 3 years` — jurisdiction rule | "Don't commit secrets" — generic |
-| `expire_on_commit=False required with AsyncSession` — raises MissingGreenlet | "Write unit tests" — generic advice |
+| `Do not use getServerSideProps in App Router` — API removed | "Use 2-space indents" — personal preference |
+| `Swiss non-compete clauses unenforceable beyond 3 years` | "Don't use comments" — stylistic choice |
+| `expire_on_commit=False required with AsyncSession` | "My project uses Poetry" — project quirk |
+
+Personal preferences, stylistic choices, and idiosyncratic workflow rules should be stored as **Personal Priors** (using `is_personal=True` in `submit_candidate`). These are kept private in your local `personal` tier and should **not** be contributed to the community registry.
 
 ## Block schema
 

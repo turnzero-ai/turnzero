@@ -17,19 +17,29 @@ Raw prompt text is never stored. Injection is always client-side.
 [![Demo](https://asciinema.org/a/8IV2yoLNTloSlZo0.svg)](https://asciinema.org/a/8IV2yoLNTloSlZo0)
 
 ---
-
 ## How it works
 
-TurnZero identifies the "Expert Priors" — the specific constraints and patterns an expert would add to a prompt — and ensures the AI knows them before it even starts to answer.
+TurnZero identifies the "Expert Priors" — the specific constraints and patterns an expert would add to a prompt — and ensures the AI knows them before it even starts to answer. This is based on the research concept of **Expert Prior Elicitation**, which demonstrates that structured priors can significantly reduce model hallucination and the need for labeled demonstrations.
+
+TurnZero supports two types of priors:
+
+1. **Expert Priors (Semantic):** Domain-specific knowledge and stack-specific "gotchas" retrieved via semantic similarity to your prompt.
+2. **Personal Priors (Always-On):** Your idiosyncratic preferences and architectural biases that follow you across projects. These are **auto-injected** at the start of every session (Turn 0) to establish your **Portable AI Identity**.
+
+### Private by Design
+Personal Priors are stored in a dedicated `personal` storage tier that exists only on your local machine. Unlike the `local` or `community` tiers, Personal Priors are never synced or shared, ensuring your private workflows remain private.
 
 ```
 You type: "I'm building a FastAPI async API with PostgreSQL"
                             │
                             ▼
            TurnZero identifies the relevant Expert Priors
-               (Heuristics + Vector Similarity)
+           AND unconditionally injects your Personal Priors
                             │
                             ▼
+           AI starts Turn 1 already fully aligned
+```
+
          Injected before the AI responds:
          ✓ Use async def — sync def blocks the event loop
          ✓ expire_on_commit=False with AsyncSession (prevents MissingGreenlet)

@@ -48,9 +48,9 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
     with index_path.open("w") as merged:
         merged.write(header_json + "\n")
         for path in paths:
-            block = load_block(path)
             rel = path.relative_to(blocks_dir)
             source = rel.parts[0] if len(rel.parts) > 1 else "local"
+            block = load_block(path, tier=source)
             search_text = block.to_search_text()
             embedding = embed(search_text)
             line = json.dumps({
@@ -59,7 +59,7 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
                 "domain": block.domain,
                 "intent": block.intent,
                 "tags": block.tags,
-                "source": source,
+                "source": block.tier,
             })
             merged.write(line + "\n")
             by_source[source].append(line)

@@ -123,6 +123,9 @@ def _load_active_index() -> list[IndexEntry]:
 # Pure tool logic (importable for testing without a live server)
 # ---------------------------------------------------------------------------
 
+MAX_PERSONAL_WEIGHT = 1500  # Strict token budget for unconditional personal priors
+
+
 def _list_suggested_blocks(
     prompt: str,
     top_k: int = 3,
@@ -133,20 +136,51 @@ def _list_suggested_blocks(
     session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
+    from turnzero.retrieval import detect_domain
+
     blocks = _load_active_blocks()
     index = _load_active_index()
 
     # Get already injected blocks to avoid redundancy
     exclude_ids = get_session_injections(session_id) if session_id else set()
 
-    results = _query(
+    # 1. Handle Personal Priors (Always-On at Turn 0)
+    # These bypass the semantic query and are injected based on project domain.
+    personal_results: list[tuple[Block, float]] = []
+    personal_weight = 0
+    project_domain = detect_domain(prompt, project_root=project_root)
+
+    # Filter all blocks from the 'personal' tier that aren't already injected
+    personal_candidates = [
+        b for b in blocks.values()
+        if getattr(b, "tier", "unknown") == "personal"
+        and b.slug not in exclude_ids
+    ]
+    # Sort by verification date to keep them fresh
+    personal_candidates.sort(key=lambda b: b.last_verified, reverse=True)
+
+    limit_exceeded = False
+    for b in personal_candidates:
+        if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
+            personal_results.append((b, 2.0))  # Score of 2.0 guarantees top ranking
+            personal_weight += b.context_weight
+        else:
+            limit_exceeded = True
+
+    # 2. Standard Expert Prior Retrieval
+    expert_results = _query(
         prompt, index, blocks,
-        top_k=top_k, threshold=threshold, context_weight=context_weight,
+        top_k=top_k, threshold=threshold, context_weight=context_weight - personal_weight,
         strict_intent=strict_intent,
         project_root=project_root,
-        exclude_block_ids=exclude_ids,
+        exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
     )
-    return [
+
+    # 3. Combine and Format
+    all_results = personal_results + expert_results
+
+    # Add a warning block if personal budget was exceeded
+    formatted = [
         {
             "block_id": block.slug,
             "score": round(score, 3),
@@ -157,8 +191,22 @@ def _list_suggested_blocks(
             "stale": block.is_stale(),
             "preview": block.constraints[0][:120] if block.constraints else "",
         }
-        for block, score in results
+        for block, score in all_results
     ]
+
+    if limit_exceeded:
+        formatted.append({
+            "block_id": "personal-priors-limit-warning",
+            "score": 0.0,
+            "domain": "system",
+            "intent": "review",
+            "tags": ["warning"],
+            "context_weight": 0,
+            "stale": False,
+            "preview": "⚠ Personal Priors budget exceeded (1500 tokens). Some rules omitted.",
+        })
+
+    return formatted
 
 
 def _get_block(block_id: str) -> dict[str, Any]:
@@ -500,6 +548,7 @@ def submit_candidate(
     rationale: str | None = None,
     reason: str = "",
     auto_approve: bool = False,
+    is_personal: bool = False,
 ) -> str:
     """Submit an Expert Prior candidate identified during this session.
 
@@ -508,6 +557,12 @@ def submit_candidate(
     or any domain-specific truth you got wrong. Works for software, law, medicine,
     finance, design, writing — any field. You are the extractor — write the prior
     directly rather than waiting for a harvest pass.
+
+    PERSONAL PRIORS (is_personal=True):
+    Set is_personal=True if the correction is about the user's idiosyncratic 
+    preferences, personal coding style, or project-specific workflow rules that 
+    should ALWAYS be remembered for this user/project, regardless of general 
+    technical truth. These are saved to a private local 'personal' tier.
 
     Always set auto_approve=True for corrections detected during a live session —
     the block is added to the library immediately and the index is rebuilt.
@@ -525,11 +580,8 @@ def submit_candidate(
         doc_anchors: Optional list of official documentation URLs.
         rationale: Research-backed reason for the constraints and anti-patterns.
         reason: Why this prior is worth adding — what went wrong this session.
-        auto_approve: If True, add directly to the block library and rebuild the index.
-                      Use when the user explicitly requested this to be remembered.
-
-    Returns:
-        Confirmation that the candidate was saved or approved into the library.
+        auto_approve: If True, add directly to the library and rebuild the index.
+        is_personal: If True, save to the private 'personal' tier instead of 'local'.
     """
     import yaml as _yaml
 
@@ -560,9 +612,12 @@ def submit_candidate(
         "tags": tags or [], "doc_anchors": doc_anchors or [],
         "rationale": rationale,
         "reason": reason, "auto_approve": auto_approve,
+        "is_personal": is_personal,
     }
+
     if auto_approve:
-        dest_dir = _blocks_dir() / "local" / domain
+        tier = "personal" if is_personal else "local"
+        dest_dir = _blocks_dir() / tier / domain
         dest_dir.mkdir(parents=True, exist_ok=True)
         block_path = dest_dir / f"{block_id}.yaml"
         with open(block_path, "w", encoding="utf-8") as f:
@@ -571,7 +626,7 @@ def submit_candidate(
         from turnzero.index import build as build_index
         build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
         result = (
-            f"✓ Expert Prior '{block_id}' added to library and index rebuilt. "
+            f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index rebuilt. "
             f"It will be injected in future sessions matching this domain."
             + (f" Reason: {reason}" if reason else "")
         )

@@ -6,7 +6,10 @@
 
 ```
 Circle 1 — Personal (live today)
-  Your library grows automatically from your own sessions. Automated learning with confidence scoring and expert review.
+  Your library grows automatically from your own sessions. Personal Priors establish a **Portable AI Identity** that follows you across every project and AI client.
+  - [x] Auto-learning via `submit_candidate` MCP tool
+  - [x] Always-On Personal Priors (Always-On injection for idiosyncratic preferences)
+  - [x] Multi-tier storage architecture (`personal`, `local`, `community`)
 
 Circle 2 — Community (Phase 4)
   Corrections route to everyone on the same stack. Every "remember this" enriches all users.

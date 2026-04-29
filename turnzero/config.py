@@ -7,13 +7,14 @@ from pathlib import Path
 import os
 import yaml
 
-TIERS = ("local", "community", "team")
+TIERS = ("local", "community", "team", "personal")
 
 _DEFAULTS: dict[str, dict[str, bool]] = {
     "sources": {
         "local": True,
         "community": True,
         "team": False,
+        "personal": True,
     }
 }
 
