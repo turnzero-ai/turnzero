@@ -1,10 +1,10 @@
 # TurnZero
 
-**Expert Priors for AI sessions — injected automatically at Turn 0.**
+**Expert Priors for AI sessions — identity at Turn 0, expertise when needed.**
 
 Every time you open a new AI session, you start from zero. The AI knows nothing about your domain's specific rules, your stack's gotchas, or the corrections you've had to make a hundred times before. TurnZero fixes that.
 
-It embeds your opening prompt, finds the most relevant Expert Priors for your domain, and injects them before the AI responds — so the model already knows the right answer before it has a chance to get it wrong.
+On session start, TurnZero injects your Personal Priors once and adds the Expert Priors that match the opening task. As the conversation continues, it can add newly relevant Expert Priors without re-injecting priors already used in that session.
 
 Works for any domain: software, law, medicine, finance, design, writing, research — anywhere the AI makes the same domain-specific mistakes without context.
 
@@ -24,7 +24,23 @@ TurnZero identifies the "Expert Priors" — the specific constraints and pattern
 TurnZero supports two types of priors:
 
 1. **Expert Priors (Semantic):** Domain-specific knowledge and stack-specific "gotchas" retrieved via semantic similarity to your prompt.
-2. **Personal Priors (Always-On):** Your idiosyncratic preferences and architectural biases that follow you across projects. These are **auto-injected** at the start of every session (Turn 0) to establish your **Portable AI Identity**.
+2. **Personal Priors (Always-On at session start):** Your idiosyncratic preferences and architectural biases that follow you across projects. These are injected once at the start of every session to establish your **Portable AI Identity**.
+
+### Session model
+
+- **Turn 0:** TurnZero injects eligible Personal Priors once, plus any Expert Priors that match the opening prompt.
+- **Follow-up turns:** TurnZero checks for newly relevant Expert Priors on non-trivial prompts, but does not re-inject priors already used in the session.
+- **Reset or new session:** Personal Priors become eligible again.
+
+### Canonical runtime contract
+
+1. On a new session or explicit context reset, call `list_suggested_blocks` before responding to the first non-trivial user prompt.
+2. Inject eligible Personal Priors once for that session.
+3. Inject only the Expert Priors that are relevant to the current prompt.
+4. On later non-trivial prompts, call `list_suggested_blocks` again only to check for newly relevant Expert Priors.
+5. Do not re-inject Personal Priors or any prior already used in the current session.
+6. When the user gives a reusable correction, preference, or domain rule, immediately call `submit_candidate` with `auto_approve=True`.
+7. If no relevant priors are returned, continue normally without mentioning TurnZero.
 
 ### Private by Design
 Personal Priors are stored in a dedicated `personal` storage tier that exists only on your local machine. Unlike the `local` or `community` tiers, Personal Priors are never synced or shared, ensuring your private workflows remain private.
@@ -38,13 +54,12 @@ You type: "I'm building a FastAPI async API with PostgreSQL"
                             │
                             ▼
            AI starts Turn 1 already fully aligned
-```
-
-         Injected before the AI responds:
-         ✓ Use async def — sync def blocks the event loop
-         ✓ expire_on_commit=False with AsyncSession (prevents MissingGreenlet)
-         ✓ lifespan= not @app.on_event (deprecated since 0.93)
-         ✓ Pydantic v2: model_config = ConfigDict(...), not inner class Config
+         
+Injected before the AI responds:
+✓ Use async def — sync def blocks the event loop
+✓ expire_on_commit=False with AsyncSession (prevents MissingGreenlet)
+✓ lifespan= not @app.on_event (deprecated since 0.93)
+✓ Pydantic v2: model_config = ConfigDict(...), not inner class Config
 ```
 
 An **Expert Prior** is the delta between a naive prompt and an expert prompt — what a senior developer would silently add before hitting send.
@@ -60,7 +75,7 @@ turnzero setup
 
 Python support: `3.12`, `3.13`, and `3.14`.
 
-`turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop, Gemini CLI — will automatically call `list_suggested_blocks` on Turn 0 and inject the relevant Expert Priors. No further configuration needed.
+`turnzero setup` registers the TurnZero MCP server globally. Any MCP-compatible AI client — Claude Code, Cursor, Claude Desktop, Gemini CLI — can use TurnZero automatically: Personal Priors are applied once at session start, and newly relevant Expert Priors can be added on later non-trivial prompts.
 
 **Embedding backend — pick one:**
 
@@ -81,7 +96,7 @@ If you want local embeddings, install `ollama`, start it with `ollama serve`, an
 turnzero setup
 ```
 
-The MCP server is registered globally. Open a new session — TurnZero calls `list_suggested_blocks` automatically on Turn 0.
+The MCP server is registered globally. Open a new session — TurnZero applies Personal Priors once at session start and can add newly relevant Expert Priors later in the conversation.
 
 ```bash
 # Optional: also install the UserPromptSubmit hook for guaranteed injection
@@ -97,11 +112,11 @@ claude mcp add turnzero /path/to/.venv/bin/turnzero-mcp --scope user
 
 ### Cursor
 
-See [`docs/cursor-setup.md`](docs/cursor-setup.md) — register the MCP server and add the global rule that triggers auto-injection on Turn 0.
+See [`docs/cursor-setup.md`](docs/cursor-setup.md) — register the MCP server and add the global rule that applies Personal Priors at session start and checks for new Expert Priors later when the conversation shifts.
 
 ### Any other MCP-compatible client
 
-Register the MCP server however that client supports it. The server's `instructions` field tells the AI to call `list_suggested_blocks` at the start of every session. If the client surfaces MCP server instructions to the model, injection is automatic.
+Register the MCP server however that client supports it. The server's `instructions` field tells the AI to call `list_suggested_blocks` before non-trivial prompts, inject matching priors, and avoid reinjecting priors already used in the session.
 
 ### Gemini CLI
 
@@ -110,6 +125,16 @@ turnzero setup
 ```
 
 The MCP server is registered in `~/.gemini/settings.json`, and global rules are added to `~/.gemini/GEMINI.md` to ensure the AI invokes the tools automatically.
+
+## Verify it works
+
+After setup, validate the retrieval path with a prompt TurnZero should understand:
+
+```bash
+turnzero preview "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
+```
+
+You should see the Personal Priors and Expert Priors that would be injected. If you are using an MCP-compatible client, open a new session with a similar opening prompt and confirm the model applies them automatically.
 
 ---
 
@@ -141,10 +166,18 @@ No background daemons required. The AI used in the session performs the extracti
 turnzero setup                                             # register MCP, build index
 turnzero preview "build a Next.js 15 app with Supabase"   # preview what would inject
 turnzero query   "build a Next.js 15 app with Supabase"   # ranked block list
-turnzero inject  "build a Next.js 15 app with Supabase"   # formatted output for any AI
+turnzero inject  nextjs15-approuter-build                  # formatted output for one or more block slugs
 turnzero show    nextjs15-approuter-build                  # full block content
 turnzero stats                                             # library + session stats
 turnzero review                                            # review pending candidates + low-confidence blocks
+```
+
+For non-MCP clients, the manual fallback is:
+
+```bash
+turnzero query   "build a Next.js 15 app with Supabase"   # find candidate slugs
+turnzero show    nextjs15-approuter-build                  # inspect one block
+turnzero inject  nextjs15-approuter-build                  # print formatted prior text to paste manually
 ```
 
 ---
@@ -182,7 +215,8 @@ doc_anchors:
 
 ## Design constraints
 
-- **No raw prompts stored.** Only embeddings persist — raw text is discarded immediately after embedding.
+- **No raw prompts stored.** Raw prompt text is discarded immediately after embedding.
+- **Embeddings may be local or remote.** With `ollama`, embedding stays local. With `OPENAI_API_KEY`, prompt text is sent to OpenAI's embedding API for that request and is not stored by TurnZero.
 - **Client-side injection only.** TurnZero never sits in the request path between user and AI provider.
 - **Provider neutral.** Works with any MCP-compatible client — Claude Code, Cursor, Claude Desktop, and others.
 - **Token budget aware.** Warns when selected blocks exceed 4000 tokens (configurable).
