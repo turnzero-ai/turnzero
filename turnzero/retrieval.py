@@ -440,11 +440,55 @@ def _test_similarity(prompt: str, block: Block) -> float:
     )
 
 
+# ---------------------------------------------------------------------------
+# Query
+# ---------------------------------------------------------------------------
+
+DOMAIN_BOOST = 1.5  # Heavy boost for matching the detected domain
+INTENT_BOOST = 1.2  # Boost for matching intent
+PROJECT_AFFINITY_BOOST = 1.25  # Boost for blocks previously used in this project
+MAX_PERSONAL_WEIGHT = 1500  # Token budget for identity injection
+
+
+def get_identity_context(
+    blocks: dict[str, Block],
+    exclude_ids: set[str] | None = None,
+) -> tuple[list[tuple[Block, float]], bool]:
+    """Return all blocks from the 'personal' tier that fit the context budget.
+    
+    Personal Priors establish the 'Portable AI Identity'. They are injected 
+    unconditionally at session start, regardless of domain (universal persona).
+    Returns (blocks, limit_exceeded).
+    """
+    exclude_ids = exclude_ids or set()
+    personal_results: list[tuple[Block, float]] = []
+    personal_weight = 0
+
+    # Filter all blocks from the 'personal' tier
+    candidates = [
+        b for b in blocks.values()
+        if b.tier == "personal" and b.slug not in exclude_ids
+    ]
+    # Sort by verification date to keep newest preferences first
+    candidates.sort(key=lambda b: b.last_verified, reverse=True)
+
+    limit_exceeded = False
+    for b in candidates:
+        if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
+            # Score of 2.0 ensures they rank above all Expert Priors
+            personal_results.append((b, 2.0))
+            personal_weight += b.context_weight
+        else:
+            limit_exceeded = True
+    
+    return personal_results, limit_exceeded
+
+
 def query(
     prompt: str,
     index: list[IndexEntry],
     blocks: dict[str, Block],
-    top_k: int = 3,
+    top_k: int = 5,
     threshold: float = 0.70,
     context_weight: int = 4000,
     strict_intent: bool = True,
@@ -452,13 +496,11 @@ def query(
     rerank_model: str | None = None,
     exclude_block_ids: set[str] | None = None,
 ) -> list[tuple[Block, float]]:
-    """Return up to top_k blocks relevant to prompt, above similarity threshold.
-
-    Steps:
-    1. Embed the prompt.
-    2. Detect intent and domain (from prompt AND filesystem).
-    3. Filter/Score entries with intent and domain awareness.
-    4. Resolve conflicts and enforce context weight budget.
+    """Return relevant blocks using saturation-based hybrid retrieval.
+    
+    Saturation Logic:
+    1. Return ALL blocks with a final score >= 0.90 (High Confidence).
+    2. If fewer than top_k blocks are found, fill up to top_k with next best (>= threshold).
     """
     from turnzero.embed import embed
     from turnzero.state import get_project_affinity
@@ -477,7 +519,6 @@ def query(
 
     scored: list[tuple[IndexEntry, float]] = []
     for entry in index:
-        # Session Deduplication: skip blocks already injected
         if entry.block_id in exclude_block_ids:
             continue
 
@@ -487,8 +528,7 @@ def query(
 
         if test_mode:
             block = blocks.get(entry.block_id)
-            if block is None:
-                continue
+            if block is None: continue
             score = _test_similarity(prompt, block)
         else:
             score = cosine_similarity(prompt_embedding, entry.embedding)
@@ -498,14 +538,11 @@ def query(
         if entry.intent == intent:
             boost *= INTENT_BOOST
         
-        # Domain match boost
         if domain and entry.domain == domain:
             boost *= DOMAIN_BOOST
         elif domain and entry.domain != domain:
-            # Penalize blocks from DIFFERENT domains if a project domain is detected
             boost *= 0.5
 
-        # Project Affinity boost
         if entry.block_id in affinity:
             boost *= PROJECT_AFFINITY_BOOST
 
@@ -513,17 +550,27 @@ def query(
         scored.append((entry, score))
 
     scored.sort(key=lambda x: x[1], reverse=True)
-    candidates = [(e, s) for e, s in scored if s >= effective_threshold][:top_k]
+
+    # Saturation Logic: Take ALL high-confidence matches, or fill up to top_k
+    high_conf = [(e, s) for e, s in scored if s >= 0.90]
+    if len(high_conf) >= top_k:
+        candidates = high_conf
+    else:
+        candidates = [(e, s) for e, s in scored if s >= effective_threshold][:top_k]
 
     results: list[tuple[Block, float]] = []
+    current_weight = 0
     for e, s in candidates:
-        if e.block_id not in blocks:
-            continue
+        if e.block_id not in blocks: continue
         block = blocks[e.block_id]
-        if block.archived:
+        if block.archived: continue
+        
+        if current_weight + block.context_weight > context_weight:
             continue
-        # Down-weight AI-submitted blocks proportionally to their confidence score
+            
         results.append((block, s * block.confidence))
+        current_weight += block.context_weight
+
     results.sort(key=lambda x: x[1], reverse=True)
 
     if rerank_model:

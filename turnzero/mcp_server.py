@@ -123,12 +123,10 @@ def _load_active_index() -> list[IndexEntry]:
 # Pure tool logic (importable for testing without a live server)
 # ---------------------------------------------------------------------------
 
-MAX_PERSONAL_WEIGHT = 1500  # Strict token budget for unconditional personal priors
-
 
 def _list_suggested_blocks(
     prompt: str,
-    top_k: int = 3,
+    top_k: int = 5,
     threshold: float = 0.70,
     context_weight: int = 4000,
     strict_intent: bool = True,
@@ -136,7 +134,7 @@ def _list_suggested_blocks(
     session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
-    from turnzero.retrieval import detect_domain
+    from turnzero.retrieval import get_identity_context, query as _query
 
     blocks = _load_active_blocks()
     index = _load_active_index()
@@ -144,30 +142,14 @@ def _list_suggested_blocks(
     # Get already injected blocks to avoid redundancy
     exclude_ids = get_session_injections(session_id) if session_id else set()
 
-    # 1. Handle Personal Priors (Always-On at Turn 0)
-    # These bypass the semantic query and are injected based on project domain.
-    personal_results: list[tuple[Block, float]] = []
-    personal_weight = 0
-    project_domain = detect_domain(prompt, project_root=project_root)
+    # 1. Handle Personal Priors (Identity Context)
+    # These are always-on at Turn 0 or on session reset.
+    personal_results, limit_exceeded = get_identity_context(
+        blocks, exclude_ids=exclude_ids
+    )
+    personal_weight = sum(b.context_weight for b, _ in personal_results)
 
-    # Filter all blocks from the 'personal' tier that aren't already injected
-    personal_candidates = [
-        b for b in blocks.values()
-        if getattr(b, "tier", "unknown") == "personal"
-        and b.slug not in exclude_ids
-    ]
-    # Sort by verification date to keep them fresh
-    personal_candidates.sort(key=lambda b: b.last_verified, reverse=True)
-
-    limit_exceeded = False
-    for b in personal_candidates:
-        if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
-            personal_results.append((b, 2.0))  # Score of 2.0 guarantees top ranking
-            personal_weight += b.context_weight
-        else:
-            limit_exceeded = True
-
-    # 2. Standard Expert Prior Retrieval
+    # 2. Standard Expert Prior Retrieval (Semantic Stream)
     expert_results = _query(
         prompt, index, blocks,
         top_k=top_k, threshold=threshold, context_weight=context_weight - personal_weight,
@@ -534,6 +516,23 @@ def get_stats() -> dict[str, Any]:
     }
     _log_tool_call("get_stats", {}, result)
     return result
+
+
+@mcp.tool()
+def reset_session(session_id: str | None = None) -> str:
+    """Clear TurnZero's injection memory for the current session.
+    
+    Call this tool when the user explicitly asks to 'reset', 'clear history', 
+    'start over', or 'forget context'. This ensures that the user's 
+    Portable Identity (Personal Priors) and relevant Expert Priors are 
+    re-suggested in the next turn.
+    """
+    from turnzero.state import clear_session_injections
+    
+    if session_id:
+        clear_session_injections(session_id)
+        return f"✓ TurnZero session memory cleared for {session_id}."
+    return "✓ TurnZero session memory cleared."
 
 
 @mcp.tool()
