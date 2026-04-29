@@ -16,13 +16,13 @@ AI memory remembers *you*. TurnZero remembers your *domain*. Native memory is pe
 
 **Is my data private? Does TurnZero send my prompts anywhere?**
 
-Raw prompt text is never stored. When you run `list_suggested_blocks`, your prompt is embedded locally (via ollama or OpenAI — your choice), the embedding is compared against a local index, and the raw text is discarded immediately. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
+Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks`, your prompt is embedded either locally via ollama or remotely via OpenAI's embeddings API if you choose that backend. In both cases, TurnZero discards the raw text immediately after embedding and compares only the embedding against a local index. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
 
 ---
 
 **What's the difference between TurnZero and `.cursorrules` / custom instructions?**
 
-`.cursorrules` and custom instructions are static — you write them once and they inject regardless of context. TurnZero is dynamic: it embeds your opening prompt and retrieves only the blocks most relevant to *this* session. A FastAPI question pulls async patterns. A Next.js 15 question pulls App Router constraints. A medical question pulls the right clinical thresholds. Static rules bloat every session; TurnZero targets the injection.
+`.cursorrules` and custom instructions are static — you write them once and they inject regardless of context. TurnZero is dynamic: it applies your Personal Priors once at session start, then retrieves Expert Priors only when they are relevant to the current task. A FastAPI question pulls async patterns. A Next.js 15 question pulls App Router constraints. A medical question pulls the right clinical thresholds. Static rules bloat every session; TurnZero targets the injection.
 
 ---
 
@@ -34,7 +34,7 @@ No. TurnZero has two embedding backends and falls back automatically: ollama (lo
 
 **Does it work with ChatGPT or Gemini?**
 
-Not yet. TurnZero uses the MCP (Model Context Protocol) standard, which Claude Code, Cursor, and Claude Desktop support. ChatGPT and Gemini don't expose an MCP interface. For clients without MCP, you can use `turnzero inject "<prompt>"` to get the formatted injection text and paste it manually — not seamless, but it works. MCP adoption is growing; more clients are expected to add support.
+Not yet. TurnZero uses the MCP (Model Context Protocol) standard, which Claude Code, Cursor, and Claude Desktop support. ChatGPT and Gemini don't expose an MCP interface. For clients without MCP, use `turnzero query "<prompt>"` or `turnzero preview "<prompt>"` to find the relevant blocks, then `turnzero show <slug>` or `turnzero inject <slug>` to print the formatted prior text and paste it manually. Not seamless, but it works. MCP adoption is growing; more clients are expected to add support.
 
 ---
 
@@ -52,4 +52,4 @@ The highest-signal source is mid-session corrections: when the AI gets something
 
 **What if there are no relevant priors for my domain?**
 
-TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set.
+TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`.

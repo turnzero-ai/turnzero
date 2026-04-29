@@ -77,6 +77,8 @@ pytest
 ### 1. Load full memory & SSOT at session start
 A `SessionStart` hook automatically injects all memory files into context. At the start of every session:
 - **Read `internal/PROJECT_STATE.md`** for the latest active tickets and technical debt.
+- **Read `internal/REALITY_MAP.md`** before making claims about what is implemented, partially implemented, or only planned.
+- **Read `internal/LAUNCH_RUBRIC.md`** when evaluating product viability, launch readiness, UX risk, token economics, or cross-client behavior.
 - **Read [ROADMAP.md](ROADMAP.md)** for the high-level project vision.
 - Treat loaded memory as ground truth for project state.
 
@@ -168,8 +170,10 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 - `rationale` = required if `anti_patterns` are present; explains the "why" behind the rules.
 
 
-### MCP tools
+### TurnZero MCP tools
 - Tool names: `snake_case` verbs
-- `submit_candidate`: supports `is_personal=True` to route idiosyncratic preferences to the private personal tier.
+- `list_suggested_blocks`: Call on Turn 0 to retrieve the **Portable AI Identity** (Personal) and relevant domain knowledge (Expert).
+- `submit_candidate`: Use `is_personal=True` for idiosyncratic preferences and `is_personal=False` for technical/domain truths.
+- `reset_session`: Call when the user requests a context clear or fresh start.
 - Every tool must catch `RuntimeError` from embedding and return a structured error dict — never crash the MCP server
 - New tools need a matching test in `tests/test_mcp_server.py`

@@ -1,10 +1,10 @@
 # Claude Code hook (optional)
 
-> **Most users don't need this.** `turnzero setup` registers the MCP server — the AI calls `list_suggested_blocks` automatically on Turn 0. The hook is an extra guarantee for Claude Code users who want injection to fire regardless of model behaviour.
+> **Most users don't need this.** `turnzero setup` registers the MCP server, which applies Personal Priors at session start and can add newly relevant Expert Priors later in the conversation. The hook is an extra guarantee for Claude Code users who want the first-turn injection to fire regardless of model behaviour.
 >
 > Install with: `turnzero setup --with-hook`
 
-The hook fires before Claude responds to your first message in each session. It embeds your opening prompt, finds matching Expert Priors, and injects them silently — guaranteed, regardless of model behaviour.
+The hook fires before Claude responds to your first message in each session. It guarantees the session-start injection path. Follow-up Expert Prior retrieval still comes from the normal MCP flow.
 
 Claude begins its response with:
 ```
@@ -107,7 +107,7 @@ Claude should begin its response with the `📎 TurnZero applied:` attribution l
 ## How it works
 
 - The hook receives the full session transcript as JSON on stdin
-- It checks whether any assistant message exists — if yes, it's not Turn 0 and exits silently
+- It checks whether any assistant message exists — if yes, it's not the session-start injection path and exits silently
 - It embeds the prompt locally (via ollama) and queries the index
 - If matches are found above the threshold, it prints the Expert Prior text to stdout
 - Claude Code injects that stdout as context before sending to the AI
