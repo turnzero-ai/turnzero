@@ -53,3 +53,21 @@ The highest-signal source is mid-session corrections: when the AI gets something
 **What if there are no relevant priors for my domain?**
 
 TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`.
+
+---
+
+**Why is there a token budget for Personal and Expert Priors?**
+
+TurnZero implements a strict budget split (2,500 tokens for Identity, 5,000 tokens total) to maintain **Hierarchical Contextual Anchoring**. Research into LLM "Attention Sinks" (Xiao et al., 2024) and "Lost in the Middle" (Liu et al., 2023) phenomena shows that AI accuracy degrades as the ratio of "Instruction context" to "Task context" shifts. If instructions are too large, they crowd out the model's effective "thinking space" for the immediate task. By keeping priors sparse and high-signal, we improve predictability and reduce errors.
+
+---
+
+**What is 'Project Scoping' and why is it used?**
+
+Project Scoping allows TurnZero to distinguish between your **Universal Identity** (global preferences like "be concise" or git workflows) and your **Pinned Style** (project-specific rules like indentation or framework-specific patterns). This prevents **Contextual Drift**, where a preference from one project accidentally poisons the context of another. By increasing the Signal-to-Noise Ratio (SNR), the AI becomes more accurate because it doesn't have to reconcile contradictory rules from unrelated workspaces.
+
+---
+
+**Is there scientific backing for the context size TurnZero uses?**
+
+Yes. The 5,000-token limit is designed to optimize for the model's **latent instruction following** capabilities without triggering performance decay. We follow a **Mandate-Constraint-Rationale** hierarchy: we don't just tell the model *what* to do; we provide a logical rationale (*why*), which has been shown to significantly improve LLM adherence and reduce hallucination of constraints for tools not in use.

@@ -91,7 +91,7 @@ def test_personal_priors_budget_limit_and_warning(mock_data, monkeypatch):
     """If personal priors exceed the budget, they should be truncated and a warning added."""
     monkeypatch.setenv("TURNZERO_DATA_DIR", str(mock_data["blocks_dir"].parent))
 
-    # Add a giant personal prior to exceed the 1500 limit
+    # Add a giant personal prior to exceed the 2500 limit
     big_prior_path = mock_data["blocks_dir"] / "personal" / "global" / "giant.yaml"
     big_prior_path.write_text(
         f"""
@@ -117,13 +117,8 @@ doc_anchors: []
 
         slugs = [r["block_id"] for r in results]
         # Giant prior was verified 2026-04-30 (newest), but it exceeds the budget alone.
-        # Wait, my logic sorts by last_verified. Giant is newest.
-        # But even it alone exceeds budget (1600 > 1500).
-        # So it should be dropped, or it should be the only one if it fit.
-        # Actually, in my implementation:
-        # if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
-        # 1600 is NOT <= 1500. So giant is dropped.
-        # Then next are workflow (500) and python (500). Total 1000 <= 1500.
+        # 2600 is NOT <= 2500. So giant is dropped.
+        # Then next are workflow (500) and python (500). Total 1000 <= 2500.
 
         assert "workflow-standard" in slugs
         assert "python-prefs" in slugs
