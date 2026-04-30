@@ -263,10 +263,17 @@ def show(
 
 @discovery_app.command()
 def inject(
-    slugs: list[str] = typer.Argument(..., help="One or more block slugs to inject."),
+    inputs: list[str] = typer.Argument(
+        ..., help="One or more block slugs OR natural language queries to inject."
+    ),
 ) -> None:
-    """Print formatted Expert Priors ready for injection into an AI session."""
+    """Print formatted Expert Priors ready for injection into an AI session.
+
+    If an input matches an exact block slug, it is injected directly.
+    Otherwise, the input is treated as a query to find the best matching block.
+    """
     from turnzero.blocks import load_all_blocks
+    from turnzero.retrieval import load_index, query as _query
 
     try:
         blocks = load_all_blocks(_blocks_dir())
@@ -275,11 +282,35 @@ def inject(
         raise typer.Exit(1)
 
     parts: list[str] = []
-    for slug in slugs:
-        if slug not in blocks:
-            err_console.print(f"[red]Block not found: {slug}[/red]")
+    for val in inputs:
+        # 1. Direct slug match
+        if val in blocks:
+            parts.append(blocks[val].to_injection_text())
             continue
-        parts.append(blocks[slug].to_injection_text())
+
+        # 2. Query retrieval fallback
+        try:
+            index = load_index(_index_path())
+            results = _query(
+                val,
+                index,
+                blocks,
+                top_k=1,
+                threshold=DEFAULT_THRESHOLD,
+                strict_intent=False,
+            )
+            if results:
+                block, _score = results[0]
+                err_console.print(
+                    f"[dim]✓ No slug match for '{val}' — retrieving best match: [bold]{block.slug}[/bold][/dim]"
+                )
+                parts.append(block.to_injection_text())
+            else:
+                err_console.print(
+                    f"[red]Error: '{val}' is not a slug and no relevant blocks were found.[/red]"
+                )
+        except Exception as e:
+            err_console.print(f"[red]Retrieval error for '{val}': {e}[/red]")
 
     if parts:
         print("\n\n---\n\n".join(parts))
