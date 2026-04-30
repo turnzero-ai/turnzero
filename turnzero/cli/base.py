@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from importlib.metadata import version as _pkg_version
-from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
+    _blocks_dir,  # noqa: F401
+    _bundled_blocks_dir,  # noqa: F401
+    _bundled_index_path,  # noqa: F401
+    _data_dir,  # noqa: F401
+    _index_path,  # noqa: F401
 )
 
 console = Console()

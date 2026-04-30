@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
-from turnzero.blocks import load_block, Block
+
+from turnzero.blocks import Block, load_block
+
 
 def test_load_block_fails_without_rationale(tmp_path: Path):
     block_path = tmp_path / "test-block.yaml"

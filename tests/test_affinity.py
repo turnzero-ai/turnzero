@@ -2,20 +2,19 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+
 from turnzero.blocks import Block
 from turnzero.retrieval import IndexEntry, query
 from turnzero.state import (
-    record_session_injection, 
     get_session_injections,
     record_project_affinity,
-    get_project_affinity
+    record_session_injection,
 )
+
 
 def test_session_deduplication(tmp_path: Path):
     # Mock data dir
-    import os
     from unittest.mock import patch
     
     data_dir = tmp_path / "turnzero"
@@ -42,7 +41,6 @@ def test_session_deduplication(tmp_path: Path):
         assert len(results) == 0
 
 def test_project_affinity_boosting(tmp_path: Path):
-    import os
     from unittest.mock import patch
     
     data_dir = tmp_path / "turnzero"

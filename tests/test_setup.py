@@ -7,11 +7,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from turnzero.cli.setup import (
-    _setup_cursor_mcp,
     _setup_claude_desktop_mcp,
+    _setup_cursor_mcp,
     _setup_gemini_mcp,
-    _setup_gemini_md
+    _setup_gemini_md,
 )
+
 
 def test_setup_claude_desktop_mcp_macos(tmp_path: Path):
     home = tmp_path / "home"
@@ -99,4 +100,4 @@ def test_setup_gemini_md(tmp_path: Path):
         
     assert md_file.exists()
     content = md_file.read_text()
-    assert "## TurnZero — Expert Prior injection" in content
+    assert "## TurnZero — Expert & Personal Prior Injection" in content

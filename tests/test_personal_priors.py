@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
-from turnzero.blocks import Block, DocAnchor
 from turnzero.mcp_server import _list_suggested_blocks
 from turnzero.retrieval import MAX_PERSONAL_WEIGHT
+
 
 @pytest.fixture
 def mock_data(tmp_path: Path):

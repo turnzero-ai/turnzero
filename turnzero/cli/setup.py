@@ -93,35 +93,34 @@ except Exception:
 
 _TURNZERO_CLAUDE_MD_BLOCK = """\
 
-## TurnZero — Expert Prior injection
-TurnZero MCP is installed. Follow these rules every session:
-1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
-2. Call `inject_block` for each relevant prior before answering.
-3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
-Skip only for pure chitchat (greetings, one-word replies).
+## TurnZero — Expert & Personal Prior Injection
+TurnZero MCP is installed. Follow these rules to establish a consistent **Portable AI Identity** and domain-specific grounding:
+
+### 1. Context Injection (Turn 0)
+- **Rule:** ALWAYS call `list_suggested_blocks` before responding to ANY non-trivial user message.
+- **Why:** This retrieves your **Personal Priors** (Always-On Identity) and relevant **Expert Priors** (Domain Knowledge).
+- **Skip:** Only skip for pure chitchat (greetings, one-word replies).
+
+### 2. Creating Priors (`submit_candidate`)
+- **Expert Priors (`is_personal=False`):** Use this for general technical truth, library "gotchas," or domain-specific rules (e.g., "SQLAlchemy 2.0 requires select()"). These are for the community.
+- **Personal Priors (`is_personal=True`):** Use this for the user's idiosyncratic preferences, personal style, or specific project quirks (e.g., "I prefer 2-space indents," "Be extremely concise"). These are private.
+- **Confidence:** Always set `auto_approve=True` for live session corrections.
+
+### 3. Session Management (`reset_session`)
+- **Rule:** Call `reset_session` if the user says "reset," "clear context," "forget everything," or starts a "new conversation."
+- **Why:** This clears TurnZero's memory of what was already injected, ensuring the **Portable AI Identity** is re-suggested immediately.
+
+### 4. Integration
+- Use `inject_block` to retrieve the full text of relevant priors before answering.
+- Call `get_stats` if the user asks about TurnZero's impact or library size.
 """
 
-_TURNZERO_AGENTS_MD_BLOCK = """\
+_TURNZERO_AGENTS_MD_BLOCK = _TURNZERO_CLAUDE_MD_BLOCK
 
-## TurnZero — Expert Prior injection
-TurnZero MCP is installed. Follow these rules every session:
-1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
-2. Call `inject_block` for each relevant prior before answering.
-3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
-Skip only for pure chitchat (greetings, one-word replies).
-"""
+_TURNZERO_GEMINI_MD_BLOCK = _TURNZERO_CLAUDE_MD_BLOCK
 
-_TURNZERO_GEMINI_MD_BLOCK = """\
-
-## TurnZero — Expert Prior injection
-TurnZero MCP is installed. Follow these rules every session:
-1. Call `list_suggested_blocks` before responding to any non-trivial message (in parallel — don't wait).
-2. Call `inject_block` for each relevant prior before answering.
-3. Call `submit_candidate` with auto_approve=True immediately when the user corrects you on any domain fact.
-Skip only for pure chitchat (greetings, one-word replies).
-"""
-
-_TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
+_TURNZERO_MD_MARKER = "## TurnZero — Expert & Personal Prior Injection"
+_LEGACY_TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
 
 
 def _setup_codex_mcp(
@@ -302,18 +301,18 @@ def _setup_claude_md(force: bool, con: Any, claude_dir: Path | None = None) -> N
     md_path = target_dir / "CLAUDE.md"
     existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
 
-    if _TURNZERO_MD_MARKER in existing:
-        if not force:
-            con.print("[dim]✓ TurnZero rule already in ~/.claude/CLAUDE.md[/dim]")
+    if _TURNZERO_MD_MARKER in existing or _LEGACY_TURNZERO_MD_MARKER in existing:
+        if not force and _TURNZERO_MD_MARKER in existing:
+            con.print(f"[dim]✓ TurnZero rule already in {md_path.name}[/dim]")
             return
-        # Remove old block before rewriting
+        # Remove old/legacy block before rewriting
         lines = existing.splitlines(keepends=True)
         filtered: list[str] = []
         skip = False
         for line in lines:
-            if _TURNZERO_MD_MARKER in line:
+            if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
                 skip = False
             if not skip:
                 filtered.append(line)
@@ -334,18 +333,18 @@ def _setup_codex_agents_md(
     md_path = target_dir / "AGENTS.md"
     existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
 
-    if _TURNZERO_MD_MARKER in existing:
-        if not force:
-            con.print("[dim]✓ TurnZero rule already in AGENTS.md[/dim]")
+    if _TURNZERO_MD_MARKER in existing or _LEGACY_TURNZERO_MD_MARKER in existing:
+        if not force and _TURNZERO_MD_MARKER in existing:
+            con.print(f"[dim]✓ TurnZero rule already in {md_path.name}[/dim]")
             return
         # Remove old block before rewriting
         lines = existing.splitlines(keepends=True)
         filtered: list[str] = []
         skip = False
         for line in lines:
-            if _TURNZERO_MD_MARKER in line:
+            if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
                 skip = False
             if not skip:
                 filtered.append(line)
@@ -364,18 +363,18 @@ def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> N
     md_path = target_dir / "GEMINI.md"
     existing = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
 
-    if _TURNZERO_MD_MARKER in existing:
-        if not force:
-            con.print("[dim]✓ TurnZero rule already in ~/.gemini/GEMINI.md[/dim]")
+    if _TURNZERO_MD_MARKER in existing or _LEGACY_TURNZERO_MD_MARKER in existing:
+        if not force and _TURNZERO_MD_MARKER in existing:
+            con.print(f"[dim]✓ TurnZero rule already in {md_path.name}[/dim]")
             return
-        # Remove old block before rewriting
+        # Remove old/legacy block before rewriting
         lines = existing.splitlines(keepends=True)
         filtered: list[str] = []
         skip = False
         for line in lines:
-            if _TURNZERO_MD_MARKER in line:
+            if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line:
+            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
                 skip = False
             if not skip:
                 filtered.append(line)

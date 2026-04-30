@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -11,13 +10,6 @@ from rich import box
 from rich.table import Table
 
 from turnzero.blocks import Block
-from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
-)
 from turnzero.cli.base import (
     DEFAULT_THRESHOLD,
     MAX_PREVIEW_ANTI_PATTERNS,
@@ -25,6 +17,13 @@ from turnzero.cli.base import (
     PREVIEW_TEXT_LIMIT,
     console,
     err_console,
+)
+from turnzero.config import (
+    _blocks_dir,
+    _bundled_blocks_dir,
+    _bundled_index_path,
+    _data_dir,
+    _index_path,
 )
 
 discovery_app = typer.Typer(no_args_is_help=True)
@@ -129,7 +128,7 @@ def query(
     results = identity_blocks + expert_results
 
     if not results:
-        console.print(f"\n[dim]No blocks found for this prompt.[/dim]\n")
+        console.print("\n[dim]No blocks found for this prompt.[/dim]\n")
         return
 
     # Load session analytics
@@ -176,7 +175,7 @@ def preview(
     results = identity_blocks + expert_results
 
     if not results:
-        console.print(f"\n[dim]No blocks found for this prompt.[/dim]\n")
+        console.print("\n[dim]No blocks found for this prompt.[/dim]\n")
         return
 
     total_weight = sum(b.context_weight for b, _ in results)
@@ -293,8 +292,6 @@ def stats() -> None:
     import json
     import time
     from collections import Counter
-    from rich import box
-    from rich.table import Table
 
     from turnzero.blocks import load_all_blocks
     from turnzero.retrieval import load_index
@@ -315,18 +312,17 @@ def stats() -> None:
     sessions_total = len(entries)
     sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
     priors_total = sum(len(e.get("blocks", [])) for e in entries)
-    priors_week = sum(len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago)
+    priors_week = sum(
+        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
+    )
 
-    block_counts: Counter[str] = Counter()
     domain_counts: Counter[str] = Counter()
     for e in entries:
-        for slug in e.get("blocks", []):
-            block_counts[slug] += 1
         for d in e.get("domains", []):
             domain_counts[d] += 1
 
-    top_blocks = block_counts.most_common(3)
     top_domains = [d for d, _ in domain_counts.most_common(5)]
+
 
     est_turns = round(priors_total * 0.5)
     est_tokens = priors_total * 0.5 * 1500
@@ -338,10 +334,6 @@ def stats() -> None:
         for line in tool_log_path.read_text(encoding="utf-8").splitlines():
             with contextlib.suppress(json.JSONDecodeError):
                 tool_entries.append(json.loads(line))
-
-    tool_calls_total = len(tool_entries)
-    tokens_in_total = sum(e.get("tokens_in", 0) for e in tool_entries)
-    tokens_out_total = sum(e.get("tokens_out", 0) for e in tool_entries)
 
     # ── Library stats ─────────────────────────────────────────────────────
     try:

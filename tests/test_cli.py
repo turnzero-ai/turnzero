@@ -167,7 +167,7 @@ def test_setup_claude_md_skips_if_already_present(tmp_path: Path) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     md = claude_dir / "CLAUDE.md"
-    md.write_text("## TurnZero — Expert Prior injection\nexisting content\n")
+    md.write_text("## TurnZero — Expert & Personal Prior Injection\nexisting content\n")
     con = Console(quiet=True)
 
     _setup_claude_md(force=False, con=con, claude_dir=claude_dir)
@@ -179,7 +179,7 @@ def test_setup_claude_md_force_overwrites(tmp_path: Path) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     md = claude_dir / "CLAUDE.md"
-    md.write_text("## TurnZero — Expert Prior injection\nold content\n")
+    md.write_text("## TurnZero — Expert & Personal Prior Injection\nold content\n")
     con = Console(quiet=True)
 
     _setup_claude_md(force=True, con=con, claude_dir=claude_dir)

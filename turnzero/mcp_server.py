@@ -14,7 +14,6 @@ Add to Claude Code .claude/settings.json:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -44,19 +43,17 @@ mcp = FastMCP(
         "\n\n"
         "RULE 1 — ALWAYS call list_suggested_blocks before responding to ANY non-trivial user message. "
         "Do not wait — call it in parallel with preparing your response. "
-        "This applies to every message, not just the first one in a session. "
-        "Skip only for pure chitchat (greetings, thanks, one-word replies). "
+        "This retrieves your Personal Priors (Identity) and relevant Expert Priors (Domain Knowledge). "
         "Use inject_block to retrieve the full text of each relevant prior before answering. "
         "\n\n"
         "RULE 2 — ALWAYS call submit_candidate with auto_approve=True when: "
         "(a) the user corrects you on any domain-specific fact, API, rule, pattern, or threshold; "
         "(b) the user says 'remember this', 'save this', or 'note this for next time'. "
+        "Use is_personal=True for idiosyncratic user preferences and is_personal=False for general technical truths. "
         "Do this immediately — do not wait until the end of the session. "
-        "You are the best extractor: you already know which turns were corrections. "
         "\n\n"
-        "Always use auto_approve=True for live sessions. "
-        "The review queue (auto_approve=False) is only for offline harvest runs. "
-        "Call get_stats when the user asks about TurnZero usage or how many priors have been injected."
+        "RULE 3 — Call reset_session if the user requests a fresh start, clear history, or session reset. "
+        "This ensures Personal Priors are re-suggested in the next turn."
     ),
 )
 
@@ -67,7 +64,6 @@ from turnzero.config import (
     _bundled_index_path,
     _data_dir,
     _index_path,
-    enabled_sources,
 )
 
 # ---------------------------------------------------------------------------
@@ -134,7 +130,7 @@ def _list_suggested_blocks(
     session_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
-    from turnzero.retrieval import get_identity_context, query as _query
+    from turnzero.retrieval import get_identity_context
 
     blocks = _load_active_blocks()
     index = _load_active_index()
