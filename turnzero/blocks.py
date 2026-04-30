@@ -80,6 +80,8 @@ class Block:
     archived: bool = False
     # The storage tier this block belongs to (local, community, team, personal, etc.)
     tier: str = "unknown"
+    # Optional project hash for pinning personal priors to specific projects
+    project_hash: str | None = None
 
     @property
     def id(self) -> str:
@@ -118,13 +120,13 @@ class Block:
 
     def to_injection_text(self) -> str:
         """Formatted Expert Prior ready to inject into an AI session.
-        
-        Uses a hierarchical structure (Identity -> Constraints -> Task) 
+
+        Uses a hierarchical structure (Identity -> Constraints -> Task)
         to maximize LLM anchoring based on research (Ni, 2026).
         """
         domain_title = self.domain.replace("-", " ").title()
         role = f"Expert {domain_title} {self.intent.title()} Assistant"
-        
+
         lines: list[str] = [
             "# EXPERT_PRIOR_IDENTITY",
             f"Role: {role}",
@@ -132,7 +134,7 @@ class Block:
             "",
             "# SESSION_CONSTRAINTS",
         ]
-        
+
         if self.constraints:
             for c in self.constraints:
                 lines.append(f"- {c}")
@@ -141,7 +143,7 @@ class Block:
             lines.append("")
             lines.append("# RATIONALE")
             lines.append(self.rationale)
-        
+
         if self.anti_patterns:
             lines.append("")
             lines.append("# ANTI_PATTERNS")
@@ -150,18 +152,20 @@ class Block:
                 prefix = "" if a.lower().startswith("do not") else "Do not: "
                 lines.append(f"- {prefix}{a}")
 
-        lines.extend([
-            "",
-            "# VALIDATION_TASK",
-            f"Prioritize the constraints and anti-patterns above for the duration of this {self.domain} {self.intent} session.",
-        ])
+        lines.extend(
+            [
+                "",
+                "# VALIDATION_TASK",
+                f"Prioritize the constraints and anti-patterns above for the duration of this {self.domain} {self.intent} session.",
+            ]
+        )
 
         if self.doc_anchors:
             lines.append("")
             lines.append("# REFERENCE_DOCS")
             for anchor in self.doc_anchors:
                 lines.append(f"- {anchor.url}")
-                
+
         return "\n".join(lines)
 
 
@@ -187,7 +191,9 @@ def load_block(path: Path, tier: str = "unknown") -> Block:
     rationale = raw.get("rationale")
 
     if anti_patterns and not rationale:
-        raise ValueError(f"Block '{slug}' has anti_patterns but is missing a 'rationale'.")
+        raise ValueError(
+            f"Block '{slug}' has anti_patterns but is missing a 'rationale'."
+        )
 
     return Block(
         slug=slug,
@@ -213,6 +219,7 @@ def load_block(path: Path, tier: str = "unknown") -> Block:
         rationale=rationale,
         archived=bool(raw.get("archived", False)),
         tier=tier,
+        project_hash=raw.get("project_hash"),
     )
 
 

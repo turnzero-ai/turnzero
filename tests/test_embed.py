@@ -13,6 +13,7 @@ from turnzero.embed import EMBEDDING_DIM, _embed_ollama, _embed_openai, embed
 # _embed_ollama — uses httpx directly, no ollama package required
 # ---------------------------------------------------------------------------
 
+
 def _fake_ollama_response(embedding: list[float]) -> MagicMock:
     resp = MagicMock()
     resp.json.return_value = {"embedding": embedding}
@@ -20,7 +21,9 @@ def _fake_ollama_response(embedding: list[float]) -> MagicMock:
     return resp
 
 
-def test_embed_ollama_uses_httpx_not_ollama_package(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_embed_ollama_uses_httpx_not_ollama_package(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """ollama backend must work without the ollama Python package installed."""
     monkeypatch.delenv("OLLAMA_HOST", raising=False)
 
@@ -60,14 +63,17 @@ def test_embed_ollama_host_without_scheme(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_embed_ollama_raises_runtime_error_on_failure() -> None:
-    with patch("httpx.post", side_effect=Exception("connection refused")), \
-         pytest.raises(RuntimeError, match="ollama unavailable"):
+    with (
+        patch("httpx.post", side_effect=Exception("connection refused")),
+        pytest.raises(RuntimeError, match="ollama unavailable"),
+    ):
         _embed_ollama("test prompt")
 
 
 # ---------------------------------------------------------------------------
 # _embed_openai — uses httpx, no openai package required
 # ---------------------------------------------------------------------------
+
 
 def _fake_openai_response(embedding: list[float]) -> MagicMock:
     resp = MagicMock()
@@ -91,14 +97,19 @@ def test_embed_openai_uses_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
 # embed() fallback chain
 # ---------------------------------------------------------------------------
 
+
 def test_embed_falls_back_to_openai_when_local_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     vec = [0.5] * EMBEDDING_DIM
 
-    with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("ollama down")), \
-         patch("turnzero.embed._embed_openai", return_value=np.array(vec, dtype=np.float32)) as mock_openai:
+    with (
+        patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("ollama down")),
+        patch(
+            "turnzero.embed._embed_openai", return_value=np.array(vec, dtype=np.float32)
+        ) as mock_openai,
+    ):
         result = embed("test")
 
     mock_openai.assert_called_once()
@@ -108,17 +119,21 @@ def test_embed_falls_back_to_openai_when_local_unavailable(
 def test_embed_raises_when_all_backends_fail(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
-         pytest.raises(RuntimeError, match="No embedding backend available"):
+    with (
+        patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")),
+        pytest.raises(RuntimeError, match="No embedding backend available"),
+    ):
         embed("test prompt")
 
 
 def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
-    with patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")), \
-         patch("turnzero.embed._embed_openai") as mock_openai, \
-         pytest.raises(RuntimeError):
+    with (
+        patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")),
+        patch("turnzero.embed._embed_openai") as mock_openai,
+        pytest.raises(RuntimeError),
+    ):
         embed("test")
 
     mock_openai.assert_not_called()
@@ -127,8 +142,12 @@ def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None
 def test_embed_prefers_ollama_over_openai() -> None:
     vec = [0.4] * EMBEDDING_DIM
 
-    with patch("turnzero.embed._embed_ollama", return_value=np.array(vec, dtype=np.float32)) as mock_ollama, \
-         patch("turnzero.embed._embed_openai") as mock_openai:
+    with (
+        patch(
+            "turnzero.embed._embed_ollama", return_value=np.array(vec, dtype=np.float32)
+        ) as mock_ollama,
+        patch("turnzero.embed._embed_openai") as mock_openai,
+    ):
         embed("test")
 
     mock_ollama.assert_called_once()

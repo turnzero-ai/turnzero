@@ -73,7 +73,9 @@ def validate(
     context_weight: int = typer.Option(
         4000, "--weight", help="Weight budget for query."
     ),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show per-query results."),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show per-query results."
+    ),
 ) -> None:
     """Run Hit Rate@K evaluation against the validation set.
 
@@ -196,7 +198,9 @@ def threshold_test(
         "--require-impl/--no-require-impl",
         help="Apply is_implementation_prompt() gate before similarity check (mirrors hook).",
     ),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Show per-prompt scores."),
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Show per-prompt scores."
+    ),
 ) -> None:
     """Sweep thresholds and show precision/recall trade-off.
 
@@ -294,9 +298,7 @@ def threshold_test(
                 )
             else:
                 type_str = "[green]+[/green]" if is_positive else "[red]-[/red]"
-                score_table.add_row(
-                    type_str, prompt_text[:55], "[none]", "0.000", "—"
-                )
+                score_table.add_row(type_str, prompt_text[:55], "[none]", "0.000", "—")
 
         console.print(score_table)
         console.print(

@@ -21,22 +21,62 @@ from turnzero.embed import cosine_similarity, get_model_id
 
 INTENT_SIGNALS: dict[str, list[str]] = {
     "build": [
-        "build", "create", "scaffold", "implement", "add", "make",
-        "set up", "write", "develop", "integrate",
+        "build",
+        "create",
+        "scaffold",
+        "implement",
+        "add",
+        "make",
+        "set up",
+        "write",
+        "develop",
+        "integrate",
     ],
     "debug": [
-        "error", "bug", "fix", "not working", "failing", "broken",
-        "why", "problem", "crash", "exception", "undefined",
-        "issue", "persisting", "help with", "correct",
-        "leaked", "exposed", "compromised", "breached", "accidentally",
+        "error",
+        "bug",
+        "fix",
+        "not working",
+        "failing",
+        "broken",
+        "why",
+        "problem",
+        "crash",
+        "exception",
+        "undefined",
+        "issue",
+        "persisting",
+        "help with",
+        "correct",
+        "leaked",
+        "exposed",
+        "compromised",
+        "breached",
+        "accidentally",
     ],
     "migrate": [
-        "upgrade", "migrate", "convert", "move", "port",
-        "refactor", "replace", "switch", "from v", "to v",
+        "upgrade",
+        "migrate",
+        "convert",
+        "move",
+        "port",
+        "refactor",
+        "replace",
+        "switch",
+        "from v",
+        "to v",
     ],
     "review": [
-        "review", "check", "is this", "best practice", "correct",
-        "improve", "audit", "better way", "should i", "performance",
+        "review",
+        "check",
+        "is this",
+        "best practice",
+        "correct",
+        "improve",
+        "audit",
+        "better way",
+        "should i",
+        "performance",
     ],
 }
 
@@ -68,64 +108,233 @@ def classify_intent(prompt: str) -> str:
 #   - domain detected in prompt or filesystem
 # Tier 3: similarity threshold (0.70) is the final quality gate
 
-_SOCIAL_PATTERNS: frozenset[str] = frozenset({
-    "how are you", "good morning", "good afternoon", "good evening",
-    "good night", "how's it going", "how is it going", "what's up",
-    "whats up", "hey there", "hi there", "tell me a joke",
-    "thanks", "thank you", "you're welcome", "youre welcome",
-    "sounds good", "sounds great", "got it", "makes sense",
-    "ok", "okay", "sure", "yes", "no", "great", "awesome",
-    "nice", "cool", "interesting", "noted",
-})
+_SOCIAL_PATTERNS: frozenset[str] = frozenset(
+    {
+        "how are you",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "good night",
+        "how's it going",
+        "how is it going",
+        "what's up",
+        "whats up",
+        "hey there",
+        "hi there",
+        "tell me a joke",
+        "thanks",
+        "thank you",
+        "you're welcome",
+        "youre welcome",
+        "sounds good",
+        "sounds great",
+        "got it",
+        "makes sense",
+        "ok",
+        "okay",
+        "sure",
+        "yes",
+        "no",
+        "great",
+        "awesome",
+        "nice",
+        "cool",
+        "interesting",
+        "noted",
+    }
+)
 
-_IMPL_ACTION_SIGNALS: frozenset[str] = frozenset({
-    "build", "building", "create", "creating", "scaffold", "implement",
-    "implementing", "set up", "setting up", "configure", "configuring",
-    "deploy", "deploying", "write", "writing", "develop", "developing",
-    "migrate", "migrating", "integrate", "integrating", "add", "adding",
-    "start", "starting", "launch", "launching", "init", "generate",
-    "connect", "connecting", "install", "installing", "run", "running",
-    "refactor", "refactoring", "convert", "converting", "upgrade",
-    "upgrading", "wire up", "hook up", "spin up",
-    "harden", "hardening", "scan", "scanning", "audit", "auditing",
-    "pentest", "pentesting", "rotate", "rotating", "remediate", "remediating",
-    "patch", "patching", "mitigate", "mitigating", "investigate", "investigating",
-    "secure", "securing", "protect", "protecting", "analyze", "analyzing",
-    "analyse", "analysing", "exploit", "exploiting", "assess", "assessing",
-    # Auth / identity protocols — always professional context
-    "oauth", "oidc", "pkce", "jwt", "saml", "authenticate", "authenticating",
-    "authorize", "authorizing", "provision", "provisioning",
-    # Infrastructure
-    "terraform", "kubernetes", "kubectl", "helm", "containerize", "containerizing",
-    "orchestrate", "orchestrating",
-})
+_IMPL_ACTION_SIGNALS: frozenset[str] = frozenset(
+    {
+        "build",
+        "building",
+        "create",
+        "creating",
+        "scaffold",
+        "implement",
+        "implementing",
+        "set up",
+        "setting up",
+        "configure",
+        "configuring",
+        "deploy",
+        "deploying",
+        "write",
+        "writing",
+        "develop",
+        "developing",
+        "migrate",
+        "migrating",
+        "integrate",
+        "integrating",
+        "add",
+        "adding",
+        "start",
+        "starting",
+        "launch",
+        "launching",
+        "init",
+        "generate",
+        "connect",
+        "connecting",
+        "install",
+        "installing",
+        "run",
+        "running",
+        "refactor",
+        "refactoring",
+        "convert",
+        "converting",
+        "upgrade",
+        "upgrading",
+        "wire up",
+        "hook up",
+        "spin up",
+        "harden",
+        "hardening",
+        "scan",
+        "scanning",
+        "audit",
+        "auditing",
+        "pentest",
+        "pentesting",
+        "rotate",
+        "rotating",
+        "remediate",
+        "remediating",
+        "patch",
+        "patching",
+        "mitigate",
+        "mitigating",
+        "investigate",
+        "investigating",
+        "secure",
+        "securing",
+        "protect",
+        "protecting",
+        "analyze",
+        "analyzing",
+        "analyse",
+        "analysing",
+        "exploit",
+        "exploiting",
+        "assess",
+        "assessing",
+        # Auth / identity protocols — always professional context
+        "oauth",
+        "oidc",
+        "pkce",
+        "jwt",
+        "saml",
+        "authenticate",
+        "authenticating",
+        "authorize",
+        "authorizing",
+        "provision",
+        "provisioning",
+        # Infrastructure
+        "terraform",
+        "kubernetes",
+        "kubectl",
+        "helm",
+        "containerize",
+        "containerizing",
+        "orchestrate",
+        "orchestrating",
+    }
+)
 
-_IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset({
-    "keeps", "throwing", "throws", "not working", "failing", "broken",
-    "returns", "return", "crashes", "crashing", "doesn't work", "does not work",
-    "can't", "cannot", "stuck", "blocked", "error", "exception", "bug",
-    "not persisting", "not rendering", "not loading", "not connecting",
-    "wrong", "incorrect", "unexpected", "undefined", "null pointer",
-    "fix", "fixing", "debug", "debugging", "issue",
-    "leaked", "exposed", "compromised", "breached", "accidentally",
-})
+_IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset(
+    {
+        "keeps",
+        "throwing",
+        "throws",
+        "not working",
+        "failing",
+        "broken",
+        "returns",
+        "return",
+        "crashes",
+        "crashing",
+        "doesn't work",
+        "does not work",
+        "can't",
+        "cannot",
+        "stuck",
+        "blocked",
+        "error",
+        "exception",
+        "bug",
+        "not persisting",
+        "not rendering",
+        "not loading",
+        "not connecting",
+        "wrong",
+        "incorrect",
+        "unexpected",
+        "undefined",
+        "null pointer",
+        "fix",
+        "fixing",
+        "debug",
+        "debugging",
+        "issue",
+        "leaked",
+        "exposed",
+        "compromised",
+        "breached",
+        "accidentally",
+    }
+)
 
 # Question phrases that signal a real professional query (domain-agnostic)
-_QUESTION_PATTERNS: frozenset[str] = frozenset({
-    "?",
-    "how do i", "how do we", "how should i", "how should we",
-    "how can i", "how can we", "how to",
-    "what is the", "what are the", "what should i", "what should we",
-    "what's the", "whats the", "what would",
-    "which ", "when should", "when do i", "when do we",
-    "should i ", "should we ", "can i ", "can we ",
-    "help me", "help us", "i need to", "we need to",
-    "i want to", "we want to", "i'm trying to", "im trying to",
-    "i am trying to", "we are trying to",
-    "best way to", "best approach", "best practice",
-    "recommend", "recommendation", "advice on", "guidance on",
-    "difference between", "when to use", "pros and cons",
-})
+_QUESTION_PATTERNS: frozenset[str] = frozenset(
+    {
+        "?",
+        "how do i",
+        "how do we",
+        "how should i",
+        "how should we",
+        "how can i",
+        "how can we",
+        "how to",
+        "what is the",
+        "what are the",
+        "what should i",
+        "what should we",
+        "what's the",
+        "whats the",
+        "what would",
+        "which ",
+        "when should",
+        "when do i",
+        "when do we",
+        "should i ",
+        "should we ",
+        "can i ",
+        "can we ",
+        "help me",
+        "help us",
+        "i need to",
+        "we need to",
+        "i want to",
+        "we want to",
+        "i'm trying to",
+        "im trying to",
+        "i am trying to",
+        "we are trying to",
+        "best way to",
+        "best approach",
+        "best practice",
+        "recommend",
+        "recommendation",
+        "advice on",
+        "guidance on",
+        "difference between",
+        "when to use",
+        "pros and cons",
+    }
+)
 
 _ALL_SIGNALS: frozenset[str] = _IMPL_ACTION_SIGNALS | _IMPL_PROBLEM_SIGNALS
 FUZZY_SIGNAL_MIN_LEN = 5
@@ -217,6 +426,7 @@ def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> b
 # Index
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class IndexEntry:
     block_id: str
@@ -237,8 +447,7 @@ def load_index(
     """
     if not index_path.exists():
         raise FileNotFoundError(
-            f"Index not found at {index_path}\n"
-            "Build it first:  turnzero index build"
+            f"Index not found at {index_path}\nBuild it first:  turnzero index build"
         )
 
     entries: list[IndexEntry] = []
@@ -256,6 +465,7 @@ def load_index(
                 # Use Rich if available (it is in our dependencies)
                 try:
                     from rich.console import Console
+
                     console = Console(stderr=True)
                     console.print(
                         f"\n[bold yellow]⚠[/bold yellow] [yellow]Index model mismatch:[/yellow]\n"
@@ -291,6 +501,7 @@ def load_index(
 # Domain detection
 # ---------------------------------------------------------------------------
 
+
 def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
     """Identify the primary tech domain from the prompt OR the filesystem.
 
@@ -323,11 +534,15 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
                     return "langchain"
 
         # Docker
-        if (project_root / "docker-compose.yml").exists() or (project_root / "Dockerfile").exists():
+        if (project_root / "docker-compose.yml").exists() or (
+            project_root / "Dockerfile"
+        ).exists():
             return "docker"
 
         # Supabase (config file)
-        if (project_root / "supabase").exists() or (project_root / "supabase.yaml").exists():
+        if (project_root / "supabase").exists() or (
+            project_root / "supabase.yaml"
+        ).exists():
             return "supabase"
 
     # 2. Fallback to Keyword Detection in Prompt
@@ -345,9 +560,23 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
         "typescript": ["typescript", "ts-config", "strict mode"],
         "rest-api": ["rest api", "api design", "http endpoint"],
         "security": [
-            "security", "secure", "harden", "hardening", "pentest", "penetration test",
-            "vulnerability", "cve", "owasp", "threat model", "audit", "secrets management",
-            "iam", "least privilege", "zero trust", "devsecops", "rotate secrets",
+            "security",
+            "secure",
+            "harden",
+            "hardening",
+            "pentest",
+            "penetration test",
+            "vulnerability",
+            "cve",
+            "owasp",
+            "threat model",
+            "audit",
+            "secrets management",
+            "iam",
+            "least privilege",
+            "zero trust",
+            "devsecops",
+            "rotate secrets",
         ],
     }
 
@@ -373,23 +602,24 @@ def _tokenize(text: str) -> set[str]:
 def _test_similarity(prompt: str, block: Block) -> float:
     """Lexical similarity used only in test mode."""
     prompt_tokens = _tokenize(prompt)
-    block_text = " ".join([
-        block.slug,
-        block.domain,
-        block.intent,
-        " ".join(block.tags),
-        " ".join(block.provides),
-        " ".join(block.requires),
-        block.to_injection_text(),
-    ])
+    block_text = " ".join(
+        [
+            block.slug,
+            block.domain,
+            block.intent,
+            " ".join(block.tags),
+            " ".join(block.provides),
+            " ".join(block.requires),
+            block.to_injection_text(),
+        ]
+    )
     block_tokens = _tokenize(block_text)
     if not prompt_tokens or not block_tokens:
         return 0.0
     prompt_set = prompt_tokens
     nextjs_prompt = {"next", "js", "build"} <= prompt_set and "supabase" in prompt_set
-    postgres_prompt = (
-        "postgresql" in prompt_set
-        and ("performance" in prompt_set or "queries" in prompt_set)
+    postgres_prompt = "postgresql" in prompt_set and (
+        "performance" in prompt_set or "queries" in prompt_set
     )
     stripe_prompt = "stripe" in prompt_set and (
         "webhook" in prompt_set or "signatures" in prompt_set
@@ -407,11 +637,17 @@ def _test_similarity(prompt: str, block: Block) -> float:
         return 0.1
     if block.slug == "stripe-webhook-verify-build" and stripe_prompt:
         return 1.0
-    if block.domain == "stripe" and stripe_prompt and block.slug != "stripe-webhook-verify-build":
+    if (
+        block.domain == "stripe"
+        and stripe_prompt
+        and block.slug != "stripe-webhook-verify-build"
+    ):
         return 0.1
 
     overlap = len(prompt_set & block_tokens) / len(prompt_set)
-    slug_bonus = 0.10 if any(part in prompt_tokens for part in block.slug.split("-")) else 0.0
+    slug_bonus = (
+        0.10 if any(part in prompt_tokens for part in block.slug.split("-")) else 0.0
+    )
     domain_bonus = 0.18 if block.domain in prompt_tokens else 0.0
     tag_hits = len(prompt_tokens & set(block.tags))
     tag_bonus = min(0.10 * tag_hits, 0.40)
@@ -434,8 +670,16 @@ def _test_similarity(prompt: str, block: Block) -> float:
         manual_bonus += 0.60
 
     return min(
-        overlap * 0.90 + slug_bonus + domain_bonus + tag_bonus + provide_bonus
-        - require_penalty - version_penalty + base_bonus + manual_bonus + 0.12,
+        overlap * 0.90
+        + slug_bonus
+        + domain_bonus
+        + tag_bonus
+        + provide_bonus
+        - require_penalty
+        - version_penalty
+        + base_bonus
+        + manual_bonus
+        + 0.12,
         1.0,
     )
 
@@ -448,26 +692,48 @@ DOMAIN_BOOST = 1.5  # Heavy boost for matching the detected domain
 INTENT_BOOST = 1.2  # Boost for matching intent
 PROJECT_AFFINITY_BOOST = 1.25  # Boost for blocks previously used in this project
 MAX_PERSONAL_WEIGHT = 1500  # Token budget for identity injection
+IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
+HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
 
 
 def get_identity_context(
     blocks: dict[str, Block],
+    project_root: Path | None = None,
     exclude_ids: set[str] | None = None,
 ) -> tuple[list[tuple[Block, float]], bool]:
     """Return all blocks from the 'personal' tier that fit the context budget.
-    
-    Personal Priors establish the 'Portable AI Identity'. They are injected 
+
+    Personal Priors establish the 'Portable AI Identity'. They are injected
     unconditionally at session start, regardless of domain (universal persona).
+
+    If project_root is provided, personal priors are filtered:
+    - Included if domain is 'global'
+    - Included if project_hash matches the project_root
+    - Included if project_hash is None (legacy/universal)
+
     Returns (blocks, limit_exceeded).
     """
+    from turnzero.state import _get_project_hash
+
     exclude_ids = exclude_ids or set()
     personal_results: list[tuple[Block, float]] = []
     personal_weight = 0
 
+    project_hash = None
+    if project_root:
+        project_hash = _get_project_hash(project_root)
+
     # Filter all blocks from the 'personal' tier
     candidates = [
-        b for b in blocks.values()
-        if b.tier == "personal" and b.slug not in exclude_ids
+        b
+        for b in blocks.values()
+        if b.tier == "personal"
+        and b.slug not in exclude_ids
+        and (
+            b.domain == "global"
+            or not b.project_hash
+            or (project_hash and b.project_hash == project_hash)
+        )
     ]
     # Sort by verification date to keep newest preferences first
     candidates.sort(key=lambda b: b.last_verified, reverse=True)
@@ -476,15 +742,15 @@ def get_identity_context(
     for b in candidates:
         if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
             # Score of 2.0 ensures they rank above all Expert Priors
-            personal_results.append((b, 2.0))
+            personal_results.append((b, IDENTITY_SCORE_THRESHOLD))
             personal_weight += b.context_weight
         else:
             limit_exceeded = True
-    
+
     return personal_results, limit_exceeded
 
 
-def query(
+def query(  # noqa: PLR0915
     prompt: str,
     index: list[IndexEntry],
     blocks: dict[str, Block],
@@ -497,7 +763,7 @@ def query(
     exclude_block_ids: set[str] | None = None,
 ) -> list[tuple[Block, float]]:
     """Return relevant blocks using saturation-based hybrid retrieval.
-    
+
     Saturation Logic:
     1. Return ALL blocks with a final score >= 0.90 (High Confidence).
     2. If fewer than top_k blocks are found, fill up to top_k with next best (>= threshold).
@@ -528,7 +794,8 @@ def query(
 
         if test_mode:
             block = blocks.get(entry.block_id)
-            if block is None: continue
+            if block is None:
+                continue
             score = _test_similarity(prompt, block)
         else:
             score = cosine_similarity(prompt_embedding, entry.embedding)
@@ -537,7 +804,7 @@ def query(
         boost = 1.0
         if entry.intent == intent:
             boost *= INTENT_BOOST
-        
+
         if domain and entry.domain == domain:
             boost *= DOMAIN_BOOST
         elif domain and entry.domain != domain:
@@ -552,7 +819,7 @@ def query(
     scored.sort(key=lambda x: x[1], reverse=True)
 
     # Saturation Logic: Take ALL high-confidence matches, or fill up to top_k
-    high_conf = [(e, s) for e, s in scored if s >= 0.90]
+    high_conf = [(e, s) for e, s in scored if s >= HIGH_CONFIDENCE_THRESHOLD]
     if len(high_conf) >= top_k:
         candidates = high_conf
     else:
@@ -561,13 +828,15 @@ def query(
     results: list[tuple[Block, float]] = []
     current_weight = 0
     for e, s in candidates:
-        if e.block_id not in blocks: continue
+        if e.block_id not in blocks:
+            continue
         block = blocks[e.block_id]
-        if block.archived: continue
-        
+        if block.archived:
+            continue
+
         if current_weight + block.context_weight > context_weight:
             continue
-            
+
         results.append((block, s * block.confidence))
         current_weight += block.context_weight
 
@@ -626,10 +895,10 @@ Respond with ONLY the numeric score, no prose."""
             # Extract the first float-like string
             match = re.search(r"(\d+\.\d+|\d+)", content)
             llm_score = float(match.group(1)) if match else 0.0
-            
+
             # Clip score to [0, 1]
             llm_score = max(0.0, min(1.0, llm_score))
-            
+
             # Combine scores: LLM score is high-fidelity, vector score is a fallback
             # We weight LLM score at 80% and vector search as a 20% prior
             combined_score = (llm_score * 0.8) + (vector_score * 0.2)

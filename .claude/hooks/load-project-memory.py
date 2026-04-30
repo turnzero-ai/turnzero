@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """SessionStart hook — inject full TurnZero project memory into context."""
+
 import glob
 import json
 import os
@@ -10,8 +11,7 @@ mem_dir = os.path.expanduser(
 )
 
 files = sorted(
-    f for f in glob.glob(os.path.join(mem_dir, "*.md"))
-    if not f.endswith("MEMORY.md")
+    f for f in glob.glob(os.path.join(mem_dir, "*.md")) if not f.endswith("MEMORY.md")
 )
 
 parts = []
@@ -27,9 +27,13 @@ context = (
     + "\n\n---\n\n".join(parts)
 )
 
-print(json.dumps({
-    "hookSpecificOutput": {
-        "hookEventName": "SessionStart",
-        "additionalContext": context,
-    }
-}))
+print(
+    json.dumps(
+        {
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": context,
+            }
+        }
+    )
+)

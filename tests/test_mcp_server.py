@@ -24,9 +24,11 @@ from turnzero.mcp_server import (
 def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
 
+
 # ---------------------------------------------------------------------------
 # list_suggested_blocks
 # ---------------------------------------------------------------------------
+
 
 def test_list_suggested_blocks_returns_correct_top_result() -> None:
     results = _list_suggested_blocks(
@@ -36,7 +38,9 @@ def test_list_suggested_blocks_returns_correct_top_result() -> None:
     # Any nextjs block in top results is correct — hash embeddings may rank differently
     # from production embeddings; we validate domain correctness not exact rank
     block_ids = [r["block_id"] for r in results]
-    assert any(bid.startswith("nextjs") or bid.startswith("supabase") for bid in block_ids)
+    assert any(
+        bid.startswith("nextjs") or bid.startswith("supabase") for bid in block_ids
+    )
 
 
 def test_list_suggested_blocks_result_shape() -> None:
@@ -61,7 +65,9 @@ def test_list_suggested_blocks_scores_in_range() -> None:
 
 
 def test_list_suggested_blocks_docker_top_result() -> None:
-    results = _list_suggested_blocks("set up Docker Compose for a production deployment")
+    results = _list_suggested_blocks(
+        "set up Docker Compose for a production deployment"
+    )
     # Identity priors are injected first, look for the first Expert Prior
     expert_ids = [r["block_id"] for r in results if r["score"] < 2.0]
     assert expert_ids[0] == "docker-compose-production-build"
@@ -109,6 +115,7 @@ def test_list_suggested_blocks_unknown_prompt_graceful() -> None:
 # get_block
 # ---------------------------------------------------------------------------
 
+
 def test_get_block_returns_correct_fields() -> None:
     data = _get_block("nextjs15-approuter-build")
     assert data["id"] == "nextjs15-approuter-build"
@@ -144,6 +151,7 @@ def test_get_block_error_lists_available() -> None:
 # inject_block
 # ---------------------------------------------------------------------------
 
+
 def test_inject_block_returns_markdown() -> None:
     text = _inject_block("nextjs15-approuter-build")
     assert "# EXPERT_PRIOR_IDENTITY" in text
@@ -165,6 +173,7 @@ def test_inject_block_not_found_raises_value_error() -> None:
 # deduplication
 # ---------------------------------------------------------------------------
 
+
 def test_list_suggested_blocks_no_duplicates() -> None:
     results = _list_suggested_blocks(
         "Build a Next.js 15 app router page that fetches data from an API and deploys on Vercel"
@@ -176,6 +185,7 @@ def test_list_suggested_blocks_no_duplicates() -> None:
 # ---------------------------------------------------------------------------
 # MCP injection logging
 # ---------------------------------------------------------------------------
+
 
 def test_log_mcp_injection_writes_hook_log(tmp_path: Path) -> None:
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
@@ -212,6 +222,7 @@ def test_log_mcp_injection_appends(tmp_path: Path) -> None:
 # learn_from_session honest message
 # ---------------------------------------------------------------------------
 
+
 def test_learn_from_session_returns_harvest_instruction(tmp_path: Path) -> None:
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
     try:
@@ -241,6 +252,7 @@ def test_inject_block_all_seed_blocks() -> None:
 # ---------------------------------------------------------------------------
 # compute_confidence
 # ---------------------------------------------------------------------------
+
 
 def test_compute_confidence_minimal_signals() -> None:
     score = compute_confidence("x", ["one constraint"], [], [], "")
@@ -297,6 +309,7 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
 
     try:
         from turnzero.mcp_server import submit_candidate
+
         submit_candidate(
             block_id="test-confidence-build",
             domain="fastapi",
@@ -323,10 +336,13 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
 # _log_tool_call
 # ---------------------------------------------------------------------------
 
+
 def test_log_tool_call_writes_tool_call_log(tmp_path: Path) -> None:
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
     try:
-        _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "some text output")
+        _log_tool_call(
+            "inject_block", {"block_id": "fastapi-async-build"}, "some text output"
+        )
         log_path = tmp_path / "tool_call_log.jsonl"
         assert log_path.exists()
         entry = json.loads(log_path.read_text().strip())
@@ -343,7 +359,9 @@ def test_log_tool_call_appends_multiple_tools(tmp_path: Path) -> None:
     try:
         _log_tool_call("list_suggested_blocks", {"prompt": "build a fastapi app"}, [])
         _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "text")
-        _log_tool_call("submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True})
+        _log_tool_call(
+            "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
+        )
         lines = (tmp_path / "tool_call_log.jsonl").read_text().strip().splitlines()
         assert len(lines) == 3
         tools = [json.loads(ln)["tool"] for ln in lines]
@@ -355,7 +373,12 @@ def test_log_tool_call_appends_multiple_tools(tmp_path: Path) -> None:
 def test_log_tool_call_meta_persisted(tmp_path: Path) -> None:
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
     try:
-        _log_tool_call("submit_candidate", {"block_id": "x"}, "ok", meta={"auto_approve": True, "block_id": "x"})
+        _log_tool_call(
+            "submit_candidate",
+            {"block_id": "x"},
+            "ok",
+            meta={"auto_approve": True, "block_id": "x"},
+        )
         entry = json.loads((tmp_path / "tool_call_log.jsonl").read_text().strip())
         assert entry["auto_approve"] is True
         assert entry["block_id"] == "x"
@@ -400,7 +423,9 @@ def test_get_stats_includes_token_cost(tmp_path: Path) -> None:
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
     try:
         _log_tool_call("inject_block", {"block_id": "b"}, "some output text here")
-        _log_tool_call("submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True})
+        _log_tool_call(
+            "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
+        )
         result = get_stats()
         assert "token_cost" in result
         assert result["token_cost"]["total"] > 0

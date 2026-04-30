@@ -77,14 +77,14 @@ def harvest(
             except Exception as e:
                 console.print(f"[red]✗ Failed {f.name}: {e}[/red]")
 
-        console.print(f"\n[green]✓ Done. Extracted {total_extracted} candidates.[/green]")
+        console.print(
+            f"\n[green]✓ Done. Extracted {total_extracted} candidates.[/green]"
+        )
         console.print("[dim]Run [bold]turnzero review[/bold] to approve them.[/dim]\n")
         return
 
     if not conversation:
-        err_console.print(
-            "[red]Error: Provide a conversation file or use --all.[/red]"
-        )
+        err_console.print("[red]Error: Provide a conversation file or use --all.[/red]")
         raise typer.Exit(1)
 
     if not conversation.exists():
@@ -108,7 +108,9 @@ def harvest(
             path = write_candidate(c, candidates_dir)
             console.print(f"[green]✓ Candidate written:[/green] {path.name}")
 
-        console.print("\n[dim]Run [bold]turnzero review[/bold] to approve them.[/dim]\n")
+        console.print(
+            "\n[dim]Run [bold]turnzero review[/bold] to approve them.[/dim]\n"
+        )
 
     except Exception as e:
         err_console.print(f"[red]Extraction failed: {e}[/red]")
@@ -158,17 +160,21 @@ def review() -> None:
                     for c in block.constraints[:3]:
                         console.print(f"  • {c}")
 
-                choice = typer.prompt(
-                    "\n  [v]erify (set confidence 1.0) / [a]rchive / [s]kip / [d]elete",
-                    default="s",
-                ).strip().lower()
+                choice = (
+                    typer.prompt(
+                        "\n  [v]erify (set confidence 1.0) / [a]rchive / [s]kip / [d]elete",
+                        default="s",
+                    )
+                    .strip()
+                    .lower()
+                )
 
-                found_path = blocks_dir / block.tier / block.domain / f"{block.slug}.yaml"
+                found_path = (
+                    blocks_dir / block.tier / block.domain / f"{block.slug}.yaml"
+                )
                 if not found_path.exists():
                     # Fallback for flat structure or bundled
-                    found_path = next(
-                        blocks_dir.rglob(f"{block.slug}.yaml"), None
-                    )  # type: ignore[assignment]
+                    found_path = next(blocks_dir.rglob(f"{block.slug}.yaml"), None)  # type: ignore[assignment]
 
                 if choice in ("v", "verify") and found_path:
                     import yaml as _yaml
@@ -244,13 +250,15 @@ def review() -> None:
                 console.print(f"  • {a}")
 
         console.print()
-        action = typer.prompt(
-            "  [a]pprove / [r]eject / [s]kip", default="a"
-        ).lower()
+        action = typer.prompt("  [a]pprove / [r]eject / [s]kip", default="a").lower()
 
         if action == "a":
             # Automatically route 'persona' domain to the personal tier
-            tier = "personal" if candidate.get("domain") in ("persona", "global") else "local"
+            tier = (
+                "personal"
+                if candidate.get("domain") in ("persona", "global")
+                else "local"
+            )
             dest_dir = blocks_dir / tier / candidate.get("domain", "unknown")
             dest_dir.mkdir(parents=True, exist_ok=True)
             dest_path = dest_dir / f"{candidate['id']}.yaml"

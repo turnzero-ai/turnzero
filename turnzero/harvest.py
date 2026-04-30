@@ -127,6 +127,7 @@ Respond with ONLY the YAML block(s). No explanation."""
 # Conversation loading
 # ---------------------------------------------------------------------------
 
+
 def load_conversation(path: Path) -> str:
     """Load a conversation from any supported format and return plain text.
 
@@ -163,7 +164,12 @@ def load_conversation(path: Path) -> str:
 def _parse_json_conversation(data: Any) -> str:
     """Detect and parse JSON conversation formats. Returns empty string if unrecognised."""
     # Standard OpenAI messages format: [{role, content}, ...]
-    if isinstance(data, list) and data and isinstance(data[0], dict) and "role" in data[0]:
+    if (
+        isinstance(data, list)
+        and data
+        and isinstance(data[0], dict)
+        and "role" in data[0]
+    ):
         return _turns_from_messages(data)
 
     # OpenAI SDK format: {messages: [...]}
@@ -171,7 +177,12 @@ def _parse_json_conversation(data: Any) -> str:
         return _turns_from_messages(data["messages"])
 
     # ChatGPT data export: list of conversations, each with a mapping tree
-    if isinstance(data, list) and data and isinstance(data[0], dict) and "mapping" in data[0]:
+    if (
+        isinstance(data, list)
+        and data
+        and isinstance(data[0], dict)
+        and "mapping" in data[0]
+    ):
         parts: list[str] = []
         for convo in data:
             parts.append(_parse_chatgpt_mapping(convo.get("mapping", {})))
@@ -197,7 +208,8 @@ def _turns_from_messages(messages: Any) -> str:
         if isinstance(content, list):
             # Handle OpenAI content array [{type: "text", text: "..."}]
             text = " ".join(
-                str(c.get("text", "")) for c in content
+                str(c.get("text", ""))
+                for c in content
                 if isinstance(c, dict) and c.get("type") == "text"
             ).strip()
         else:
@@ -238,7 +250,11 @@ def _parse_chatgpt_mapping(mapping: Any) -> str:
         content_obj = msg.get("content") or {}
         parts = content_obj.get("parts", [])
         text = " ".join(str(p) for p in parts if isinstance(p, str)).strip()
-        if author in ("user", "assistant") and text and len(text.split()) >= MIN_TURN_WORDS:
+        if (
+            author in ("user", "assistant")
+            and text
+            and len(text.split()) >= MIN_TURN_WORDS
+        ):
             label = "User" if author == "user" else "Assistant"
             turns.append(f"{label}: {text}")
         for child_id in children.get(node_id, []):
@@ -359,14 +375,28 @@ def _discover_sessions(min_size_bytes: int) -> list[Path]:
                 found.append(f)
 
     # Cursor (macOS): ~/Library/Application Support/Cursor/User/workspaceStorage/*/*.json
-    cursor_dir = home / "Library" / "Application Support" / "Cursor" / "User" / "workspaceStorage"
+    cursor_dir = (
+        home
+        / "Library"
+        / "Application Support"
+        / "Cursor"
+        / "User"
+        / "workspaceStorage"
+    )
     if cursor_dir.exists():
         for f in cursor_dir.glob("*/*.json"):
             if f.stat().st_size >= min_size_bytes:
                 found.append(f)
 
     # Windsurf (macOS): ~/Library/Application Support/Windsurf/User/workspaceStorage/*/*.json
-    windsurf_dir = home / "Library" / "Application Support" / "Windsurf" / "User" / "workspaceStorage"
+    windsurf_dir = (
+        home
+        / "Library"
+        / "Application Support"
+        / "Windsurf"
+        / "User"
+        / "workspaceStorage"
+    )
     if windsurf_dir.exists():
         for f in windsurf_dir.glob("*/*.json"):
             if f.stat().st_size >= min_size_bytes:
@@ -397,7 +427,8 @@ def scan_new_sessions(
 
     if sessions_dir is not None:
         all_files = [
-            f for f in sorted(sessions_dir.rglob("*"))
+            f
+            for f in sorted(sessions_dir.rglob("*"))
             if f.is_file() and f.stat().st_size >= min_size_bytes
         ]
     else:
@@ -411,10 +442,20 @@ def scan_new_sessions(
 # ---------------------------------------------------------------------------
 
 _SELF_REF_TERMS = {
-    "turnzero", "promptgraph", "expert prior", "context_weight",
-    "blocks_dir", "data/blocks", "index.jsonl", "hook_log",
-    "mcp_server", "harvest", "autolearn", "injection gate",
+    "turnzero",
+    "promptgraph",
+    "expert prior",
+    "context_weight",
+    "blocks_dir",
+    "data/blocks",
+    "index.jsonl",
+    "hook_log",
+    "mcp_server",
+    "harvest",
+    "autolearn",
+    "injection gate",
 }
+
 
 def is_self_referential(conversation: str, threshold: float = 0.015) -> bool:
     """Return True if the conversation is predominantly about TurnZero itself.
@@ -434,6 +475,7 @@ def is_self_referential(conversation: str, threshold: float = 0.015) -> bool:
 # ---------------------------------------------------------------------------
 # Candidate validation
 # ---------------------------------------------------------------------------
+
 
 def validate_candidate(candidate: dict[str, Any]) -> str | None:
     """Return an error string if the candidate is junk, else None.
@@ -466,6 +508,7 @@ def validate_candidate(candidate: dict[str, Any]) -> str | None:
 # LLM extraction — provider-agnostic
 # ---------------------------------------------------------------------------
 
+
 def extract_with_llm(
     conversation: str,
     model: str = "llama3.2",
@@ -480,6 +523,7 @@ def extract_with_llm(
     Raises RuntimeError with actionable instructions if no backend is available.
     """
     from datetime import date
+
     today = date.today().isoformat()
     truncated = conversation[:max_chars]
     if len(conversation) > max_chars:
@@ -489,7 +533,9 @@ def extract_with_llm(
     if backend == "ollama":
         return _extract_ollama(prompt, model)
 
-    if backend == "anthropic" or (backend == "auto" and os.environ.get("ANTHROPIC_API_KEY")):
+    if backend == "anthropic" or (
+        backend == "auto" and os.environ.get("ANTHROPIC_API_KEY")
+    ):
         return _extract_anthropic(prompt)
 
     if backend == "openai" or (backend == "auto" and os.environ.get("OPENAI_API_KEY")):
@@ -530,6 +576,7 @@ def _extract_ollama(prompt: str, model: str) -> str:
 
 def _extract_openai(prompt: str) -> str:
     import httpx
+
     api_key = os.environ["OPENAI_API_KEY"]
     try:
         resp = httpx.post(
@@ -550,6 +597,7 @@ def _extract_openai(prompt: str) -> str:
 
 def _extract_anthropic(prompt: str) -> str:
     import httpx
+
     api_key = os.environ["ANTHROPIC_API_KEY"]
     try:
         resp = httpx.post(
@@ -575,6 +623,7 @@ def _extract_anthropic(prompt: str) -> str:
 # YAML parsing
 # ---------------------------------------------------------------------------
 
+
 def _strip_prose(text: str) -> str:
     """Drop any prose lines before the first YAML content line."""
     for i, line in enumerate(text.splitlines()):
@@ -583,11 +632,25 @@ def _strip_prose(text: str) -> str:
     return text
 
 
-_BLOCK_TOP_KEYS = frozenset({
-    "id", "version", "domain", "intent", "last_verified", "tags",
-    "context_weight", "conflicts_with", "requires", "constraints",
-    "anti_patterns", "doc_anchors", "slug", "title", "description",
-})
+_BLOCK_TOP_KEYS = frozenset(
+    {
+        "id",
+        "version",
+        "domain",
+        "intent",
+        "last_verified",
+        "tags",
+        "context_weight",
+        "conflicts_with",
+        "requires",
+        "constraints",
+        "anti_patterns",
+        "doc_anchors",
+        "slug",
+        "title",
+        "description",
+    }
+)
 
 
 def _fix_key_indentation(text: str) -> str:
@@ -602,7 +665,7 @@ def _fix_key_indentation(text: str) -> str:
     # Detect base indent from constraints: (present in both list and mapping fmt)
     base_indent = 0
     for line in lines:
-        m = re.match(r'^(\s*)constraints\s*:', line)
+        m = re.match(r"^(\s*)constraints\s*:", line)
         if m:
             base_indent = len(m.group(1))
             break
@@ -610,16 +673,16 @@ def _fix_key_indentation(text: str) -> str:
     result = []
     for line in lines:
         stripped = line.lstrip()
-        if not stripped or stripped[0] in ('-', '#'):
+        if not stripped or stripped[0] in ("-", "#"):
             result.append(line)
             continue
-        key = stripped.split(':')[0].strip()
+        key = stripped.split(":")[0].strip()
         current_indent = len(line) - len(stripped)
         if key in _BLOCK_TOP_KEYS and current_indent != base_indent:
-            result.append(' ' * base_indent + stripped)
+            result.append(" " * base_indent + stripped)
         else:
             result.append(line)
-    return '\n'.join(result)
+    return "\n".join(result)
 
 
 def parse_candidates(raw_yaml: str) -> list[dict[str, Any]]:
@@ -666,7 +729,8 @@ def parse_candidates(raw_yaml: str) -> list[dict[str, Any]]:
 def _compute_context_weight(candidate: dict[str, Any]) -> int:
     """Estimate token count from actual content (4 tokens/word)."""
     text = " ".join(
-        str(s) for s in candidate.get("constraints", []) + candidate.get("anti_patterns", [])
+        str(s)
+        for s in candidate.get("constraints", []) + candidate.get("anti_patterns", [])
     )
     return max(50, len(text.split()) * 4)
 
@@ -675,6 +739,7 @@ def _normalise(candidate: dict[str, Any]) -> dict[str, Any]:
     """Fill in defaults and ensure required fields exist."""
     candidate.setdefault("version", "1.0.0")
     from datetime import date
+
     candidate.setdefault("last_verified", date.today().isoformat())
     candidate.setdefault("verification_level", "observed")
     candidate.setdefault("tags", [])
@@ -715,6 +780,7 @@ def _normalise(candidate: dict[str, Any]) -> dict[str, Any]:
 # Content hash
 # ---------------------------------------------------------------------------
 
+
 def content_hash(candidate: dict[str, Any]) -> str:
     """First 16 hex chars of SHA-256 of canonical YAML content."""
     payload = {k: v for k, v in candidate.items() if k != "id"}
@@ -726,12 +792,15 @@ def content_hash(candidate: dict[str, Any]) -> str:
 # Block writing
 # ---------------------------------------------------------------------------
 
+
 def write_candidate(candidate: dict[str, Any], blocks_dir: Path) -> Path:
     """Write a candidate dict to a YAML file in blocks_dir. Returns the path."""
     block_id = str(candidate["id"])
     path = blocks_dir / f"{block_id}.yaml"
     path.write_text(
-        yaml.dump(candidate, sort_keys=False, allow_unicode=True, default_flow_style=False),
+        yaml.dump(
+            candidate, sort_keys=False, allow_unicode=True, default_flow_style=False
+        ),
         encoding="utf-8",
     )
     return path
@@ -740,6 +809,7 @@ def write_candidate(candidate: dict[str, Any], blocks_dir: Path) -> Path:
 # ---------------------------------------------------------------------------
 # High-level harvest function
 # ---------------------------------------------------------------------------
+
 
 def harvest(
     conversation_path: Path,

@@ -15,6 +15,7 @@ from turnzero.embed import embed, get_model_id
 @dataclass(frozen=True)
 class IndexHeader:
     """Header line for index files to ensure model compatibility."""
+
     model_id: str
     built_at: str
     version: str = "1"
@@ -53,14 +54,16 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
             block = load_block(path, tier=source)
             search_text = block.to_search_text()
             embedding = embed(search_text)
-            line = json.dumps({
-                "block_id": block.slug,
-                "embedding": embedding.tolist(),
-                "domain": block.domain,
-                "intent": block.intent,
-                "tags": block.tags,
-                "source": block.tier,
-            })
+            line = json.dumps(
+                {
+                    "block_id": block.slug,
+                    "embedding": embedding.tolist(),
+                    "domain": block.domain,
+                    "intent": block.intent,
+                    "tags": block.tags,
+                    "source": block.tier,
+                }
+            )
             merged.write(line + "\n")
             by_source[source].append(line)
 
@@ -77,7 +80,5 @@ def verify(blocks_dir: Path, max_age_days: int = 90) -> list[str]:
     """Return IDs of blocks not verified within max_age_days."""
     blocks = load_all_blocks(blocks_dir)
     return [
-        block_id
-        for block_id, block in blocks.items()
-        if block.is_stale(max_age_days)
+        block_id for block_id, block in blocks.items() if block.is_stale(max_age_days)
     ]

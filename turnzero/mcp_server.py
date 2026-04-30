@@ -20,7 +20,14 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from turnzero.blocks import Block, compute_confidence, load_all_blocks
-from turnzero.config import enabled_sources
+from turnzero.config import (
+    _blocks_dir,
+    _bundled_blocks_dir,
+    _bundled_index_path,
+    _data_dir,
+    _index_path,
+    enabled_sources,
+)
 from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
 from turnzero.state import (
@@ -58,17 +65,10 @@ mcp = FastMCP(
 )
 
 
-from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
-)
-
 # ---------------------------------------------------------------------------
 # Path helpers (centralized in config.py)
 # ---------------------------------------------------------------------------
+
 
 def _active_sources() -> list[str]:
     return enabled_sources(_data_dir())
@@ -86,9 +86,9 @@ def _load_source_index(source: str) -> list[IndexEntry]:
     """Load index for one source tier, using mtime-based cache."""
     data_dir = _data_dir()
     per_source_path = data_dir / f"index_{source}.jsonl"
-    
+
     path = per_source_path if per_source_path.exists() else _index_path()
-    
+
     if not path.exists():
         # Fallback to bundled index
         path = _bundled_index_path()
@@ -141,14 +141,18 @@ def _list_suggested_blocks(
     # 1. Handle Personal Priors (Identity Context)
     # These are always-on at Turn 0 or on session reset.
     personal_results, limit_exceeded = get_identity_context(
-        blocks, exclude_ids=exclude_ids
+        blocks, project_root=project_root, exclude_ids=exclude_ids
     )
     personal_weight = sum(b.context_weight for b, _ in personal_results)
 
     # 2. Standard Expert Prior Retrieval (Semantic Stream)
     expert_results = _query(
-        prompt, index, blocks,
-        top_k=top_k, threshold=threshold, context_weight=context_weight - personal_weight,
+        prompt,
+        index,
+        blocks,
+        top_k=top_k,
+        threshold=threshold,
+        context_weight=context_weight - personal_weight,
         strict_intent=strict_intent,
         project_root=project_root,
         exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
@@ -173,16 +177,18 @@ def _list_suggested_blocks(
     ]
 
     if limit_exceeded:
-        formatted.append({
-            "block_id": "personal-priors-limit-warning",
-            "score": 0.0,
-            "domain": "system",
-            "intent": "review",
-            "tags": ["warning"],
-            "context_weight": 0,
-            "stale": False,
-            "preview": "⚠ Personal Priors budget exceeded (1500 tokens). Some rules omitted.",
-        })
+        formatted.append(
+            {
+                "block_id": "personal-priors-limit-warning",
+                "score": 0.0,
+                "domain": "system",
+                "intent": "review",
+                "tags": ["warning"],
+                "context_weight": 0,
+                "stale": False,
+                "preview": "⚠ Personal Priors budget exceeded (1500 tokens). Some rules omitted.",
+            }
+        )
 
     return formatted
 
@@ -193,8 +199,7 @@ def _get_block(block_id: str) -> dict[str, Any]:
     if block_id not in blocks:
         available = sorted(blocks.keys())
         raise ValueError(
-            f"Block '{block_id}' not found. "
-            f"Available blocks: {', '.join(available)}"
+            f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
         )
     block: Block = blocks[block_id]
     return {
@@ -213,8 +218,7 @@ def _get_block(block_id: str) -> dict[str, Any]:
         "constraints": block.constraints,
         "anti_patterns": block.anti_patterns,
         "doc_anchors": [
-            {"url": a.url, "verified": a.verified}
-            for a in block.doc_anchors
+            {"url": a.url, "verified": a.verified} for a in block.doc_anchors
         ],
         "conflicts_with": block.conflicts_with,
         "requires": block.requires,
@@ -231,8 +235,7 @@ def _inject_block(
     if block_id not in blocks:
         available = sorted(blocks.keys())
         raise ValueError(
-            f"Block '{block_id}' not found. "
-            f"Available blocks: {', '.join(available)}"
+            f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
         )
 
     # Record injection for deduplication and project affinity
@@ -248,6 +251,7 @@ def _inject_block(
 # MCP tool definitions
 # ---------------------------------------------------------------------------
 
+
 def _log_mcp_injection(
     block_ids: list[str],
     domains: list[str],
@@ -258,14 +262,16 @@ def _log_mcp_injection(
     import json
     import time
 
-    entry = json.dumps({
-        "ts": time.time(),
-        "blocks": block_ids,
-        "domains": domains,
-        "prompt_words": prompt_words,
-        "source": "mcp",
-        "session_id": session_id,
-    })
+    entry = json.dumps(
+        {
+            "ts": time.time(),
+            "blocks": block_ids,
+            "domains": domains,
+            "prompt_words": prompt_words,
+            "source": "mcp",
+            "session_id": session_id,
+        }
+    )
     log_path = _data_dir() / "hook_log.jsonl"
     try:
         _data_dir().mkdir(parents=True, exist_ok=True)
@@ -292,13 +298,15 @@ def _log_tool_call(
     try:
         tokens_in = len(json.dumps(input_obj)) // 4
         tokens_out = len(json.dumps(output_obj)) // 4
-        entry = json.dumps({
-            "ts": time.time(),
-            "tool": tool,
-            "tokens_in": tokens_in,
-            "tokens_out": tokens_out,
-            **(meta or {}),
-        })
+        entry = json.dumps(
+            {
+                "ts": time.time(),
+                "tool": tool,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                **(meta or {}),
+            }
+        )
         log_path = _data_dir() / "tool_call_log.jsonl"
         _data_dir().mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
@@ -345,18 +353,20 @@ def list_suggested_blocks(
         )
         return suggestions
     except RuntimeError as e:
-        result = [{
-            "error": "no_embedding_backend",
-            "message": str(e),
-            "action": (
-                "TurnZero needs an embedding backend to work. Choose one:\n\n"
-                "  Option 1 — ollama (local, no internet after setup):\n"
-                "    ollama serve && ollama pull nomic-embed-text\n\n"
-                "  Option 2 — OpenAI API (cloud):\n"
-                "    export OPENAI_API_KEY=sk-...\n\n"
-                "Then restart your AI session."
-            ),
-        }]
+        result = [
+            {
+                "error": "no_embedding_backend",
+                "message": str(e),
+                "action": (
+                    "TurnZero needs an embedding backend to work. Choose one:\n\n"
+                    "  Option 1 — ollama (local, no internet after setup):\n"
+                    "    ollama serve && ollama pull nomic-embed-text\n\n"
+                    "  Option 2 — OpenAI API (cloud):\n"
+                    "    export OPENAI_API_KEY=sk-...\n\n"
+                    "Then restart your AI session."
+                ),
+            }
+        ]
         _log_tool_call("list_suggested_blocks", {"prompt": prompt}, result)
         return result
 
@@ -396,9 +406,7 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         Formatted markdown Expert Prior, ready to inject before the
         first AI response.
     """
-    result = _inject_block(
-        block_id, session_id=session_id, project_root=Path.cwd()
-    )
+    result = _inject_block(block_id, session_id=session_id, project_root=Path.cwd())
     _log_tool_call(
         "inject_block", {"block_id": block_id, "session_id": session_id}, result
     )
@@ -435,7 +443,9 @@ def get_stats() -> dict[str, Any]:
     sessions_total = len(entries)
     sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
     priors_total = sum(len(e.get("blocks", [])) for e in entries)
-    priors_week = sum(len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago)
+    priors_week = sum(
+        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
+    )
 
     block_counts: Counter[str] = Counter()
     domain_counts: Counter[str] = Counter()
@@ -455,8 +465,11 @@ def get_stats() -> dict[str, Any]:
 
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
     personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
-    candidates = list((_data_dir() / "candidates").glob("*.yaml")) if (_data_dir() / "candidates").exists() else []
-
+    candidates = (
+        list((_data_dir() / "candidates").glob("*.yaml"))
+        if (_data_dir() / "candidates").exists()
+        else []
+    )
 
     # ── Tool call log ──────────────────────────────────────────────────────
     tool_log_path = data_dir / "tool_call_log.jsonl"
@@ -493,7 +506,10 @@ def get_stats() -> dict[str, Any]:
         "estimated_turns_saved": est_turns,
         "estimated_tokens_saved": est_tokens,
         "top_domains": [d for d, _ in domain_counts.most_common(5)],
-        "top_blocks": [{"block_id": slug, "count": count} for slug, count in block_counts.most_common(3)],
+        "top_blocks": [
+            {"block_id": slug, "count": count}
+            for slug, count in block_counts.most_common(3)
+        ],
         "library": {
             "total_blocks": len(blocks),
             "personal_blocks": personal_count,
@@ -521,14 +537,14 @@ def get_stats() -> dict[str, Any]:
 @mcp.tool()
 def reset_session(session_id: str | None = None) -> str:
     """Clear TurnZero's injection memory for the current session.
-    
-    Call this tool when the user explicitly asks to 'reset', 'clear history', 
-    'start over', or 'forget context'. This ensures that the user's 
-    Portable Identity (Personal Priors) and relevant Expert Priors are 
+
+    Call this tool when the user explicitly asks to 'reset', 'clear history',
+    'start over', or 'forget context'. This ensures that the user's
+    Portable Identity (Personal Priors) and relevant Expert Priors are
     re-suggested in the next turn.
     """
     from turnzero.state import clear_session_injections
-    
+
     if session_id:
         clear_session_injections(session_id)
         return f"✓ TurnZero session memory cleared for {session_id}."
@@ -548,6 +564,7 @@ def submit_candidate(
     reason: str = "",
     auto_approve: bool = False,
     is_personal: bool = False,
+    project_root: str | None = None,
 ) -> str:
     """Submit an Expert Prior candidate identified during this session.
 
@@ -558,10 +575,14 @@ def submit_candidate(
     directly rather than waiting for a harvest pass.
 
     PERSONAL PRIORS (is_personal=True):
-    Set is_personal=True if the correction is about the user's idiosyncratic 
-    preferences, personal coding style, or project-specific workflow rules that 
-    should ALWAYS be remembered for this user/project, regardless of general 
+    Set is_personal=True if the correction is about the user's idiosyncratic
+    preferences, personal coding style, or project-specific workflow rules that
+    should ALWAYS be remembered for this user/project, regardless of general
     technical truth. These are saved to a private local 'personal' tier.
+
+    PROJECT PINNING:
+    If is_personal=True and domain != 'global', the prior is automatically pinned
+    to the current project if project_root is provided.
 
     Always set auto_approve=True for corrections detected during a live session —
     the block is added to the library immediately and the index is rebuilt.
@@ -581,11 +602,21 @@ def submit_candidate(
         reason: Why this prior is worth adding — what went wrong this session.
         auto_approve: If True, add directly to the library and rebuild the index.
         is_personal: If True, save to the private 'personal' tier instead of 'local'.
+        project_root: Optional path to current project to pin personal priors.
     """
     import yaml as _yaml
 
     today = __import__("datetime").date.today().isoformat()
-    confidence = compute_confidence(block_id, constraints, anti_patterns or [], tags or [], reason)
+    confidence = compute_confidence(
+        block_id, constraints, anti_patterns or [], tags or [], reason
+    )
+
+    project_hash = None
+    if is_personal and domain != "global" and project_root:
+        from turnzero.state import _get_project_hash
+
+        project_hash = _get_project_hash(Path(project_root))
+
     block = {
         "id": block_id,
         "slug": block_id,
@@ -594,7 +625,9 @@ def submit_candidate(
         "intent": intent,
         "last_verified": today,
         "tags": tags or [],
-        "context_weight": sum(len(c.split()) * 4 for c in constraints + (anti_patterns or [])),
+        "context_weight": sum(
+            len(c.split()) * 4 for c in constraints + (anti_patterns or [])
+        ),
         "conflicts_with": [],
         "requires": [],
         "constraints": constraints,
@@ -603,15 +636,22 @@ def submit_candidate(
         "doc_anchors": [{"url": u, "verified": today} for u in (doc_anchors or [])],
         "confidence": confidence,
         "archived": False,
+        "project_hash": project_hash,
     }
 
     input_snapshot = {
-        "block_id": block_id, "domain": domain, "intent": intent,
-        "constraints": constraints, "anti_patterns": anti_patterns or [],
-        "tags": tags or [], "doc_anchors": doc_anchors or [],
+        "block_id": block_id,
+        "domain": domain,
+        "intent": intent,
+        "constraints": constraints,
+        "anti_patterns": anti_patterns or [],
+        "tags": tags or [],
+        "doc_anchors": doc_anchors or [],
         "rationale": rationale,
-        "reason": reason, "auto_approve": auto_approve,
+        "reason": reason,
+        "auto_approve": auto_approve,
         "is_personal": is_personal,
+        "project_root": project_root,
     }
 
     if auto_approve:
@@ -625,6 +665,7 @@ def submit_candidate(
         # Incremental Indexing: append new entry to index.jsonl instead of full rebuild
         if not _index_path().exists():
             from turnzero.index import build as build_index
+
             build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
         else:
             import json
@@ -635,21 +676,23 @@ def submit_candidate(
             try:
                 new_block = load_block(block_path, tier=tier)
                 embedding = embed(new_block.to_search_text())
-                
-                line = json.dumps({
-                    "block_id": new_block.slug,
-                    "embedding": embedding.tolist(),
-                    "domain": new_block.domain,
-                    "intent": new_block.intent,
-                    "tags": new_block.tags,
-                    "source": new_block.tier,
-                })
+
+                line = json.dumps(
+                    {
+                        "block_id": new_block.slug,
+                        "embedding": embedding.tolist(),
+                        "domain": new_block.domain,
+                        "intent": new_block.intent,
+                        "tags": new_block.tags,
+                        "source": new_block.tier,
+                    }
+                )
 
                 # Append to merged index
                 path = _index_path()
                 with open(path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
-                
+
                 # Append to per-source index
                 tier_index_path = _data_dir() / f"index_{tier}.jsonl"
                 if tier_index_path.exists():
@@ -658,10 +701,12 @@ def submit_candidate(
                 else:
                     # If per-source index doesn't exist, we must rebuild to create it
                     from turnzero.index import build as build_index
+
                     build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
             except Exception:
                 # Fallback to full rebuild if anything goes wrong during incremental path
                 from turnzero.index import build as build_index
+
                 build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
 
         result = (
@@ -681,7 +726,9 @@ def submit_candidate(
             + (f" Reason: {reason}" if reason else "")
         )
     _log_tool_call(
-        "submit_candidate", input_snapshot, result,
+        "submit_candidate",
+        input_snapshot,
+        result,
         meta={"auto_approve": auto_approve, "block_id": block_id},
     )
     return result
@@ -722,6 +769,7 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     mcp.run()

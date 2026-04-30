@@ -21,6 +21,7 @@ from turnzero.harvest import (
 # load_conversation
 # ---------------------------------------------------------------------------
 
+
 def test_load_txt(tmp_path: Path) -> None:
     f = tmp_path / "conv.txt"
     f.write_text("User: hi\nAssistant: hello", encoding="utf-8")
@@ -139,9 +140,9 @@ def test_parse_invalid_yaml_raises() -> None:
 # _normalise
 # ---------------------------------------------------------------------------
 
+
 def test_normalise_fills_defaults() -> None:
-    raw: dict[str, Any] = {
-"id": "test-build", "stack": "python", "intent": "build"}
+    raw: dict[str, Any] = {"id": "test-build", "stack": "python", "intent": "build"}
     result = _normalise(raw)
     assert result["version"] == "1.0.0"
     assert result["conflicts_with"] == []
@@ -153,22 +154,23 @@ def test_normalise_fills_defaults() -> None:
 
 
 def test_normalise_invalid_intent_defaults_to_build() -> None:
-    raw: dict[str, Any] = {
-"id": "x", "stack": "python", "intent": "nonsense"}
+    raw: dict[str, Any] = {"id": "x", "stack": "python", "intent": "nonsense"}
     result = _normalise(raw)
     assert result["intent"] == "build"
 
 
 def test_normalise_generates_id_when_missing() -> None:
-    raw: dict[str, Any] = {
-"stack": "rust", "intent": "migrate"}
+    raw: dict[str, Any] = {"stack": "rust", "intent": "migrate"}
     result = _normalise(raw)
     assert result["id"] == "rust-migrate-extracted"
 
 
 def test_normalise_generates_id_when_placeholder() -> None:
     raw: dict[str, Any] = {
-"id": "<descriptive-slug>-<intent>", "stack": "go", "intent": "review"}
+        "id": "<descriptive-slug>-<intent>",
+        "stack": "go",
+        "intent": "review",
+    }
     result = _normalise(raw)
     assert result["id"] == "go-review-extracted"
 
@@ -191,8 +193,14 @@ def test_normalise_preserves_existing_values() -> None:
 # content_hash
 # ---------------------------------------------------------------------------
 
+
 def test_content_hash_is_16_hex_chars() -> None:
-    candidate = {"id": "test", "stack": "python", "intent": "build", "constraints": ["use async"]}
+    candidate = {
+        "id": "test",
+        "stack": "python",
+        "intent": "build",
+        "constraints": ["use async"],
+    }
     h = content_hash(candidate)
     assert len(h) == 16
     assert all(c in "0123456789abcdef" for c in h)
@@ -213,6 +221,7 @@ def test_content_hash_changes_with_content() -> None:
 # ---------------------------------------------------------------------------
 # write_candidate
 # ---------------------------------------------------------------------------
+
 
 def test_write_candidate_creates_file(tmp_path: Path) -> None:
     candidate = {

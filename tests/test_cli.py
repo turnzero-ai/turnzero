@@ -39,6 +39,7 @@ def test_help_lists_commands() -> None:
 # Setup block count — rglob fix (Bug 3)
 # ---------------------------------------------------------------------------
 
+
 def test_setup_block_count_includes_subdirectories(tmp_path: Path) -> None:
     """Block count in setup must recurse into domain subdirectories."""
     blocks_dir = tmp_path / "blocks"
@@ -50,7 +51,7 @@ def test_setup_block_count_includes_subdirectories(tmp_path: Path) -> None:
     # Flat file at top level should also count
     (blocks_dir / "block-c.yaml").write_text("slug: block-c\n")
 
-    flat_count = len(list(blocks_dir.glob("*.yaml")))    # old broken behaviour
+    flat_count = len(list(blocks_dir.glob("*.yaml")))  # old broken behaviour
     recursive_count = len(list(blocks_dir.rglob("*.yaml")))  # fixed behaviour
 
     assert flat_count == 1, "Sanity: glob misses subdirectory files"
@@ -60,6 +61,7 @@ def test_setup_block_count_includes_subdirectories(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Codex MCP registration
 # ---------------------------------------------------------------------------
+
 
 def test_setup_codex_mcp_creates_config(tmp_path: Path) -> None:
     codex_dir = tmp_path / ".codex"
@@ -141,6 +143,7 @@ def test_setup_codex_mcp_preserves_existing_config(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Global instruction files — ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md
 # ---------------------------------------------------------------------------
+
 
 def test_setup_claude_md_creates_file(tmp_path: Path) -> None:
     claude_dir = tmp_path / ".claude"

@@ -18,11 +18,11 @@ def get_model_id() -> str:
     """Return the ID of the current active embedding model."""
     if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
         return "test-hash-blake2b-768"
-    
+
     # We check environment before calling Ollama to avoid silent timeout wait
     if os.environ.get("OPENAI_API_KEY") and not _is_ollama_running():
         return "openai:text-embedding-3-small"
-    
+
     # Default local model
     return "ollama:nomic-embed-text"
 
@@ -30,6 +30,7 @@ def get_model_id() -> str:
 def _is_ollama_running() -> bool:
     """Fast check if ollama is responsive."""
     import httpx
+
     host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
     try:
         with httpx.Client(timeout=0.5) as client:

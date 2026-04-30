@@ -27,7 +27,7 @@ Circle 3 — Enterprise (Phase 5)
 ## Phase 3: Distribution & Ecosystem (v0.3.0)
 *Goal: Remove every remaining friction point. Any user, any setup.*
 
-- [ ] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing.
+- [x] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing (v0.8.0+).
 - [x] **ONNX embedding research** — Research concluded: preferred Ollama/OpenAI fallback chain for reliability and lower runtime dependency overhead.
 - [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
 - [x] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, Claude Desktop, and Gemini CLI.

@@ -136,9 +136,7 @@ def _setup_codex_mcp(
         return
 
     config_path = target_dir / "config.toml"
-    existing = (
-        config_path.read_text(encoding="utf-8") if config_path.exists() else ""
-    )
+    existing = config_path.read_text(encoding="utf-8") if config_path.exists() else ""
 
     if "[mcp_servers.turnzero]" in existing and not force:
         con.print("[dim]✓ MCP server already in ~/.codex/config.toml[/dim]")
@@ -184,15 +182,21 @@ def _setup_cursor_mcp(
     import platform
 
     if platform.system() == "Darwin":
-        config_path = Path.home() / "Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+        config_path = (
+            Path.home()
+            / "Library/Application Support/Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+        )
         # Also check the newer/alternative path if needed
         # Cursor sometimes uses different paths for different MCP plugins
     elif platform.system() == "Windows":
-        config_path = Path(os.environ["APPDATA"]) / "Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+        config_path = (
+            Path(os.environ["APPDATA"])
+            / "Cursor/User/globalStorage/saoudrizwan.claude-dev/settings/mcp_servers.json"
+        )
     else:
         return
 
-    # If the specific plugin path doesn't exist, we skip for now as we don't want to 
+    # If the specific plugin path doesn't exist, we skip for now as we don't want to
     # guess which MCP plugin the user is using in Cursor (though saoudrizwan.claude-dev is common)
     if not config_path.parent.exists():
         return
@@ -206,14 +210,16 @@ def _setup_cursor_mcp(
         "command": mcp_bin,
         "args": [],
         "env": {"TURNZERO_DATA_DIR": str(data_dir)},
-        "disabled": False
+        "disabled": False,
     }
 
     mcp_servers = config.setdefault("mcpServers", {})
     if "turnzero" not in mcp_servers or force:
         mcp_servers["turnzero"] = mcp_entry
         config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
-        con.print(f"[green]✓[/green] MCP server registered in Cursor ({config_path.name})")
+        con.print(
+            f"[green]✓[/green] MCP server registered in Cursor ({config_path.name})"
+        )
     else:
         con.print("[dim]✓ MCP server already in Cursor[/dim]")
 
@@ -228,7 +234,10 @@ def _setup_claude_desktop_mcp(
     import platform
 
     if platform.system() == "Darwin":
-        config_path = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
+        config_path = (
+            Path.home()
+            / "Library/Application Support/Claude/claude_desktop_config.json"
+        )
     elif platform.system() == "Windows":
         config_path = Path(os.environ["APPDATA"]) / "Claude/claude_desktop_config.json"
     else:
@@ -252,7 +261,9 @@ def _setup_claude_desktop_mcp(
     if "turnzero" not in mcp_servers or force:
         mcp_servers["turnzero"] = mcp_entry
         config_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
-        con.print(f"[green]✓[/green] MCP server registered in Claude Desktop ({config_path.name})")
+        con.print(
+            f"[green]✓[/green] MCP server registered in Claude Desktop ({config_path.name})"
+        )
     else:
         con.print("[dim]✓ MCP server already in Claude Desktop[/dim]")
 
@@ -312,7 +323,12 @@ def _setup_claude_md(force: bool, con: Any, claude_dir: Path | None = None) -> N
         for line in lines:
             if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
+            elif (
+                skip
+                and line.startswith("## ")
+                and _TURNZERO_MD_MARKER not in line
+                and _LEGACY_TURNZERO_MD_MARKER not in line
+            ):
                 skip = False
             if not skip:
                 filtered.append(line)
@@ -344,7 +360,12 @@ def _setup_codex_agents_md(
         for line in lines:
             if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
+            elif (
+                skip
+                and line.startswith("## ")
+                and _TURNZERO_MD_MARKER not in line
+                and _LEGACY_TURNZERO_MD_MARKER not in line
+            ):
                 skip = False
             if not skip:
                 filtered.append(line)
@@ -374,7 +395,12 @@ def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> N
         for line in lines:
             if _TURNZERO_MD_MARKER in line or _LEGACY_TURNZERO_MD_MARKER in line:
                 skip = True
-            elif skip and line.startswith("## ") and _TURNZERO_MD_MARKER not in line and _LEGACY_TURNZERO_MD_MARKER not in line:
+            elif (
+                skip
+                and line.startswith("## ")
+                and _TURNZERO_MD_MARKER not in line
+                and _LEGACY_TURNZERO_MD_MARKER not in line
+            ):
                 skip = False
             if not skip:
                 filtered.append(line)
@@ -441,9 +467,7 @@ def setup(
         os.environ["OPENAI_API_KEY"] = openai_key.strip()
         console.print("[green]✓[/green] OpenAI API key saved\n")
     elif (resolved / "openai_key").exists():
-        os.environ["OPENAI_API_KEY"] = (
-            (resolved / "openai_key").read_text().strip()
-        )
+        os.environ["OPENAI_API_KEY"] = (resolved / "openai_key").read_text().strip()
         console.print("[dim]✓ OpenAI API key loaded from previous setup[/dim]\n")
 
     # ── 1. Copy blocks ────────────────────────────────────────────────────
@@ -467,7 +491,7 @@ def setup(
                     if target_tier.exists():
                         shutil.rmtree(target_tier)
                     shutil.copytree(tier_dir, target_tier)
-            
+
             n = len(list(dest_blocks.rglob("*.yaml")))
             console.print(f"[green]✓[/green] Synchronized {n} blocks → {dest_blocks}")
         else:
@@ -548,9 +572,7 @@ def setup(
 
                 # Try pulling model now
                 try:
-                    subprocess.run(
-                        ["ollama", "pull", "nomic-embed-text"], check=True
-                    )
+                    subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
                     console.print("[green]✓[/green] ollama started and model pulled")
                     ollama_ok = True
                 except Exception:
@@ -568,9 +590,7 @@ def setup(
         console.print(
             "  TurnZero requires either local [bold]ollama[/bold] or [bold]OpenAI[/bold] for embeddings."
         )
-        console.print(
-            "  Setup will continue, but you must fix this before querying."
-        )
+        console.print("  Setup will continue, but you must fix this before querying.")
 
     # ── 3. Build index ────────────────────────────────────────────────────
     console.print()
@@ -634,9 +654,7 @@ def setup(
         already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
         if not already:
             hook_list.append(hook_entry)
-            settings_path.write_text(
-                json.dumps(settings, indent=2), encoding="utf-8"
-            )
+            settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
             console.print(f"[green]✓[/green] Hook registered in {settings_path}")
         else:
             console.print("[dim]✓ Hook already registered in settings.json[/dim]")
@@ -698,8 +716,7 @@ def setup(
     else:
         console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
         console.print(
-            "Once ollama is ready, re-run:\n\n"
-            "  [cyan]turnzero setup --force[/cyan]"
+            "Once ollama is ready, re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
         )
 
 
@@ -775,9 +792,7 @@ def autolearn(
         return
 
     # Extraction loop would go here, calling harvest logic
-    console.print(
-        "\n[yellow]Autolearn in progress...[/yellow] (this uses local LLM)"
-    )
+    console.print("\n[yellow]Autolearn in progress...[/yellow] (this uses local LLM)")
     # ... logic from turnzero/harvest.py or similar ...
     console.print("\n[green]✓ Done. Run 'turnzero review' to see candidates.[/green]")
 
@@ -797,7 +812,7 @@ def source_list() -> None:
 
 @source_app.command("enable")
 def source_enable(
-    tier: str = typer.Argument(..., help="Tier to enable (local/community/team).")
+    tier: str = typer.Argument(..., help="Tier to enable (local/community/team)."),
 ) -> None:
     """Enable a specific Expert Prior source."""
     from turnzero.config import load_config, save_config
@@ -814,7 +829,7 @@ def source_enable(
 
 @source_app.command("disable")
 def source_disable(
-    tier: str = typer.Argument(..., help="Tier to disable (local/community/team).")
+    tier: str = typer.Argument(..., help="Tier to disable (local/community/team)."),
 ) -> None:
     """Disable a specific Expert Prior source."""
     from turnzero.config import load_config, save_config

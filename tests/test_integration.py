@@ -33,9 +33,11 @@ pytestmark = pytest.mark.integration
 def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
 
+
 # ---------------------------------------------------------------------------
 # Shared helper
 # ---------------------------------------------------------------------------
+
 
 def _seed_data_dir(tmp_path: Path) -> None:
     """Copy bundled blocks + build index into tmp_path so tests have a real library."""
@@ -53,6 +55,7 @@ def _seed_data_dir(tmp_path: Path) -> None:
 # ===========================================================================
 # 1. Learning loop — submit_candidate -> retrieve
 # ===========================================================================
+
 
 class TestLearningLoop:
     """Covers the core promise: corrections become retrievable priors immediately."""
@@ -121,7 +124,8 @@ class TestLearningLoop:
                 threshold=0.50,
             )
             match = next(
-                (r for r in results if r["block_id"] == "stripe-webhook-verify-build"), None
+                (r for r in results if r["block_id"] == "stripe-webhook-verify-build"),
+                None,
             )
             assert match is not None, "stripe-webhook-verify-build not retrieved"
             assert match["score"] >= 0.50
@@ -291,8 +295,11 @@ class TestHarvestPipeline:
             _seed_data_dir(tmp_path)
 
             # Mock extract_with_llm to return our controlled YAML
-            with patch("turnzero.harvest.extract_with_llm", return_value=_MOCK_LLM_YAML):
+            with patch(
+                "turnzero.harvest.extract_with_llm", return_value=_MOCK_LLM_YAML
+            ):
                 from turnzero.harvest import harvest
+
                 candidates = harvest(conv_file, tmp_path / "blocks" / "local")
 
             assert len(candidates) == 1
@@ -302,7 +309,9 @@ class TestHarvestPipeline:
             blocks_dir = tmp_path / "blocks" / "local"
             blocks_dir.mkdir(parents=True, exist_ok=True)
             write_candidate(candidates[0], blocks_dir)
-            build_index(tmp_path / "blocks", tmp_path / "index.jsonl", data_dir=tmp_path)
+            build_index(
+                tmp_path / "blocks", tmp_path / "index.jsonl", data_dir=tmp_path
+            )
 
             # Block must now be retrievable — use domain-specific query, high top_k so
             # the newly indexed block can compete against the seeded fastapi bundles
@@ -331,6 +340,7 @@ class TestHarvestPipeline:
 # ===========================================================================
 # 3. Injection sequence — list_suggested_blocks -> inject_block -> coherent text
 # ===========================================================================
+
 
 class TestInjectionSequence:
     """Covers the injection UX: retrieve -> inject -> formatted output is valid."""
@@ -396,9 +406,15 @@ class TestInjectionSequence:
                 threshold=0.50,
             )
             ids = [s["block_id"] for s in suggestions]
-            assert "react-hooks-deps-build" in ids, f"react-hooks-deps-build not suggested. Got: {ids}"
+            assert "react-hooks-deps-build" in ids, (
+                f"react-hooks-deps-build not suggested. Got: {ids}"
+            )
 
             text = _inject_block("react-hooks-deps-build")
-            assert "useEffect" in text or "dependency" in text.lower() or "useCallback" in text
+            assert (
+                "useEffect" in text
+                or "dependency" in text.lower()
+                or "useCallback" in text
+            )
         finally:
             del os.environ["TURNZERO_DATA_DIR"]

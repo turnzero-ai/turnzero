@@ -8,12 +8,23 @@ import typer
 from rich.console import Console
 
 from turnzero.config import (
-    _blocks_dir,  # noqa: F401
-    _bundled_blocks_dir,  # noqa: F401
-    _bundled_index_path,  # noqa: F401
-    _data_dir,  # noqa: F401
-    _index_path,  # noqa: F401
+    _blocks_dir,
+    _bundled_blocks_dir,
+    _bundled_index_path,
+    _data_dir,
+    _index_path,
 )
+
+__all__ = [
+    "_blocks_dir",
+    "_bundled_blocks_dir",
+    "_bundled_index_path",
+    "_data_dir",
+    "_index_path",
+    "console",
+    "err_console",
+    "DEFAULT_THRESHOLD",
+]
 
 console = Console()
 err_console = Console(stderr=True)
@@ -23,6 +34,7 @@ def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"turnzero {_pkg_version('turnzero')}")
         raise typer.Exit()
+
 
 DEFAULT_THRESHOLD = 0.70
 MIN_HARVEST_WORDS = 100

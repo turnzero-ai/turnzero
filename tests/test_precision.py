@@ -67,6 +67,7 @@ def validation_set() -> list[dict[str, Any]]:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def hit_at_k(retrieved: list[str], relevant: set[str], k: int) -> bool:
     """True if at least one of the top-k retrieved IDs is in the relevant set."""
     return any(r in relevant for r in retrieved[:k])
@@ -82,13 +83,16 @@ def precision_at_k(retrieved: list[str], relevant: set[str], k: int) -> float:
 # Per-query parametrised tests
 # ---------------------------------------------------------------------------
 
+
 def _load_cases() -> list[tuple[str, str, list[str]]]:
     """Return (prompt, first_relevant_id, all_relevant_ids) tuples for parametrize."""
     if not VALIDATION_PATH.exists():
         return []
     with VALIDATION_PATH.open(encoding="utf-8") as f:
         data = json.load(f)
-    return [(e["prompt"], e["relevant_block_ids"][0], e["relevant_block_ids"]) for e in data]
+    return [
+        (e["prompt"], e["relevant_block_ids"][0], e["relevant_block_ids"]) for e in data
+    ]
 
 
 @pytest.mark.parametrize("prompt,expected_top,all_relevant", _load_cases())
@@ -105,7 +109,15 @@ def test_top1_retrieval(
     block rank is not stable. Domain correctness is meaningful and robust.
     """
     blocks, index = retrieval_fixtures
-    results = _query(prompt, index, blocks, top_k=TOP_K, threshold=THRESHOLD, context_weight=4000, strict_intent=True)
+    results = _query(
+        prompt,
+        index,
+        blocks,
+        top_k=TOP_K,
+        threshold=THRESHOLD,
+        context_weight=4000,
+        strict_intent=True,
+    )
     retrieved_ids = [block.id for block, _ in results]
 
     assert retrieved_ids, (
@@ -116,8 +128,7 @@ def test_top1_retrieval(
     # Accept exact match OR any block whose ID shares a domain prefix with expected
     expected_domain = expected_top.split("-", maxsplit=1)[0]
     domain_match = any(
-        rid == expected_top or rid.startswith(expected_domain)
-        for rid in retrieved_ids
+        rid == expected_top or rid.startswith(expected_domain) for rid in retrieved_ids
     )
     assert domain_match, (
         f"No block from domain '{expected_domain}' (expected '{expected_top}') in top-{TOP_K}.\n"
@@ -129,6 +140,7 @@ def test_top1_retrieval(
 # ---------------------------------------------------------------------------
 # Aggregate Hit Rate@K test (must meet 0.70 target)
 # ---------------------------------------------------------------------------
+
 
 def test_hit_rate_at_k(
     retrieval_fixtures: tuple[dict[str, Block], list[IndexEntry]],
@@ -146,7 +158,9 @@ def test_hit_rate_at_k(
     for entry in validation_set:
         prompt = entry["prompt"]
         relevant = set(entry["relevant_block_ids"])
-        results = _query(prompt, index, blocks, top_k=TOP_K, threshold=THRESHOLD, context_weight=4000)
+        results = _query(
+            prompt, index, blocks, top_k=TOP_K, threshold=THRESHOLD, context_weight=4000
+        )
         retrieved_ids = [block.id for block, _ in results]
         hits.append(hit_at_k(retrieved_ids, relevant, TOP_K))
 
@@ -161,6 +175,7 @@ def test_hit_rate_at_k(
 # ---------------------------------------------------------------------------
 # Unit tests for helpers
 # ---------------------------------------------------------------------------
+
 
 def test_hit_at_k_true() -> None:
     assert hit_at_k(["a", "b", "c"], {"a"}, 3) is True

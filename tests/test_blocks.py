@@ -25,7 +25,9 @@ def test_all_blocks_have_required_fields(all_blocks: dict[str, Block]) -> None:
         assert block.id, f"{block_id}: missing id"
         assert block.version, f"{block_id}: missing version"
         assert block.domain, f"{block_id}: missing domain"
-        assert block.intent in VALID_INTENTS, f"{block_id}: invalid intent '{block.intent}'"
+        assert block.intent in VALID_INTENTS, (
+            f"{block_id}: invalid intent '{block.intent}'"
+        )
         assert block.context_weight > 0, f"{block_id}: context_weight must be > 0"
 
 
@@ -38,7 +40,9 @@ def test_all_blocks_have_content(all_blocks: dict[str, Block]) -> None:
 def test_seed_blocks_not_stale(all_blocks: dict[str, Block]) -> None:
     # All seed blocks verified today should pass the 90-day check
     for block_id, block in all_blocks.items():
-        assert not block.is_stale(), f"{block_id}: marked stale (last_verified={block.last_verified})"
+        assert not block.is_stale(), (
+            f"{block_id}: marked stale (last_verified={block.last_verified})"
+        )
 
 
 def test_search_text_contains_domain(all_blocks: dict[str, Block]) -> None:
@@ -51,8 +55,12 @@ def test_search_text_contains_domain(all_blocks: dict[str, Block]) -> None:
 def test_injection_text_has_sections(all_blocks: dict[str, Block]) -> None:
     for block_id, block in all_blocks.items():
         text = block.to_injection_text()
-        assert "# EXPERT_PRIOR_IDENTITY" in text, f"{block_id}: missing Identity section"
-        assert "# SESSION_CONSTRAINTS" in text, f"{block_id}: missing Constraints section"
+        assert "# EXPERT_PRIOR_IDENTITY" in text, (
+            f"{block_id}: missing Identity section"
+        )
+        assert "# SESSION_CONSTRAINTS" in text, (
+            f"{block_id}: missing Constraints section"
+        )
         assert "# ANTI_PATTERNS" in text, f"{block_id}: missing Anti-patterns section"
         assert "# VALIDATION_TASK" in text, f"{block_id}: missing Task section"
         assert block.id in text, f"{block_id}: block id missing from injection text"
@@ -75,14 +83,30 @@ def test_is_stale_boundary() -> None:
     recent_date = (date.today() - timedelta(days=10)).isoformat()
 
     stale_block = Block(
-        slug="test", hash="abc", version="1.0.0", domain="test", intent="build",
-        last_verified=old_date, tags=[], context_weight=100,
-        constraints=[], anti_patterns=[], doc_anchors=[],
+        slug="test",
+        hash="abc",
+        version="1.0.0",
+        domain="test",
+        intent="build",
+        last_verified=old_date,
+        tags=[],
+        context_weight=100,
+        constraints=[],
+        anti_patterns=[],
+        doc_anchors=[],
     )
     fresh_block = Block(
-        slug="test", hash="abc", version="1.0.0", domain="test", intent="build",
-        last_verified=recent_date, tags=[], context_weight=100,
-        constraints=[], anti_patterns=[], doc_anchors=[],
+        slug="test",
+        hash="abc",
+        version="1.0.0",
+        domain="test",
+        intent="build",
+        last_verified=recent_date,
+        tags=[],
+        context_weight=100,
+        constraints=[],
+        anti_patterns=[],
+        doc_anchors=[],
     )
 
     assert stale_block.is_stale()

@@ -25,6 +25,7 @@ from turnzero.config import (
     _data_dir,
     _index_path,
 )
+from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
 
 discovery_app = typer.Typer(no_args_is_help=True)
 
@@ -39,8 +40,12 @@ def _display_preview(results: list[tuple[Block, float]], threshold: float) -> No
     for i, (block, score) in enumerate(results, 1):
         stale_tag = "  [red][STALE][/red]" if block.is_stale() else ""
         # High scores (2.0) indicate Identity Priors
-        tier_label = "[magenta]Identity[/magenta]" if score >= 2.0 else "[cyan]Expert[/cyan]"
-        
+        tier_label = (
+            "[magenta]Identity[/magenta]"
+            if score >= IDENTITY_SCORE_THRESHOLD
+            else "[cyan]Expert[/cyan]"
+        )
+
         console.print(
             f"  [bold cyan]{i}.[/bold cyan] [bold]{block.slug}[/bold]{stale_tag}    "
             f"[dim]{tier_label} | score: {score:.2f} | weight: {block.context_weight}[/dim]"
@@ -48,7 +53,7 @@ def _display_preview(results: list[tuple[Block, float]], threshold: float) -> No
         if block.constraints:
             preview_text = block.constraints[0][:PREVIEW_TEXT_LIMIT]
             console.print(
-                f"     [dim]\"{preview_text}{'...' if len(block.constraints[0]) > PREVIEW_TEXT_LIMIT else ''}\"[/dim]"
+                f'     [dim]"{preview_text}{"..." if len(block.constraints[0]) > PREVIEW_TEXT_LIMIT else ""}"[/dim]'
             )
         console.print()
 
@@ -72,7 +77,9 @@ def query(
         False, "--interactive", "-i", help="Confirm each block before including."
     ),
     strict_intent: bool = typer.Option(
-        True, "--strict/--no-strict", help="Only return blocks matching detected intent."
+        True,
+        "--strict/--no-strict",
+        help="Only return blocks matching detected intent.",
     ),
     rerank: str = typer.Option(
         None,
@@ -87,7 +94,10 @@ def query(
     """Suggest Expert Priors for an opening prompt."""
     from turnzero.analytics import SessionAnalytics
     from turnzero.blocks import load_all_blocks
-    from turnzero.retrieval import get_identity_context, load_index
+    from turnzero.retrieval import (
+        get_identity_context,
+        load_index,
+    )
     from turnzero.retrieval import query as _query
 
     try:
@@ -108,7 +118,9 @@ def query(
         raise typer.Exit(1)
 
     # 1. Personal Identity context (unconditional)
-    identity_blocks, limit_exceeded = get_identity_context(blocks)
+    identity_blocks, limit_exceeded = get_identity_context(
+        blocks, project_root=Path.cwd()
+    )
     identity_weight = sum(b.context_weight for b, _ in identity_blocks)
 
     # 2. Expert Prior context (semantic)
@@ -150,7 +162,11 @@ def preview(
 ) -> None:
     """Full-content preview of what would be injected for a prompt."""
     from turnzero.blocks import load_all_blocks
-    from turnzero.retrieval import get_identity_context, load_index
+    from turnzero.retrieval import (
+        IDENTITY_SCORE_THRESHOLD,
+        get_identity_context,
+        load_index,
+    )
     from turnzero.retrieval import query as _query
 
     try:
@@ -161,17 +177,19 @@ def preview(
         raise typer.Exit(1)
 
     # Use the same dual-stream logic as query()
-    identity_blocks, _ = get_identity_context(blocks)
+    identity_blocks, _ = get_identity_context(blocks, project_root=Path.cwd())
     identity_weight = sum(b.context_weight for b, _ in identity_blocks)
-    
+
     expert_results = _query(
-        prompt, index, blocks, 
+        prompt,
+        index,
+        blocks,
         threshold=threshold,
         context_weight=4000 - identity_weight,
         project_root=Path.cwd(),
         exclude_block_ids={b.slug for b, _ in identity_blocks},
     )
-    
+
     results = identity_blocks + expert_results
 
     if not results:
@@ -185,7 +203,7 @@ def preview(
 
     for block, score in results:
         # Identity priors get magenta color, Experts get cyan
-        color = "magenta" if score >= 2.0 else "cyan"
+        color = "magenta" if score >= IDENTITY_SCORE_THRESHOLD else "cyan"
         title = block.slug
         console.print(
             f"  [bold {color}]{title}[/bold {color}]  [dim]{block.domain}/{block.intent}  score={score:.2f}[/dim]"
@@ -199,14 +217,18 @@ def preview(
             for c in constraints[:MAX_PREVIEW_CONSTRAINTS]:
                 console.print(f"      • {c}")
             if len(constraints) > MAX_PREVIEW_CONSTRAINTS:
-                console.print(f"      [dim]… +{len(constraints) - MAX_PREVIEW_CONSTRAINTS} more[/dim]")
+                console.print(
+                    f"      [dim]… +{len(constraints) - MAX_PREVIEW_CONSTRAINTS} more[/dim]"
+                )
 
         if anti_patterns:
             console.print("    [red]anti-patterns:[/red]")
             for a in anti_patterns[:MAX_PREVIEW_ANTI_PATTERNS]:
                 console.print(f"      • {a}")
             if len(anti_patterns) > MAX_PREVIEW_ANTI_PATTERNS:
-                console.print(f"      [dim]… +{len(anti_patterns) - MAX_PREVIEW_ANTI_PATTERNS} more[/dim]")
+                console.print(
+                    f"      [dim]… +{len(anti_patterns) - MAX_PREVIEW_ANTI_PATTERNS} more[/dim]"
+                )
 
         console.print()
 
@@ -237,7 +259,9 @@ def show(
     console.print(
         f"[dim]tier: {block.tier}  domain: {block.domain}  intent: {block.intent}  weight: {block.context_weight}[/dim]"
     )
-    console.print(f"[dim]verified: {block.last_verified}  confidence: {block.confidence:.2f}[/dim]\n")
+    console.print(
+        f"[dim]verified: {block.last_verified}  confidence: {block.confidence:.2f}[/dim]\n"
+    )
 
     if block.rationale:
         console.print(f"[italic]{block.rationale}[/italic]\n")
@@ -273,7 +297,8 @@ def inject(
     Otherwise, the input is treated as a query to find the best matching block.
     """
     from turnzero.blocks import load_all_blocks
-    from turnzero.retrieval import load_index, query as _query
+    from turnzero.retrieval import load_index
+    from turnzero.retrieval import query as _query
 
     try:
         blocks = load_all_blocks(_blocks_dir())
@@ -354,7 +379,6 @@ def stats() -> None:
 
     top_domains = [d for d, _ in domain_counts.most_common(5)]
 
-
     est_turns = round(priors_total * 0.5)
     est_tokens = priors_total * 0.5 * 1500
 
@@ -386,11 +410,22 @@ def stats() -> None:
     if sessions_total == 0:
         usage.add_row("Sessions with injection", "[dim]none yet[/dim]")
     else:
-        usage.add_row("Sessions with injection", f"[bold]{sessions_total}[/bold]  [dim](+{sessions_week} this week)[/dim]")
-        usage.add_row("Priors applied", f"[bold]{priors_total}[/bold]  [dim](+{priors_week} this week)[/dim]")
-        usage.add_row("Est. turns saved", f"[bold green]~{est_turns}[/bold green]  [dim](~{int(est_tokens/1000)}k tokens)[/dim]")
+        usage.add_row(
+            "Sessions with injection",
+            f"[bold]{sessions_total}[/bold]  [dim](+{sessions_week} this week)[/dim]",
+        )
+        usage.add_row(
+            "Priors applied",
+            f"[bold]{priors_total}[/bold]  [dim](+{priors_week} this week)[/dim]",
+        )
+        usage.add_row(
+            "Est. turns saved",
+            f"[bold green]~{est_turns}[/bold green]  [dim](~{int(est_tokens / 1000)}k tokens)[/dim]",
+        )
         if top_domains:
-            usage.add_row("Top domains", "  ".join(f"[cyan]{d}[/cyan]" for d in top_domains))
+            usage.add_row(
+                "Top domains", "  ".join(f"[cyan]{d}[/cyan]" for d in top_domains)
+            )
 
     console.print(usage)
 
@@ -401,8 +436,11 @@ def stats() -> None:
     lib.add_row("Block library", f"{len(blocks)} blocks total")
     lib.add_row("  - Expert Priors", str(len(blocks) - personal_count))
     lib.add_row("  - Personal Priors", f"[magenta]{personal_count}[/magenta]")
-    lib.add_row("Stale blocks (>90d)", f"[red]{len(stale)}[/red]" if stale else "[green]0[/green]")
-    
+    lib.add_row(
+        "Stale blocks (>90d)",
+        f"[red]{len(stale)}[/red]" if stale else "[green]0[/green]",
+    )
+
     try:
         index = load_index(_index_path())
         lib.add_row("Index entries", str(len(index)))
