@@ -621,11 +621,51 @@ def submit_candidate(
         block_path = dest_dir / f"{block_id}.yaml"
         with open(block_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-        # Rebuild index
-        from turnzero.index import build as build_index
-        build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+
+        # Incremental Indexing: append new entry to index.jsonl instead of full rebuild
+        if not _index_path().exists():
+            from turnzero.index import build as build_index
+            build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+        else:
+            import json
+
+            from turnzero.blocks import load_block
+            from turnzero.embed import embed
+
+            try:
+                new_block = load_block(block_path, tier=tier)
+                embedding = embed(new_block.to_search_text())
+                
+                line = json.dumps({
+                    "block_id": new_block.slug,
+                    "embedding": embedding.tolist(),
+                    "domain": new_block.domain,
+                    "intent": new_block.intent,
+                    "tags": new_block.tags,
+                    "source": new_block.tier,
+                })
+
+                # Append to merged index
+                path = _index_path()
+                with open(path, "a", encoding="utf-8") as f:
+                    f.write(line + "\n")
+                
+                # Append to per-source index
+                tier_index_path = _data_dir() / f"index_{tier}.jsonl"
+                if tier_index_path.exists():
+                    with open(tier_index_path, "a", encoding="utf-8") as f:
+                        f.write(line + "\n")
+                else:
+                    # If per-source index doesn't exist, we must rebuild to create it
+                    from turnzero.index import build as build_index
+                    build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+            except Exception:
+                # Fallback to full rebuild if anything goes wrong during incremental path
+                from turnzero.index import build as build_index
+                build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+
         result = (
-            f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index rebuilt. "
+            f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index updated incrementally. "
             f"It will be injected in future sessions matching this domain."
             + (f" Reason: {reason}" if reason else "")
         )
