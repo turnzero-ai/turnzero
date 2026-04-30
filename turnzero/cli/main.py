@@ -9,6 +9,7 @@ from turnzero.cli.discovery import inject, preview, query, show, stats
 from turnzero.cli.index import index_app, threshold_test, validate
 from turnzero.cli.review import harvest, review
 from turnzero.cli.setup import autolearn, feedback, setup, source_app
+from turnzero.cli.verify import verify
 
 app = typer.Typer(
     name="turnzero",
@@ -47,6 +48,8 @@ app.command()(autolearn)
 app.command()(harvest)
 app.command()(review)
 app.command()(validate)
+app.command()(verify)
+app.command(name="doctor")(verify)
 app.command("threshold-test")(threshold_test)
 
 if __name__ == "__main__":

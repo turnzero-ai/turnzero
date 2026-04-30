@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.6.0** (PyPI live).
+TurnZero is at **v0.8.0** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
-- 143 Expert Priors across 37 domains shipped in wheel
-- 234 tests passing; Hit Rate@3 = 1.00 on validation set
+- 161 Expert Priors across 37 domains shipped in wheel
+- 244 tests passing; Hit Rate@3 = 0.778 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
+- Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
@@ -31,7 +32,7 @@ Raw prompt text is **never stored** — only embeddings. Injection is always cli
 - **Retrieval Engine**: Hybrid vector + heuristic similarity
 - **CLI framework**: Typer
 - **Integration**: MCP-native architecture
-- **Testing**: pytest + Hit Rate@K evaluation harness
+- **Testing**: pytest + Hit Rate@K evaluation harness (Unit tests: fast loop; Integration tests: -m integration)
 
 ## Commands
 
