@@ -691,7 +691,7 @@ def _test_similarity(prompt: str, block: Block) -> float:
 DOMAIN_BOOST = 1.5  # Heavy boost for matching the detected domain
 INTENT_BOOST = 1.2  # Boost for matching intent
 PROJECT_AFFINITY_BOOST = 1.25  # Boost for blocks previously used in this project
-MAX_PERSONAL_WEIGHT = 1500  # Token budget for identity injection
+MAX_PERSONAL_WEIGHT = 2500  # Token budget for identity injection
 IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
 HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
 

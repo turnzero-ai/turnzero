@@ -124,7 +124,7 @@ def _list_suggested_blocks(
     prompt: str,
     top_k: int = 5,
     threshold: float = 0.70,
-    context_weight: int = 4000,
+    context_weight: int = 5000,
     strict_intent: bool = True,
     project_root: Path | None = None,
     session_id: str | None = None,
@@ -186,9 +186,9 @@ def _list_suggested_blocks(
                 "tags": ["warning"],
                 "context_weight": 0,
                 "stale": False,
-                "preview": "⚠ Personal Priors budget exceeded (1500 tokens). Some rules omitted.",
-            }
-        )
+                "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
+                })
+
 
     return formatted
 
