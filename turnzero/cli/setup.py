@@ -503,8 +503,11 @@ def setup(
                     "[green]✓[/green] Embedding backend: ollama (nomic-embed-text)"
                 )
                 ollama_ok = True
-            elif interactive and typer.confirm(
-                "\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"
+            elif force or (
+                interactive
+                and typer.confirm(
+                    "\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"
+                )
             ):
                 console.print("Pulling nomic-embed-text…")
                 subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
