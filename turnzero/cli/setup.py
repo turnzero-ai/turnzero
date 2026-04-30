@@ -458,11 +458,18 @@ def setup(
 
     if source_blocks.exists():
         if not dest_blocks.exists() or force:
-            if dest_blocks.exists():
-                shutil.rmtree(dest_blocks)
-            shutil.copytree(source_blocks, dest_blocks)
+            dest_blocks.mkdir(parents=True, exist_ok=True)
+            # Only sync tiers that are present in the source (e.g. 'community')
+            # This preserves 'personal' and 'local' tiers created by the user
+            for tier_dir in source_blocks.iterdir():
+                if tier_dir.is_dir():
+                    target_tier = dest_blocks / tier_dir.name
+                    if target_tier.exists():
+                        shutil.rmtree(target_tier)
+                    shutil.copytree(tier_dir, target_tier)
+            
             n = len(list(dest_blocks.rglob("*.yaml")))
-            console.print(f"[green]✓[/green] Copied {n} blocks → {dest_blocks}")
+            console.print(f"[green]✓[/green] Synchronized {n} blocks → {dest_blocks}")
         else:
             n = len(list(dest_blocks.rglob("*.yaml")))
             console.print(f"[dim]✓ {n} blocks already at {dest_blocks}[/dim]")

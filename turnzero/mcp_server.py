@@ -454,7 +454,9 @@ def get_stats() -> dict[str, Any]:
         blocks = {}
 
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
+    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
     candidates = list((_data_dir() / "candidates").glob("*.yaml")) if (_data_dir() / "candidates").exists() else []
+
 
     # ── Tool call log ──────────────────────────────────────────────────────
     tool_log_path = data_dir / "tool_call_log.jsonl"
@@ -494,6 +496,8 @@ def get_stats() -> dict[str, Any]:
         "top_blocks": [{"block_id": slug, "count": count} for slug, count in block_counts.most_common(3)],
         "library": {
             "total_blocks": len(blocks),
+            "personal_blocks": personal_count,
+            "expert_blocks": len(blocks) - personal_count,
             "stale_blocks": stale_count,
             "candidates_pending_review": len(candidates),
         },
