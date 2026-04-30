@@ -26,6 +26,8 @@ from turnzero.mcp_server import (
     submit_candidate,
 )
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(autouse=True)
 def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:

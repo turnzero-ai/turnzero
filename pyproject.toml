@@ -82,3 +82,7 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (skipped by default with -m 'not integration')",
+]
+addopts = "-m 'not integration'"
