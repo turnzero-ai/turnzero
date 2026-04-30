@@ -2,13 +2,13 @@
 
 **Expert Priors for AI sessions — identity at Turn 0, expertise when needed.**
 
-Every time you open a new AI session, you start from zero. The AI knows nothing about your domain's specific rules, your stack's gotchas, or the corrections you've had to make a hundred times before. TurnZero fixes that.
+Every time you open a new AI session, you start from zero. The AI knows nothing about your domain's specific rules, your stack's gotchas, or the corrections you've had to make a hundred times before. TurnZero helps bridge that gap.
 
 On session start, TurnZero injects your Personal Priors once and adds the Expert Priors that match the opening task. As the conversation continues, it can add newly relevant Expert Priors without re-injecting priors already used in that session.
 
 Works for any domain: software, law, medicine, finance, design, writing, research — anywhere the AI makes the same domain-specific mistakes without context.
 
-No cold starts. No mid-session corrections. No copy-pasting context.
+Minimize cold-start friction. Reduce mid-session corrections. Less manual copy-pasting of context.
 
 Raw prompt text is never stored. Injection is always client-side.
 
@@ -19,7 +19,7 @@ Raw prompt text is never stored. Injection is always client-side.
 ---
 ## How it works
 
-TurnZero identifies the "Expert Priors" — the specific constraints and patterns an expert would add to a prompt — and ensures the AI knows them before it even starts to answer. This is based on the research concept of **Expert Prior Elicitation**, which demonstrates that structured priors can significantly reduce model hallucination and the need for labeled demonstrations.
+TurnZero identifies the "Expert Priors" — the specific constraints and patterns an expert would add to a prompt — and provides them to the AI before it even starts to answer. This is based on the research concept of **Expert Prior Elicitation**, which demonstrates that structured priors can significantly reduce model hallucination and the need for labeled demonstrations.
 
 TurnZero supports two types of priors:
 
@@ -45,24 +45,22 @@ TurnZero supports two types of priors:
 ### Private by Design
 Personal Priors are stored in a dedicated `personal` storage tier that exists only on your local machine. Unlike the `local` or `community` tiers, Personal Priors are never synced or shared, ensuring your private workflows remain private.
 
-```
-You type: "I'm building a FastAPI async API with PostgreSQL"
-                            │
-                            ▼
-           TurnZero identifies the relevant Expert Priors
-           AND unconditionally injects your Personal Priors
-                            │
-                            ▼
-           AI starts Turn 1 already fully aligned
-         
-Injected before the AI responds:
-✓ Use async def — sync def blocks the event loop
-✓ expire_on_commit=False with AsyncSession (prevents MissingGreenlet)
-✓ lifespan= not @app.on_event (deprecated since 0.93)
-✓ Pydantic v2: model_config = ConfigDict(...), not inner class Config
-```
+---
 
-An **Expert Prior** is the delta between a naive prompt and an expert prompt — what a senior developer would silently add before hitting send.
+## The Value: Why TurnZero?
+
+TurnZero isn't just a context injector; it's a **Cognitive Operating System** for your AI sessions. It solves the fundamental problem of AI randomness by turning your engineering standards into local infrastructure.
+
+### 1. The Identity Flywheel: Corrections become Infrastructure
+Every time you correct an AI mid-session, that knowledge usually dies when you close the tab. With TurnZero, every `submit_candidate` call turns a correction into a permanent **Identity Anchor**. You are effectively "programming the AI's intuition," significantly reducing recurring inaccuracies and minimizing the need for the same corrections across different sessions. The AI gets demonstrably more accurate the more you use it.
+
+### 2. Cognitive Anchoring: Improved Predictability
+AI models are non-deterministic; they often "reason from scratch" when prompted. TurnZero helps anchor the model in verified priors *before* it generates its first token. This mitigates the "Randomness of Recall" and helps ensure your specific architectural standards are better respected.
+
+### 3. Portable Sentience: Your standards follow you
+Your engineering standards shouldn't be siloed in a single AI project or client. TurnZero provides **Cross-Client Portability**—whether you are in Cursor, Claude Code, or a CLI, the AI is always aware of your project's unique "Laws of Physics." Your identity stays with you, regardless of which tool you choose for the task.
+
+> **Note on Professions:** While TurnZero is domain-agnostic and capable of supporting Law, Medicine, and Research, the current library and UX are optimized primarily for technical and engineering workflows.
 
 ---
 

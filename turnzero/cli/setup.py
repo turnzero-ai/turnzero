@@ -755,48 +755,6 @@ def feedback(
     )
 
 
-def autolearn(
-    sessions_dir: Path = typer.Option(
-        None, "--sessions-dir", help="Single directory to scan for sessions."
-    ),
-    force: bool = typer.Option(
-        False, "--force", help="Re-scan already processed sessions."
-    ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Don't extract, just show what would be scanned."
-    ),
-    model: str = typer.Option("llama3.2", "--model", help="LLM to use for extraction."),
-) -> None:
-    """Scan local AI sessions and automatically harvest Expert Prior candidates."""
-    from turnzero.harvest import scan_new_sessions
-
-    data_dir = _data_dir()
-    processed_file = data_dir / "processed_sessions.txt"
-
-    console.print("\n[bold]TurnZero Autolearn[/bold]\n")
-
-    to_scan = scan_new_sessions(
-        processed_file if not force else Path("/dev/null"),
-        sessions_dir=sessions_dir,
-    )
-
-    if not to_scan:
-        console.print("[dim]No new sessions found.[/dim]")
-        return
-
-    console.print(f"Found {len(to_scan)} session(s) to scan.")
-
-    if dry_run:
-        for f in to_scan:
-            console.print(f"  • {f}")
-        return
-
-    # Extraction loop would go here, calling harvest logic
-    console.print("\n[yellow]Autolearn in progress...[/yellow] (this uses local LLM)")
-    # ... logic from turnzero/harvest.py or similar ...
-    console.print("\n[green]✓ Done. Run 'turnzero review' to see candidates.[/green]")
-
-
 @source_app.command("list")
 def source_list() -> None:
     """List available Expert Prior sources and their status."""

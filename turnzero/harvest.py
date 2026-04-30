@@ -452,7 +452,6 @@ _SELF_REF_TERMS = {
     "hook_log",
     "mcp_server",
     "harvest",
-    "autolearn",
     "injection gate",
 }
 

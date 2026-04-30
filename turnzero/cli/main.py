@@ -8,7 +8,7 @@ from turnzero.cli.base import _version_callback
 from turnzero.cli.discovery import inject, preview, query, show, stats
 from turnzero.cli.index import index_app, threshold_test, validate
 from turnzero.cli.review import harvest, review
-from turnzero.cli.setup import autolearn, feedback, setup, source_app
+from turnzero.cli.setup import feedback, setup, source_app
 from turnzero.cli.verify import verify
 
 app = typer.Typer(
@@ -44,7 +44,6 @@ app.command()(show)
 app.command()(inject)
 app.command()(feedback)
 app.command()(stats)
-app.command()(autolearn)
 app.command()(harvest)
 app.command()(review)
 app.command()(validate)
