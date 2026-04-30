@@ -9,7 +9,7 @@ TurnZero is at **v0.8.0** (PyPI live).
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
-- 161 Expert Priors across 37 domains shipped in wheel
+- 143 Expert Priors across 37 domains shipped in wheel
 - 244 tests passing; Hit Rate@3 = 0.778 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
