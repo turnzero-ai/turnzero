@@ -15,6 +15,13 @@ from turnzero.embed import (
     embed,
 )
 
+
+@pytest.fixture(autouse=True)
+def _disable_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fallback chain tests must run without short-circuiting test embeddings."""
+    monkeypatch.delenv("TURNZERO_TEST_EMBEDDINGS", raising=False)
+
+
 # ---------------------------------------------------------------------------
 # _embed_ollama — uses httpx directly, no ollama package required
 # ---------------------------------------------------------------------------
@@ -161,6 +168,7 @@ def test_embed_prefers_ollama_over_openai() -> None:
 
 
 # ── TURNZERO_OLLAMA_TIMEOUT_SECONDS ──────────────────────────────────────────
+
 
 def test_ollama_timeout_default() -> None:
     with patch.dict("os.environ", {}, clear=False):
