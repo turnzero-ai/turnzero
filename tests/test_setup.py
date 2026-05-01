@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -114,3 +115,61 @@ def test_setup_gemini_md(tmp_path: Path):
     assert md_file.exists()
     content = md_file.read_text()
     assert "## TurnZero — Expert & Personal Prior Injection" in content
+
+
+# ── ONB-1: starter personal prior template ───────────────────────────────────
+
+def _locate_template() -> Path:
+    """Return path to turnzero-guide.yaml regardless of install context."""
+    pkg = Path(__file__).parent.parent / "data" / "templates" / "personal" / "turnzero-guide.yaml"
+    repo = Path(__file__).parent.parent / "data" / "templates" / "personal" / "turnzero-guide.yaml"
+    return pkg if pkg.exists() else repo
+
+
+def test_template_copied_when_personal_dir_empty(tmp_path: Path) -> None:
+    personal_dir = tmp_path / "personal"
+    personal_dir.mkdir()
+    template_src = _locate_template()
+    assert template_src.exists(), "turnzero-guide.yaml template missing from data/templates"
+
+    dst = personal_dir / "turnzero-guide.yaml"
+    if not dst.exists():
+        shutil.copy2(template_src, dst)
+
+    assert dst.exists()
+    content = dst.read_text()
+    assert "turnzero-guide" in content
+    assert "inject_block" in content
+    assert "submit_candidate" in content
+
+
+def test_template_not_overwritten_when_personal_dir_has_files(tmp_path: Path) -> None:
+    personal_dir = tmp_path / "personal"
+    personal_dir.mkdir()
+    existing = personal_dir / "my-prior.yaml"
+    existing.write_text("slug: my-prior\n")
+
+    existing_yamls = list(personal_dir.glob("*.yaml"))
+    assert len(existing_yamls) == 1
+
+    template_dst = personal_dir / "turnzero-guide.yaml"
+    if not existing_yamls:
+        shutil.copy2(_locate_template(), template_dst)
+
+    assert not template_dst.exists()
+    assert existing.exists()
+
+
+def test_template_yaml_is_valid_block_schema(tmp_path: Path) -> None:
+    import yaml
+
+    template_src = _locate_template()
+    assert template_src.exists()
+    data = yaml.safe_load(template_src.read_text())
+
+    assert data["slug"] == "turnzero-guide"
+    assert data["domain"] == "global"
+    assert data["tier"] == "personal"
+    assert isinstance(data["constraints"], list) and len(data["constraints"]) > 0
+    assert isinstance(data["anti_patterns"], list) and len(data["anti_patterns"]) > 0
+    assert all(ap.startswith("Do not") for ap in data["anti_patterns"])

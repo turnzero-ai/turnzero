@@ -1,0 +1,31 @@
+slug: turnzero-guide
+version: 1.0.0
+domain: global
+intent: build
+tier: personal
+last_verified: '2026-05-01'
+verification_level: curated
+confidence: 1.0
+context_weight: 320
+tags:
+- turnzero
+- onboarding
+- personal
+provides: []
+conflicts_with_tags: []
+conflicts_with: []
+requires: []
+constraints:
+- After calling list_suggested_blocks, call inject_block for every suggested block
+  before answering — personal priors first, then relevant expert priors.
+- When the user gives a correction, preference, or domain rule worth keeping, immediately
+  call submit_candidate with auto_approve=True and a clear reason field.
+- If no relevant priors are returned, continue normally without mentioning TurnZero.
+anti_patterns:
+- Do not infer or apply prior content from the preview field returned by list_suggested_blocks
+  — always call inject_block to read the full constraint text.
+- Do not re-inject a prior already used in the current session.
+- Do not mention TurnZero in your response when no priors matched.
+rationale: Starter personal prior installed by turnzero setup. Bootstraps inject_block
+  discipline and submit_candidate habits for new users. Replace or extend with your
+  own project-specific rules in ~/.turnzero/blocks/personal/.

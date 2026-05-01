@@ -503,6 +503,23 @@ def setup(
             "copy your blocks/ directory to [cyan]{dest_blocks}[/cyan] manually."
         )
 
+    # ── 1b. Install starter personal prior (first install only) ──────────
+    personal_dir = dest_blocks / "personal"
+    personal_dir.mkdir(parents=True, exist_ok=True)
+    existing_personal = list(personal_dir.glob("*.yaml"))
+    if not existing_personal:
+        pkg_templates = Path(__file__).parent.parent / "data" / "templates"
+        repo_templates = Path(__file__).parent.parent.parent / "data" / "templates"
+        source_templates = pkg_templates if pkg_templates.exists() else repo_templates
+        template_src = source_templates / "personal" / "turnzero-guide.yaml"
+        template_dst = personal_dir / "turnzero-guide.yaml"
+        if template_src.exists() and not template_dst.exists():
+            shutil.copy2(template_src, template_dst)
+            console.print(
+                "[green]✓[/green] Installed starter personal prior [cyan]turnzero-guide[/cyan]\n"
+                "  Edit or replace it in [cyan]~/.turnzero/blocks/personal/[/cyan]"
+            )
+
     # ── 2. Check embedding backend ────────────────────────────────────────
     console.print()
     ollama_ok = False
