@@ -720,7 +720,29 @@ def setup(
     _setup_codex_agents_md(force, console)
     _setup_gemini_md(force, console)
 
-    # ── 7. Summary ────────────────────────────────────────────────────────
+    # ── 7. Telemetry disclosure + anonymous_id generation ─────────────────
+    import uuid as _uuid
+
+    from turnzero.config import load_telemetry_config, save_telemetry_config
+    from turnzero.telemetry import track_setup_completed
+
+    tel_cfg = load_telemetry_config(resolved)
+    if not tel_cfg.get("anonymous_id"):
+        tel_cfg["anonymous_id"] = str(_uuid.uuid4())
+        save_telemetry_config(resolved, tel_cfg)
+
+    if tel_cfg.get("enabled", True):
+        console.print()
+        console.print(
+            "[dim]TurnZero collects anonymous usage telemetry to understand how the tool is used.\n"
+            "No prompts, prior content, or personal data are ever sent — only counts and domain names.\n"
+            "To opt out: [cyan]turnzero telemetry off[/cyan][/dim]"
+        )
+
+    embedding_backend = "ollama" if ollama_ok else "none"
+    track_setup_completed(embedding_backend=embedding_backend)
+
+    # ── 8. Summary ────────────────────────────────────────────────────────
     console.print()
     if ollama_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")

@@ -26,6 +26,7 @@ from turnzero.config import (
     _bundled_index_path,
     _data_dir,
     _index_path,
+    allow_mcp_auto_approve,
     enabled_sources,
 )
 from turnzero.retrieval import IndexEntry, load_index
@@ -53,10 +54,12 @@ mcp = FastMCP(
         "This retrieves your Personal Priors (Identity) and relevant Expert Priors (Domain Knowledge). "
         "Use inject_block to retrieve the full text of each relevant prior before answering. "
         "\n\n"
-        "RULE 2 — ALWAYS call submit_candidate with auto_approve=True when: "
+        "RULE 2 — ALWAYS call submit_candidate when: "
         "(a) the user corrects you on any domain-specific fact, API, rule, pattern, or threshold; "
         "(b) the user says 'remember this', 'save this', or 'note this for next time'. "
         "Use is_personal=True for idiosyncratic user preferences and is_personal=False for general technical truths. "
+        "Set auto_approve=True ONLY if the user explicitly asked you to remember/save the rule. "
+        "Otherwise, set auto_approve=False so the user can review it later. "
         "Do this immediately — do not wait until the end of the session. "
         "\n\n"
         "RULE 3 — Call reset_session if the user requests a fresh start, clear history, or session reset. "
@@ -373,6 +376,15 @@ def list_suggested_blocks(
             {"prompt": prompt, "session_id": session_id},
             suggestions,
         )
+        from turnzero.telemetry import track_session_start
+        _PERSONAL_SCORE = 2
+        personal = [s for s in suggestions if s.get("score", 0) >= _PERSONAL_SCORE]
+        track_session_start(
+            session_id=session_id,
+            blocks_suggested=len(suggestions),
+            domains=list({s["domain"] for s in suggestions if s.get("domain")}),
+            has_personal_priors=len(personal) > 0,
+        )
         return suggestions
     except RuntimeError as e:
         result = [
@@ -432,6 +444,11 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
     _log_tool_call(
         "inject_block", {"block_id": block_id, "session_id": session_id}, result
     )
+    from turnzero.telemetry import track_block_injected
+    blocks = _load_active_blocks()
+    if block_id in blocks:
+        b = blocks[block_id]
+        track_block_injected(domain=b.domain, tier=b.tier or "local")
     return result
 
 
@@ -566,11 +583,48 @@ def reset_session(session_id: str | None = None) -> str:
     re-suggested in the next turn.
     """
     from turnzero.state import clear_session_injections
+    from turnzero.telemetry import track_session_summary
+
+    track_session_summary(session_id=session_id)
 
     if session_id:
         clear_session_injections(session_id)
         return f"✓ TurnZero session memory cleared for {session_id}."
     return "✓ TurnZero session memory cleared."
+
+
+def _is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
+    """Check if any keyword is present in text with simple typo tolerance.
+    
+    Uses a minimal Levenshtein-like distance check for words of length >= 4.
+    threshold=2 allows for two character differences.
+    """
+    def _dist(s1: str, s2: str) -> int:
+        if len(s1) < len(s2): return _dist(s2, s1)
+        if not s2: return len(s1)
+        prev = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            curr = [i + 1]
+            for j, c2 in enumerate(s2):
+                insert = prev[j + 1] + 1
+                delete = curr[j] + 1
+                sub = prev[j] + (c1 != c2)
+                curr.append(min(insert, delete, sub))
+            prev = curr
+        return prev[-1]
+
+    text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
+    for kw in keywords:
+        kw = kw.lower()
+        for word in text_words:
+            if word == kw:
+                return True
+            # For short words, require exact match to avoid false positives (e.g., "save" vs "gave")
+            # For longer words, allow a small edit distance
+            if len(kw) >= 4 and abs(len(word) - len(kw)) <= threshold:
+                if _dist(word, kw) <= threshold:
+                    return True
+    return False
 
 
 @mcp.tool()
@@ -632,6 +686,17 @@ def submit_candidate(
     confidence = compute_confidence(
         block_id, constraints, anti_patterns or [], tags or [], reason
     )
+
+    guard_blocked = False
+    if auto_approve:
+        if not allow_mcp_auto_approve():
+            auto_approve = False
+            guard_blocked = True
+        else:
+            intent_keywords = {"remember", "save", "note", "user asked", "explicit"}
+            if not _is_intent_present(reason, intent_keywords):
+                auto_approve = False
+                guard_blocked = True
 
     project_hash = None
     if is_personal and domain != "global" and project_root:
@@ -742,11 +807,19 @@ def submit_candidate(
         candidate_path = candidates_dir / f"{block_id}.yaml"
         with open(candidate_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-        result = (
-            f"✓ Candidate '{block_id}' queued for review. "
-            f"Run `turnzero review` to approve it into the library."
-            + (f" Reason: {reason}" if reason else "")
-        )
+
+        if guard_blocked:
+            result = (
+                f"⚠ Auto-approval blocked: explicit user intent (e.g., 'remember this') was not found in the reason. "
+                f"Candidate '{block_id}' has been queued for review instead. "
+                f"Run `turnzero review` to approve it."
+            )
+        else:
+            result = (
+                f"✓ Candidate '{block_id}' queued for review. "
+                f"Run `turnzero review` to approve it into the library."
+                + (f" Reason: {reason}" if reason else "")
+            )
     _log_tool_call(
         "submit_candidate",
         input_snapshot,

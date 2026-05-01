@@ -91,3 +91,39 @@ def save_config(data_dir: Path, config: dict[str, dict[str, bool]]) -> None:
 def enabled_sources(data_dir: Path) -> list[str]:
     """Return list of tier names that are currently enabled."""
     return [s for s, on in load_config(data_dir)["sources"].items() if on]
+
+
+# ---------------------------------------------------------------------------
+# Telemetry config — separate section, never touches sources config
+# ---------------------------------------------------------------------------
+
+_TELEMETRY_DEFAULTS: dict[str, object] = {
+    "enabled": True,
+    "anonymous_id": "",
+}
+
+
+def _telemetry_config_path(data_dir: Path) -> Path:
+    return data_dir / "telemetry.yaml"
+
+
+def load_telemetry_config(data_dir: Path) -> dict[str, object]:
+    path = _telemetry_config_path(data_dir)
+    if not path.exists():
+        return dict(_TELEMETRY_DEFAULTS)
+    raw = yaml.safe_load(path.read_text()) or {}
+    result = dict(_TELEMETRY_DEFAULTS)
+    result.update({k: v for k, v in raw.items() if k in _TELEMETRY_DEFAULTS})
+    return result
+
+
+def save_telemetry_config(data_dir: Path, config: dict[str, object]) -> None:
+    data_dir.mkdir(parents=True, exist_ok=True)
+    _telemetry_config_path(data_dir).write_text(
+        yaml.dump(config, default_flow_style=False, sort_keys=True)
+    )
+
+
+def allow_mcp_auto_approve() -> bool:
+    """Return True if the model is allowed to auto-approve candidates without user intent."""
+    return os.environ.get("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "false").lower() == "true"

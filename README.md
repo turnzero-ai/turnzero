@@ -223,6 +223,29 @@ See [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Telemetry
+
+TurnZero collects anonymous usage telemetry by default using [PostHog](https://posthog.com).
+
+**What is collected:** anonymous install ID (random UUID, generated once at setup), event names (`setup_completed`, `session_start`, `block_injected`, `candidate_submitted`), domain names (e.g. `fastapi`, `nextjs`), block counts, client version, OS type.
+
+**What is never collected:** prompt text, prior content or constraints, file paths, API keys, environment variables, or any personally identifiable information.
+
+```bash
+# Opt out
+turnzero telemetry off
+
+# Check status
+turnzero telemetry status
+
+# Opt back in
+turnzero telemetry on
+```
+
+You can also set `TURNZERO_TELEMETRY=0` in your environment to disable telemetry without writing to disk.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). The most valuable contribution is a new Expert Prior.
