@@ -1,0 +1,39 @@
+slug: python-asyncio-get-running-loop
+version: 1.0.0
+domain: python
+intent: build
+last_verified: '2026-05-01'
+tags:
+- python
+- asyncio
+- python312
+- python314
+- event-loop
+- deprecation
+context_weight: 464
+conflicts_with: []
+requires: []
+constraints:
+- Use asyncio.get_running_loop() to detect a running event loop — raises RuntimeError
+  with defined behaviour when no loop exists.
+- 'For fire-and-forget async in mixed CLI/async contexts: catch RuntimeError from
+  get_running_loop(), then fall back to asyncio.run() for the CLI path.'
+- asyncio.get_event_loop() is deprecated in Python 3.10+ and raises RuntimeError in
+  Python 3.12+ when no current event loop exists in the thread — never use it for
+  loop detection.
+anti_patterns:
+- Do not use asyncio.get_event_loop() to detect whether a loop is running — silently
+  fails on Python 3.12+ by raising RuntimeError which swallows the code path.
+- Do not wrap asyncio.get_event_loop() in a bare except Exception — the deprecation
+  error is indistinguishable from other failures and all subsequent code is silently
+  skipped.
+rationale: asyncio.get_event_loop() was deprecated in Python 3.10 and raises RuntimeError
+  in Python 3.12+ when no event loop is set on the current thread. In CLI tools that
+  mix sync and async code, wrapping it in except Exception silently kills the async
+  path entirely. Confirmed broken on Python 3.14. get_running_loop() raises RuntimeError
+  explicitly only when no loop is running — correct behaviour for branching between
+  create_task() and asyncio.run().
+doc_anchors: []
+confidence: 0.95
+archived: false
+verification_level: curated
