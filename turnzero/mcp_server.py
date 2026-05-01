@@ -36,6 +36,12 @@ from turnzero.state import (
     record_project_affinity,
     record_session_injection,
 )
+from turnzero.validators import (
+    safe_path,
+    validate_domain,
+    validate_session_name,
+    validate_slug,
+)
 
 # ---------------------------------------------------------------------------
 # Per-source index cache: path → (mtime, entries)
@@ -698,6 +704,10 @@ def submit_candidate(
     """
     import yaml as _yaml
 
+    # SEC-2: Validate identifiers to prevent path traversal
+    validate_slug(block_id)
+    validate_domain(domain)
+
     today = __import__("datetime").date.today().isoformat()
     confidence = compute_confidence(
         block_id, constraints, anti_patterns or [], tags or [], reason
@@ -750,9 +760,9 @@ def submit_candidate(
 
     if auto_approve:
         tier = "personal" if is_personal else "local"
-        dest_dir = _blocks_dir() / tier / domain
+        dest_dir = safe_path(_blocks_dir(), tier, domain)
         dest_dir.mkdir(parents=True, exist_ok=True)
-        block_path = dest_dir / f"{block_id}.yaml"
+        block_path = safe_path(dest_dir, f"{block_id}.yaml")
         with open(block_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
 
@@ -811,7 +821,7 @@ def submit_candidate(
     else:
         candidates_dir = _data_dir() / "candidates"
         candidates_dir.mkdir(parents=True, exist_ok=True)
-        candidate_path = candidates_dir / f"{block_id}.yaml"
+        candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
         with open(candidate_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
 
@@ -853,13 +863,16 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
     """
     import time
 
+    # SEC-2: Validate session name to prevent path traversal
+    validate_session_name(session_name)
+
     # Ensure the conversations directory exists
     conv_dir = _data_dir() / "conversations"
     conv_dir.mkdir(parents=True, exist_ok=True)
 
     # Write the transcript with a timestamp
     timestamp = int(time.time())
-    file_path = conv_dir / f"{session_name}-{timestamp}.md"
+    file_path = safe_path(conv_dir, f"{session_name}-{timestamp}.md")
     file_path.write_text(transcript, encoding="utf-8")
 
     return (
