@@ -1,10 +1,12 @@
 # TurnZero
 
-**A portable context layer that injects your personal standards and domain expertise into every AI session before the first response.**
+**Persistent context memory for AI sessions — built for developers, DevOps, and security engineers.**
 
-Every AI session starts cold. The model doesn't know your preferences, your stack's quirks, or the corrections you've made a hundred times. TurnZero loads that context before Turn 0 so you spend less time re-establishing it.
+Every AI session starts cold. The model doesn't know your stack's quirks, your infra constraints, or the corrections you've already made a hundred times. TurnZero loads that context before Turn 0 — your personal standards, your project-specific rules, and domain knowledge relevant to the task — so you stop re-establishing the same ground every session.
 
-It doesn't eliminate mistakes — AI is still non-deterministic and won't follow injected priors 100% of the time. The goal is to nudge the model toward your preferred behavior from the start, reducing the corrections needed mid-session.
+Built for people who live in the terminal and work across many stacks: backend engineers, DevOps and SRE, security engineers, platform and infra teams. If you use AI coding assistants daily and repeatedly correct the same mistakes, TurnZero is for you.
+
+It doesn't eliminate mistakes — AI is still non-deterministic and won't follow injected priors 100% of the time. The goal is to nudge the model toward your preferred behavior from the start, reducing corrections mid-session.
 
 Raw prompt text is never stored. Injection is always client-side.
 
@@ -185,7 +187,7 @@ doc_anchors:
 
 ## Knowledge domains
 
-143 Expert Priors across 37 domains — currently software-heavy since that's where the library started, but the system is domain-agnostic. Any field where the AI makes the same mistakes without context is a valid domain. The library grows from your sessions via `submit_candidate`.
+143 Expert Priors across 37 domains — web frameworks, databases, cloud infra, security, CI/CD, containerisation, and more. Coverage is deepest where corrections come from real sessions: FastAPI, Next.js, PostgreSQL, Docker, Kubernetes, Redis, Supabase, Django, Rails, and others. The library grows from your sessions via `submit_candidate`.
 
 ---
 
@@ -195,12 +197,12 @@ doc_anchors:
 
 | Good | Bad |
 |---|---|
-| `Do not use getServerSideProps in App Router` — API removed in Next.js 13 | "Use PyCharm" — personal preference |
+| `Do not use getServerSideProps in App Router` — removed in Next.js 13 | "Use PyCharm" — personal preference |
 | `expire_on_commit=False required with AsyncSession` — raises MissingGreenlet without it | "Don't commit API keys" — generic noise |
-| `Supabase RLS is disabled by default on new tables` — silently breaks auth | "Use Docker Compose for local dev" — workflow choice |
-| `Swiss non-compete clauses unenforceable beyond 3 years` — jurisdiction-specific rule | "Be more concise" — personal style feedback |
-| `eGFR staging differs between CKD-EPI 2009 and 2021` — clinically significant threshold | "Always double-check your sources" — generic |
-| `Options Delta accelerates near expiration (gamma effect)` — mispricing risk without it | "Our team reviews PRs within 24 hours" — team convention |
+| `Supabase RLS is off by default on new tables` — silently breaks auth | "Use Docker Compose for local dev" — workflow choice |
+| `K8s readiness probe failure removes pod from LB but does not restart it` — use liveness for restarts | "Be more concise" — personal style preference |
+| `SSRF validation must block 169.254.169.254` — AWS metadata endpoint, most WAFs miss it | "Always review your IaC before applying" — generic |
+| `Terraform plan does not show data source reads` — only shows resource changes | "Our team reviews PRs within 24 hours" — team process |
 
 High-signal source: mid-session corrections. When the AI gets it wrong and you say "remember this" — that's what TurnZero should inject next time.
 
