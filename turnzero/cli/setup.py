@@ -727,16 +727,27 @@ def setup(
     from turnzero.telemetry import track_setup_completed
 
     tel_cfg = load_telemetry_config(resolved)
-    if not tel_cfg.get("anonymous_id"):
+    first_run = not tel_cfg.get("anonymous_id")
+    if first_run:
         tel_cfg["anonymous_id"] = str(_uuid.uuid4())
         save_telemetry_config(resolved, tel_cfg)
 
-    if tel_cfg.get("enabled", True):
+    # Show disclosure only on first setup — prominent, not hidden.
+    if first_run:
         console.print()
+        console.print("[bold]Telemetry[/bold]")
         console.print(
-            "[dim]TurnZero collects anonymous usage telemetry to understand how the tool is used.\n"
-            "No prompts, prior content, or personal data are ever sent — only counts and domain names.\n"
-            "To opt out: [cyan]turnzero telemetry off[/cyan][/dim]"
+            "TurnZero collects [bold]anonymous[/bold] usage data to understand how the tool is used.\n"
+            "\n"
+            "  Collected : event names, domain names, block counts, client version, OS type\n"
+            "  Never sent: prompts, prior content, file paths, API keys, personal data\n"
+            "\n"
+            "Telemetry is [bold]enabled by default[/bold]. To opt out now or any time:\n"
+            "\n"
+            "  [cyan]turnzero telemetry off[/cyan]\n"
+            "\n"
+            "Or set [cyan]TURNZERO_TELEMETRY=0[/cyan] in your environment.\n"
+            "Details: [cyan]https://github.com/turnzero-ai/turnzero#telemetry[/cyan]"
         )
 
     embedding_backend = "ollama" if ollama_ok else "none"
