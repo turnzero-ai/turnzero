@@ -64,7 +64,10 @@ def _base_props() -> dict[str, Any]:
 
 async def _post(event: str, props: dict[str, Any]) -> None:
     try:
+        import logging
+
         import httpx
+        logging.getLogger("httpx").setLevel(logging.WARNING)
         payload = {
             "api_key": _POSTHOG_API_KEY,
             "event": event,
