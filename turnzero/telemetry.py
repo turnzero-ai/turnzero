@@ -16,7 +16,7 @@ import platform
 from typing import Any
 
 _POSTHOG_API_KEY = "phc_BWoXqMusHqiX6d3eqooSm4PVtEABkJnYFwurYmqj7oU3"
-_POSTHOG_HOST = "https://us.i.posthog.com"
+_POSTHOG_HOST = "https://eu.i.posthog.com"
 
 # In-memory set of session_ids that already fired session_start this process.
 _session_start_fired: set[str] = set()
@@ -58,7 +58,7 @@ def _base_props() -> dict[str, Any]:
     return {
         "client_version": _client_version(),
         "os_type": _os_type(),
-        "$lib": "turnzero",
+        "lib": "turnzero",
     }
 
 
