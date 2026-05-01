@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
-from turnzero.mcp_server import learn_from_session, submit_candidate
 
+import pytest
+
+from turnzero.mcp_server import learn_from_session, submit_candidate
 from turnzero.validators import (
     safe_path,
     validate_domain,

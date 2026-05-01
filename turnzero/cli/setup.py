@@ -488,6 +488,10 @@ def setup(
             for tier_dir in source_blocks.iterdir():
                 if tier_dir.is_dir():
                     target_tier = dest_blocks / tier_dir.name
+                    # Skip if the target directory is managed by a registry
+                    if (target_tier / ".registry-managed").exists():
+                        console.print(f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]")
+                        continue
                     if target_tier.exists():
                         shutil.rmtree(target_tier)
                     shutil.copytree(tier_dir, target_tier)
