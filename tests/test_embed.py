@@ -7,7 +7,13 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from turnzero.embed import EMBEDDING_DIM, _embed_ollama, _embed_openai, embed
+from turnzero.embed import (
+    EMBEDDING_DIM,
+    _embed_ollama,
+    _embed_openai,
+    _ollama_timeout,
+    embed,
+)
 
 # ---------------------------------------------------------------------------
 # _embed_ollama — uses httpx directly, no ollama package required
@@ -152,3 +158,27 @@ def test_embed_prefers_ollama_over_openai() -> None:
 
     mock_ollama.assert_called_once()
     mock_openai.assert_not_called()
+
+
+# ── TURNZERO_OLLAMA_TIMEOUT_SECONDS ──────────────────────────────────────────
+
+def test_ollama_timeout_default() -> None:
+    with patch.dict("os.environ", {}, clear=False):
+        os_env = __import__("os").environ
+        os_env.pop("TURNZERO_OLLAMA_TIMEOUT_SECONDS", None)
+        assert _ollama_timeout() == 30.0
+
+
+def test_ollama_timeout_env_override() -> None:
+    with patch.dict("os.environ", {"TURNZERO_OLLAMA_TIMEOUT_SECONDS": "60"}):
+        assert _ollama_timeout() == 60.0
+
+
+def test_ollama_timeout_invalid_env_falls_back_to_default() -> None:
+    with patch.dict("os.environ", {"TURNZERO_OLLAMA_TIMEOUT_SECONDS": "notanumber"}):
+        assert _ollama_timeout() == 30.0
+
+
+def test_ollama_timeout_below_minimum_clamped() -> None:
+    with patch.dict("os.environ", {"TURNZERO_OLLAMA_TIMEOUT_SECONDS": "0"}):
+        assert _ollama_timeout() == 1.0

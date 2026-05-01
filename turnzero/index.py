@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -46,32 +47,46 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
     )
     header_json = json.dumps({"header": asdict(header)})
 
-    with index_path.open("w") as merged:
-        merged.write(header_json + "\n")
-        for path in paths:
-            rel = path.relative_to(blocks_dir)
-            source = rel.parts[0] if len(rel.parts) > 1 else "local"
-            block = load_block(path, tier=source)
-            search_text = block.to_search_text()
-            embedding = embed(search_text)
-            line = json.dumps(
-                {
-                    "block_id": block.slug,
-                    "embedding": embedding.tolist(),
-                    "domain": block.domain,
-                    "intent": block.intent,
-                    "tags": block.tags,
-                    "source": block.tier,
-                }
-            )
-            merged.write(line + "\n")
-            by_source[source].append(line)
+    # Write to a temp file first — swap to final path only on full success.
+    # Prevents a failed/timed-out embedding run from corrupting the live index.
+    tmp_path = index_path.with_suffix(".tmp")
+    try:
+        with tmp_path.open("w") as merged:
+            merged.write(header_json + "\n")
+            for path in paths:
+                rel = path.relative_to(blocks_dir)
+                source = rel.parts[0] if len(rel.parts) > 1 else "local"
+                block = load_block(path, tier=source)
+                search_text = block.to_search_text()
+                embedding = embed(search_text)
+                line = json.dumps(
+                    {
+                        "block_id": block.slug,
+                        "embedding": embedding.tolist(),
+                        "domain": block.domain,
+                        "intent": block.intent,
+                        "tags": block.tags,
+                        "source": block.tier,
+                    }
+                )
+                merged.write(line + "\n")
+                by_source[source].append(line)
+        os.replace(tmp_path, index_path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
-    # Write per-source index files when data_dir is available
+    # Write per-source index files atomically when data_dir is available
     if data_dir is not None:
         for source, lines in by_source.items():
             source_path = data_dir / f"index_{source}.jsonl"
-            source_path.write_text(header_json + "\n" + "\n".join(lines) + "\n")
+            tmp_source = source_path.with_suffix(".tmp")
+            try:
+                tmp_source.write_text(header_json + "\n" + "\n".join(lines) + "\n")
+                os.replace(tmp_source, source_path)
+            except Exception:
+                tmp_source.unlink(missing_ok=True)
+                raise
 
     return sum(len(v) for v in by_source.values())
 

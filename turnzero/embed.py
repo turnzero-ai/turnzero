@@ -69,6 +69,19 @@ def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     )
 
 
+def _ollama_timeout() -> float:
+    """Return Ollama embedding timeout in seconds.
+
+    Ollama cold-starts (model not in RAM) can take 15-60s on slow hardware.
+    Default 30s covers most cases. Override with TURNZERO_OLLAMA_TIMEOUT_SECONDS.
+    """
+    raw = os.environ.get("TURNZERO_OLLAMA_TIMEOUT_SECONDS", "30")
+    try:
+        return max(1.0, float(raw))
+    except ValueError:
+        return 30.0
+
+
 def _embed_ollama(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     import httpx
 
@@ -80,7 +93,7 @@ def _embed_ollama(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
         resp = httpx.post(
             f"{host}/api/embeddings",
             json={"model": "nomic-embed-text", "prompt": text},
-            timeout=10.0,
+            timeout=_ollama_timeout(),
         )
         resp.raise_for_status()
         return np.array(resp.json()["embedding"], dtype=np.float32)
