@@ -1,0 +1,46 @@
+slug: mongodb-nosql-injection-review
+version: 1.0.0
+domain: mongodb
+intent: review
+last_verified: '2026-05-01'
+verification_level: curated
+tags:
+- mongodb
+- security
+- nosql-injection
+- validation
+- query-operators
+context_weight: 430
+confidence: 1.0
+archived: false
+conflicts_with: []
+requires: []
+constraints:
+- Build MongoDB filters from explicit allowlisted fields; coerce each user-controlled
+  value to the expected scalar type before adding it to a query
+- Reject or recursively strip user-controlled object keys that start with `$` or contain
+  `.` unless that endpoint intentionally accepts MongoDB operators
+- Use collection schema validation with `$jsonSchema` for write paths that accept
+  external input so unexpected types and fields fail before persistence
+- Keep `$expr`, aggregation expressions, and server-side JavaScript out of request-derived
+  filters unless the expression is fully server-defined
+anti_patterns:
+- Do not pass raw request bodies directly to `find`, `findOne`, `update`, or aggregation
+  `$match` filters
+- Do not trust client-supplied MongoDB operators such as `$ne`, `$gt`, `$regex`, `$where`,
+  or `$expr` as ordinary data fields
+- Do not use dollar-prefixed or dotted user-controlled field names in documents you expect
+  to index, shard, validate with `$jsonSchema`, or encrypt
+doc_anchors:
+- url: https://www.mongodb.com/docs/manual/core/dot-dollar-considerations/
+  verified: '2026-05-01'
+- url: https://www.mongodb.com/docs/manual/core/schema-validation/
+  verified: '2026-05-01'
+- url: https://www.mongodb.com/docs/manual/reference/operator/query/expr/
+  verified: '2026-05-01'
+rationale: MongoDB treats dollar-prefixed keys as operators in query contexts and
+  documents with dollar-prefixed or dotted field names have important indexing,
+  shard-key, JSON Schema validation, and encryption restrictions. Building filters
+  from allowlisted scalar fields and enforcing collection schema validation prevents
+  attacker-controlled request objects from changing query semantics or persisting
+  malformed documents.
