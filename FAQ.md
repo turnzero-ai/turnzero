@@ -4,7 +4,7 @@
 
 **Won't GPT-5 / Claude 4 / the next model make this obsolete?**
 
-Larger models get better at general reasoning, but they still start every session knowing nothing about *your* stack's specific gotchas, your domain's jurisdiction-specific rules, or the correction you made three sessions ago. The gap shifts — it doesn't close. And as models get better at following injected context, TurnZero's injections get *more* effective, not less.
+Larger models get better at general reasoning, but they still start every session knowing nothing about *your* stack's specific gotchas, your infra constraints, or the correction you made three sessions ago. The gap shifts — it doesn't close. And as models get better at following injected context, TurnZero's injections get *more* effective, not less.
 
 ---
 
@@ -22,7 +22,7 @@ Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks
 
 **What's the difference between TurnZero and `.cursorrules` / custom instructions?**
 
-`.cursorrules` and custom instructions are static — you write them once and they inject regardless of context. TurnZero is dynamic: it applies your Personal Priors once at session start, then retrieves Expert Priors only when they are relevant to the current task. A FastAPI question pulls async patterns. A Next.js 15 question pulls App Router constraints. A medical question pulls the right clinical thresholds. Static rules bloat every session; TurnZero targets the injection.
+`.cursorrules` and custom instructions are static — you write them once and they inject regardless of context. TurnZero is dynamic: it applies your Personal Priors once at session start, then retrieves Expert Priors only when they are relevant to the current task. A FastAPI question pulls async patterns. A Next.js 15 question pulls App Router constraints. A Kubernetes question pulls the right probe and scheduling constraints. Static rules bloat every session; TurnZero targets the injection.
 
 ---
 

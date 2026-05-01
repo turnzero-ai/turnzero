@@ -2,7 +2,7 @@
 
 The most valuable contribution is a new **Expert Prior** — the delta between a naive AI response and an expert one. What would a domain expert silently add before hitting send?
 
-Expert Priors can be for any domain: software, law, medicine, finance, design, writing, research — anywhere the AI makes the same domain-specific mistakes without context.
+Expert Priors cover software engineering, DevOps, security, cloud infrastructure, databases, and related IT disciplines — anywhere the AI makes the same stack-specific or ops-specific mistakes without context.
 
 ## The fastest way to contribute: just use TurnZero
 
@@ -26,9 +26,9 @@ If you want to share it with the community, open a PR adding the YAML file from 
 
 | Good | Bad (Use Personal Priors instead) |
 |---|---|
-| `Do not use getServerSideProps in App Router` — API removed | "Use 2-space indents" — personal preference |
-| `Swiss non-compete clauses unenforceable beyond 3 years` | "Don't use comments" — stylistic choice |
-| `expire_on_commit=False required with AsyncSession` | "My project uses Poetry" — project quirk |
+| `Do not use getServerSideProps in App Router` — API removed in Next.js 13 | "Use 2-space indents" — personal preference |
+| `K8s readiness probe failure removes pod from LB but does not restart it` | "Don't use comments" — stylistic choice |
+| `expire_on_commit=False required with AsyncSession` — raises MissingGreenlet | "My project uses Poetry" — project quirk |
 
 Personal preferences, stylistic choices, and idiosyncratic workflow rules should be stored as **Personal Priors** (using `is_personal=True` in `submit_candidate`). These are kept private in your local `personal` tier and should **not** be contributed to the community registry.
 
