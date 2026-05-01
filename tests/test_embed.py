@@ -95,7 +95,7 @@ def test_embed_openai_uses_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
         result = _embed_openai("test prompt")
 
     mock_post.assert_called_once()
-    assert "openai.com" in mock_post.call_args[0][0]
+    assert mock_post.call_args[0][0] == "https://api.openai.com/v1/embeddings"
     assert result.shape == (EMBEDDING_DIM,)
 
 

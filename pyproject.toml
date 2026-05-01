@@ -1,6 +1,6 @@
 [project]
 name = "turnzero"
-version = "0.8.8"
+version = "0.8.9"
 description = "Persistent context memory for AI sessions — built for developers, DevOps, and security engineers"
 readme = "README.md"
 requires-python = ">=3.12"
