@@ -593,37 +593,49 @@ def reset_session(session_id: str | None = None) -> str:
     return "✓ TurnZero session memory cleared."
 
 
+_AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {"remember", "save", "note", "user asked", "explicit"}
+
+
+def _check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, bool]:
+    """Return (effective_auto_approve, was_blocked)."""
+    if not auto_approve:
+        return False, False
+    if not allow_mcp_auto_approve():
+        return False, True
+    if not _is_intent_present(reason, _AUTO_APPROVE_INTENT_KEYWORDS):
+        return False, True
+    return True, False
+
+
 def _is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
     """Check if any keyword is present in text with simple typo tolerance.
     
     Uses a minimal Levenshtein-like distance check for words of length >= 4.
     threshold=2 allows for two character differences.
     """
+    _MIN_FUZZY_LEN = 4
+
     def _dist(s1: str, s2: str) -> int:
-        if len(s1) < len(s2): return _dist(s2, s1)
-        if not s2: return len(s1)
-        prev = range(len(s2) + 1)
+        if len(s1) < len(s2):
+            return _dist(s2, s1)
+        if not s2:
+            return len(s1)
+        prev: list[int] = list(range(len(s2) + 1))
         for i, c1 in enumerate(s1):
             curr = [i + 1]
             for j, c2 in enumerate(s2):
-                insert = prev[j + 1] + 1
-                delete = curr[j] + 1
-                sub = prev[j] + (c1 != c2)
-                curr.append(min(insert, delete, sub))
+                curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + (c1 != c2)))
             prev = curr
         return prev[-1]
 
     text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
     for kw in keywords:
-        kw = kw.lower()
+        kw_lower = kw.lower()
         for word in text_words:
-            if word == kw:
+            if word == kw_lower:
                 return True
-            # For short words, require exact match to avoid false positives (e.g., "save" vs "gave")
-            # For longer words, allow a small edit distance
-            if len(kw) >= 4 and abs(len(word) - len(kw)) <= threshold:
-                if _dist(word, kw) <= threshold:
-                    return True
+            if len(kw_lower) >= _MIN_FUZZY_LEN and abs(len(word) - len(kw_lower)) <= threshold and _dist(word, kw_lower) <= threshold:
+                return True
     return False
 
 
@@ -687,16 +699,7 @@ def submit_candidate(
         block_id, constraints, anti_patterns or [], tags or [], reason
     )
 
-    guard_blocked = False
-    if auto_approve:
-        if not allow_mcp_auto_approve():
-            auto_approve = False
-            guard_blocked = True
-        else:
-            intent_keywords = {"remember", "save", "note", "user asked", "explicit"}
-            if not _is_intent_present(reason, intent_keywords):
-                auto_approve = False
-                guard_blocked = True
+    auto_approve, guard_blocked = _check_auto_approve_guard(auto_approve, reason)
 
     project_hash = None
     if is_personal and domain != "global" and project_root:
