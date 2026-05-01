@@ -159,9 +159,15 @@ def _list_suggested_blocks(
     )
 
     # 3. Combine and Format
-    all_results = personal_results + expert_results
+    # Personal priors: suppress preview — relevance is pre-decided; model must call inject_block.
+    # Expert priors: truncate to 6 words so incompleteness is obvious; model must call inject_block.
+    _PREVIEW_WORDS = 6
 
-    # Add a warning block if personal budget was exceeded
+    def _expert_preview(block: Any) -> str:
+        text = block.constraints[0] if block.constraints else ""
+        words = text.split()
+        return " ".join(words[:_PREVIEW_WORDS]) + ("…" if len(words) > _PREVIEW_WORDS else "")
+
     formatted = [
         {
             "block_id": block.slug,
@@ -171,9 +177,21 @@ def _list_suggested_blocks(
             "tags": block.tags,
             "context_weight": block.context_weight,
             "stale": block.is_stale(),
-            "preview": block.constraints[0][:120] if block.constraints else "",
+            "preview": "[personal prior — call inject_block to read]",
         }
-        for block, score in all_results
+        for block, score in personal_results
+    ] + [
+        {
+            "block_id": block.slug,
+            "score": round(score, 3),
+            "domain": block.domain,
+            "intent": block.intent,
+            "tags": block.tags,
+            "context_weight": block.context_weight,
+            "stale": block.is_stale(),
+            "preview": _expert_preview(block),
+        }
+        for block, score in expert_results
     ]
 
     if limit_exceeded:
@@ -321,9 +339,13 @@ def list_suggested_blocks(
 ) -> list[dict[str, Any]]:
     """Suggest Expert Priors relevant to an opening developer prompt.
 
-    Returns up to 3 ranked Expert Priors with scores, tags, context weights,
-    and a preview of the first constraint. Call this at the start of
-    a session before the user's first question.
+    Returns Personal Priors (always-on identity) and relevant Expert Priors.
+    Call this at the start of a session before the user's first question.
+
+    IMPORTANT: preview text is for relevance filtering ONLY — it is intentionally
+    truncated and incomplete. You MUST call inject_block for every suggested block
+    before using or applying any prior content. Never infer or apply constraints
+    from a preview without calling inject_block first.
 
     Args:
         prompt: The user's opening prompt or session description.
