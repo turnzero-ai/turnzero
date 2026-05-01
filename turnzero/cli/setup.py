@@ -490,7 +490,9 @@ def setup(
                     target_tier = dest_blocks / tier_dir.name
                     # Skip if the target directory is managed by a registry
                     if (target_tier / ".registry-managed").exists():
-                        console.print(f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]")
+                        console.print(
+                            f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]"
+                        )
                         continue
                     if target_tier.exists():
                         shutil.rmtree(target_tier)
@@ -510,7 +512,8 @@ def setup(
     # ── 1b. Install starter personal prior (first install only) ──────────
     personal_dir = dest_blocks / "personal"
     personal_dir.mkdir(parents=True, exist_ok=True)
-    existing_personal = list(personal_dir.glob("*.yaml"))
+    # Check recursively for any YAML files to handle domain subdirectories
+    existing_personal = list(personal_dir.rglob("*.yaml"))
     if not existing_personal:
         pkg_templates = Path(__file__).parent.parent / "data" / "templates"
         repo_templates = Path(__file__).parent.parent.parent / "data" / "templates"
@@ -759,6 +762,7 @@ def setup(
     if (Path.home() / ".claude.json").exists():
         import contextlib as _ctx
         import json as _json
+
         with _ctx.suppress(Exception):
             _cfg = _json.loads((Path.home() / ".claude.json").read_text())
             if "turnzero" in _cfg.get("mcpServers", {}):
@@ -767,7 +771,9 @@ def setup(
         clients.append("codex")
     if (Path.home() / ".gemini" / "settings.json").exists():
         clients.append("gemini_cli")
-    track_setup_completed(embedding_backend=embedding_backend, clients_registered=clients)
+    track_setup_completed(
+        embedding_backend=embedding_backend, clients_registered=clients
+    )
 
     # ── 8. Summary ────────────────────────────────────────────────────────
     console.print()
