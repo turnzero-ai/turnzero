@@ -751,7 +751,19 @@ def setup(
         )
 
     embedding_backend = "ollama" if ollama_ok else "none"
-    track_setup_completed(embedding_backend=embedding_backend)
+    clients: list[str] = []
+    if (Path.home() / ".claude.json").exists():
+        import contextlib as _ctx
+        import json as _json
+        with _ctx.suppress(Exception):
+            _cfg = _json.loads((Path.home() / ".claude.json").read_text())
+            if "turnzero" in _cfg.get("mcpServers", {}):
+                clients.append("claude_code")
+    if (Path.home() / ".codex" / "config.toml").exists():
+        clients.append("codex")
+    if (Path.home() / ".gemini" / "settings.json").exists():
+        clients.append("gemini_cli")
+    track_setup_completed(embedding_backend=embedding_backend, clients_registered=clients)
 
     # ── 8. Summary ────────────────────────────────────────────────────────
     console.print()

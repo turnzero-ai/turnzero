@@ -379,11 +379,15 @@ def list_suggested_blocks(
         from turnzero.telemetry import track_session_start
         _PERSONAL_SCORE = 2
         personal = [s for s in suggestions if s.get("score", 0) >= _PERSONAL_SCORE]
+        all_blocks = _load_active_blocks()
+        personal_count = sum(1 for b in all_blocks.values() if b.tier == "personal")
         track_session_start(
             session_id=session_id,
             blocks_suggested=len(suggestions),
             domains=list({s["domain"] for s in suggestions if s.get("domain")}),
             has_personal_priors=len(personal) > 0,
+            personal_block_count=personal_count,
+            total_block_count=len(all_blocks),
         )
         return suggestions
     except RuntimeError as e:
