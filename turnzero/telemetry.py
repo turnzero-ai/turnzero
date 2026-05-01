@@ -15,8 +15,7 @@ import os
 import platform
 from typing import Any
 
-# Replace with your PostHog project API key before publishing.
-_POSTHOG_API_KEY = "phc_REPLACE_ME"
+_POSTHOG_API_KEY = "phc_BWoXqMusHqiX6d3eqooSm4PVtEABkJnYFwurYmqj7oU3"
 _POSTHOG_HOST = "https://us.i.posthog.com"
 
 # In-memory set of session_ids that already fired session_start this process.
