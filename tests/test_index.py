@@ -46,8 +46,12 @@ def test_build_writes_valid_index(tmp_path: Path) -> None:
 
     index_path = tmp_path / "index.jsonl"
 
-    with patch("turnzero.index.embed", return_value=np.array(_fake_embedding(), dtype=np.float32)):
+    with patch(
+        "turnzero.index.embed",
+        return_value=np.array(_fake_embedding(), dtype=np.float32),
+    ):
         from turnzero.index import build
+
         count = build(tmp_path / "blocks", index_path, data_dir=tmp_path)
 
     assert count == 1
@@ -67,8 +71,12 @@ def test_build_no_tmp_file_left_on_success(tmp_path: Path) -> None:
     index_path = tmp_path / "index.jsonl"
     tmp_file = index_path.with_suffix(".tmp")
 
-    with patch("turnzero.index.embed", return_value=np.array(_fake_embedding(), dtype=np.float32)):
+    with patch(
+        "turnzero.index.embed",
+        return_value=np.array(_fake_embedding(), dtype=np.float32),
+    ):
         from turnzero.index import build
+
         build(tmp_path / "blocks", index_path, data_dir=tmp_path)
 
     assert not tmp_file.exists()
@@ -88,6 +96,7 @@ def test_build_leaves_old_index_intact_on_embed_failure(tmp_path: Path) -> None:
         pytest.raises(RuntimeError, match="ollama timeout"),
     ):
         from turnzero.index import build
+
         build(tmp_path / "blocks", index_path, data_dir=tmp_path)
 
     # Old index must be untouched
@@ -103,4 +112,5 @@ def test_build_no_blocks_raises(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="No blocks found"):
         from turnzero.index import build
+
         build(blocks_dir, index_path)

@@ -108,4 +108,3 @@ def test_learn_from_session_validates_name(
     monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     with pytest.raises(ValueError, match="Invalid session name"):
         learn_from_session(transcript="hello", session_name="../traversal")
-

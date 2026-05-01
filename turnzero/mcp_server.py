@@ -175,7 +175,9 @@ def _list_suggested_blocks(
     def _expert_preview(block: Any) -> str:
         text = block.constraints[0] if block.constraints else ""
         words = text.split()
-        return " ".join(words[:_PREVIEW_WORDS]) + ("…" if len(words) > _PREVIEW_WORDS else "")
+        return " ".join(words[:_PREVIEW_WORDS]) + (
+            "…" if len(words) > _PREVIEW_WORDS else ""
+        )
 
     formatted = [
         {
@@ -214,8 +216,8 @@ def _list_suggested_blocks(
                 "context_weight": 0,
                 "stale": False,
                 "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
-                })
-
+            }
+        )
 
     return formatted
 
@@ -383,6 +385,7 @@ def list_suggested_blocks(
             suggestions,
         )
         from turnzero.telemetry import track_session_start
+
         _PERSONAL_SCORE = 2
         personal = [s for s in suggestions if s.get("score", 0) >= _PERSONAL_SCORE]
         all_blocks = _load_active_blocks()
@@ -455,6 +458,7 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         "inject_block", {"block_id": block_id, "session_id": session_id}, result
     )
     from turnzero.telemetry import track_block_injected
+
     blocks = _load_active_blocks()
     if block_id in blocks:
         b = blocks[block_id]
@@ -603,7 +607,13 @@ def reset_session(session_id: str | None = None) -> str:
     return "✓ TurnZero session memory cleared."
 
 
-_AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {"remember", "save", "note", "user asked", "explicit"}
+_AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {
+    "remember",
+    "save",
+    "note",
+    "user asked",
+    "explicit",
+}
 
 
 def _check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, bool]:
@@ -619,7 +629,7 @@ def _check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, bo
 
 def _is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
     """Check if any keyword is present in text with simple typo tolerance.
-    
+
     Uses a minimal Levenshtein-like distance check for words of length >= 4.
     threshold=2 allows for two character differences.
     """
@@ -644,7 +654,11 @@ def _is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> boo
         for word in text_words:
             if word == kw_lower:
                 return True
-            if len(kw_lower) >= _MIN_FUZZY_LEN and abs(len(word) - len(kw_lower)) <= threshold and _dist(word, kw_lower) <= threshold:
+            if (
+                len(kw_lower) >= _MIN_FUZZY_LEN
+                and abs(len(word) - len(kw_lower)) <= threshold
+                and _dist(word, kw_lower) <= threshold
+            ):
                 return True
     return False
 

@@ -10,9 +10,7 @@ _HELP = "Manage anonymous usage telemetry (on / off / status)."
 
 
 def telemetry(
-    action: str = typer.Argument(
-        "status", help="Action: on, off, or status."
-    ),
+    action: str = typer.Argument("status", help="Action: on, off, or status."),
 ) -> None:
     """Enable, disable, or check anonymous usage telemetry."""
     from rich.console import Console
@@ -31,7 +29,9 @@ def telemetry(
         con.print("[green]✓[/green] Telemetry enabled.")
     elif action == "status":
         enabled = cfg.get("enabled", True)
-        anon_id = cfg.get("anonymous_id") or "(not yet generated — run 'turnzero setup')"
+        anon_id = (
+            cfg.get("anonymous_id") or "(not yet generated — run 'turnzero setup')"
+        )
         status = "[green]enabled[/green]" if enabled else "[red]disabled[/red]"
         con.print(f"Telemetry: {status}")
         con.print(f"Anonymous ID: [dim]{anon_id}[/dim]")

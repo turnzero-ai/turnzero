@@ -26,6 +26,7 @@ def _is_enabled() -> bool:
     if os.environ.get("TURNZERO_TELEMETRY", "").strip() in ("0", "false", "off"):
         return False
     from turnzero.config import _data_dir, load_telemetry_config
+
     return bool(load_telemetry_config(_data_dir()).get("enabled", True))
 
 
@@ -45,6 +46,7 @@ def _anonymous_id() -> str:
 def _client_version() -> str:
     try:
         from importlib.metadata import version
+
         return version("turnzero")
     except Exception:
         return "unknown"
@@ -67,6 +69,7 @@ async def _post(event: str, props: dict[str, Any]) -> None:
         import logging
 
         import httpx
+
         logging.getLogger("httpx").setLevel(logging.WARNING)
         payload = {
             "api_key": _POSTHOG_API_KEY,
@@ -91,6 +94,7 @@ def track_event(event: str, props: dict[str, Any] | None = None) -> None:
         loop.create_task(_post(event, props or {}))
     except RuntimeError:
         import contextlib
+
         with contextlib.suppress(Exception):
             asyncio.run(_post(event, props or {}))
     except Exception:
@@ -110,13 +114,16 @@ def track_session_start(
     if key in _session_start_fired:
         return
     _session_start_fired.add(key)
-    track_event("session_start", {
-        "blocks_suggested": blocks_suggested,
-        "domains_suggested": domains,
-        "has_personal_priors": has_personal_priors,
-        "personal_block_count": personal_block_count,
-        "total_block_count": total_block_count,
-    })
+    track_event(
+        "session_start",
+        {
+            "blocks_suggested": blocks_suggested,
+            "domains_suggested": domains,
+            "has_personal_priors": has_personal_priors,
+            "personal_block_count": personal_block_count,
+            "total_block_count": total_block_count,
+        },
+    )
 
 
 def track_block_injected(domain: str, tier: str) -> None:
@@ -124,11 +131,14 @@ def track_block_injected(domain: str, tier: str) -> None:
 
 
 def track_candidate_submitted(domain: str, auto_approved: bool, result: str) -> None:
-    track_event("candidate_submitted", {
-        "domain": domain,
-        "auto_approved": auto_approved,
-        "result": result,
-    })
+    track_event(
+        "candidate_submitted",
+        {
+            "domain": domain,
+            "auto_approved": auto_approved,
+            "result": result,
+        },
+    )
 
 
 def track_session_summary(session_id: str | None) -> None:
@@ -137,22 +147,33 @@ def track_session_summary(session_id: str | None) -> None:
     _session_start_fired.discard(session_id or "__no_session__")
 
 
-def track_setup_completed(embedding_backend: str, clients_registered: list[str] | None = None) -> None:
-    track_event("setup_completed", {
-        "embedding_backend": embedding_backend,
-        "clients_registered": clients_registered or [],
-    })
+def track_setup_completed(
+    embedding_backend: str, clients_registered: list[str] | None = None
+) -> None:
+    track_event(
+        "setup_completed",
+        {
+            "embedding_backend": embedding_backend,
+            "clients_registered": clients_registered or [],
+        },
+    )
 
 
 def track_review_opened(candidate_count: int, low_confidence_count: int) -> None:
-    track_event("review_opened", {
-        "candidate_count": candidate_count,
-        "low_confidence_count": low_confidence_count,
-    })
+    track_event(
+        "review_opened",
+        {
+            "candidate_count": candidate_count,
+            "low_confidence_count": low_confidence_count,
+        },
+    )
 
 
 def track_stats_viewed(sessions_total: int, blocks_total: int) -> None:
-    track_event("stats_viewed", {
-        "sessions_total": sessions_total,
-        "blocks_total": blocks_total,
-    })
+    track_event(
+        "stats_viewed",
+        {
+            "sessions_total": sessions_total,
+            "blocks_total": blocks_total,
+        },
+    )

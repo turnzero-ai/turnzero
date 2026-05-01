@@ -400,6 +400,7 @@ def stats() -> None:
     personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
 
     from turnzero.telemetry import track_stats_viewed
+
     track_stats_viewed(sessions_total=sessions_total, blocks_total=len(blocks))
 
     # ── Render ────────────────────────────────────────────────────────────

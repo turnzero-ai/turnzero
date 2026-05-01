@@ -616,13 +616,33 @@ def setup(
         )
         console.print("  Setup will continue, but you must fix this before querying.")
 
-    # ── 3. Build index ────────────────────────────────────────────────────
+    # ── 3. Build index (or copy pre-built) ────────────────────────────────
     console.print()
     index_path = resolved / "index.jsonl"
     index_ok = False
-    if ollama_ok and dest_blocks.exists():
+
+    # Check for bundled index first to avoid 20-25min build
+    from turnzero.config import _bundled_index_path
+
+    bundled_index = _bundled_index_path()
+
+    if bundled_index.exists() and bundled_index != index_path:
         if not index_path.exists() or force:
-            console.print("Building embedding index…")
+            console.print("Installing pre-built embedding index…")
+            shutil.copy2(bundled_index, index_path)
+            # Also copy per-source index if it exists in bundle (usually index_community.jsonl)
+            bundled_community = bundled_index.parent / "index_community.jsonl"
+            if bundled_community.exists():
+                shutil.copy2(bundled_community, resolved / "index_community.jsonl")
+
+            console.print("[green]✓[/green] Pre-built index installed")
+            index_ok = True
+        else:
+            console.print("[dim]✓ Index already exists[/dim]")
+            index_ok = True
+    elif ollama_ok and dest_blocks.exists():
+        if not index_path.exists() or force:
+            console.print("Building embedding index from scratch…")
             env = os.environ.copy()
             env["TURNZERO_DATA_DIR"] = str(resolved)
             try:

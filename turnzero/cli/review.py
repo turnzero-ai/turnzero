@@ -130,7 +130,9 @@ def review() -> None:
     candidates_dir = data_dir / "candidates"
     blocks_dir = _blocks_dir()
 
-    candidate_count = len(list(candidates_dir.glob("*.yaml"))) if candidates_dir.exists() else 0
+    candidate_count = (
+        len(list(candidates_dir.glob("*.yaml"))) if candidates_dir.exists() else 0
+    )
     from turnzero.telemetry import track_review_opened
 
     # ── 1. Low-confidence library blocks ────────────────────────────────────────
@@ -141,7 +143,9 @@ def review() -> None:
             for b in all_blocks.values()
             if b.confidence < LOW_CONFIDENCE_THRESHOLD and not b.archived
         ]
-        track_review_opened(candidate_count=candidate_count, low_confidence_count=len(low_conf))
+        track_review_opened(
+            candidate_count=candidate_count, low_confidence_count=len(low_conf)
+        )
         if low_conf:
             console.print(
                 f"\n[yellow]⚠  Found {len(low_conf)} low-confidence block(s) in your library.[/yellow]"

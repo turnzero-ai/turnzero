@@ -119,10 +119,23 @@ def test_setup_gemini_md(tmp_path: Path):
 
 # ── ONB-1: starter personal prior template ───────────────────────────────────
 
+
 def _locate_template() -> Path:
     """Return path to turnzero-guide.yaml regardless of install context."""
-    pkg = Path(__file__).parent.parent / "data" / "templates" / "personal" / "turnzero-guide.yaml"
-    repo = Path(__file__).parent.parent / "data" / "templates" / "personal" / "turnzero-guide.yaml"
+    pkg = (
+        Path(__file__).parent.parent
+        / "data"
+        / "templates"
+        / "personal"
+        / "turnzero-guide.yaml"
+    )
+    repo = (
+        Path(__file__).parent.parent
+        / "data"
+        / "templates"
+        / "personal"
+        / "turnzero-guide.yaml"
+    )
     return pkg if pkg.exists() else repo
 
 
@@ -130,7 +143,9 @@ def test_template_copied_when_personal_dir_empty(tmp_path: Path) -> None:
     personal_dir = tmp_path / "personal"
     personal_dir.mkdir()
     template_src = _locate_template()
-    assert template_src.exists(), "turnzero-guide.yaml template missing from data/templates"
+    assert template_src.exists(), (
+        "turnzero-guide.yaml template missing from data/templates"
+    )
 
     dst = personal_dir / "turnzero-guide.yaml"
     if not dst.exists():

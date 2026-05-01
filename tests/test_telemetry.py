@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 def _reset_fired(session_id: str | None = None) -> None:
     from turnzero import telemetry
+
     telemetry._session_start_fired.discard(session_id or "__no_session__")
 
 
@@ -17,6 +18,7 @@ def test_telemetry_disabled_by_env_fires_nothing(tmp_path: Path) -> None:
         patch("turnzero.telemetry._post") as mock_post,
     ):
         from turnzero.telemetry import track_event
+
         track_event("setup_completed", {"embedding_backend": "ollama"})
 
     mock_post.assert_not_called()
@@ -29,6 +31,7 @@ def test_telemetry_disabled_by_config_fires_nothing(tmp_path: Path) -> None:
         patch("turnzero.telemetry._POSTHOG_API_KEY", "phc_real_key"),
     ):
         from turnzero.telemetry import track_event
+
         track_event("setup_completed", {})
 
     mock_post.assert_not_called()
@@ -50,11 +53,17 @@ def test_track_event_payload_never_contains_prompt_text() -> None:
         patch("httpx.AsyncClient", return_value=mock_ctx),
     ):
         from turnzero.telemetry import _post
-        asyncio.run(_post("session_start", {
-            "blocks_suggested": 3,
-            "domains_suggested": ["fastapi", "nextjs"],
-            "has_personal_priors": True,
-        }))
+
+        asyncio.run(
+            _post(
+                "session_start",
+                {
+                    "blocks_suggested": 3,
+                    "domains_suggested": ["fastapi", "nextjs"],
+                    "has_personal_priors": True,
+                },
+            )
+        )
 
     assert mock_client.post.called
     payload = mock_client.post.call_args.kwargs.get("json", {})
@@ -76,6 +85,7 @@ def test_track_session_start_fires_only_once_per_session(tmp_path: Path) -> None
 
     with patch("turnzero.telemetry.track_event", side_effect=fake_track):
         from turnzero.telemetry import track_session_start
+
         track_session_start("test-session-123", 5, ["fastapi"], True)
         track_session_start("test-session-123", 5, ["fastapi"], True)
         track_session_start("test-session-123", 5, ["fastapi"], True)
@@ -95,6 +105,7 @@ def test_track_session_start_fires_for_different_sessions() -> None:
 
     with patch("turnzero.telemetry.track_event", side_effect=fake_track):
         from turnzero.telemetry import track_session_start
+
         track_session_start("sess-a", 3, ["fastapi"], True)
         track_session_start("sess-b", 2, ["nextjs"], False)
 
@@ -105,12 +116,14 @@ def test_track_session_start_fires_for_different_sessions() -> None:
 
 def test_telemetry_config_default_enabled(tmp_path: Path) -> None:
     from turnzero.config import load_telemetry_config
+
     cfg = load_telemetry_config(tmp_path)
     assert cfg["enabled"] is True
 
 
 def test_telemetry_config_opt_out_persists(tmp_path: Path) -> None:
     from turnzero.config import load_telemetry_config, save_telemetry_config
+
     cfg = load_telemetry_config(tmp_path)
     cfg["enabled"] = False
     save_telemetry_config(tmp_path, cfg)
@@ -141,4 +154,5 @@ def test_track_event_silent_on_network_error() -> None:
         patch("httpx.AsyncClient", side_effect=Exception("network down")),
     ):
         from turnzero.telemetry import track_event
+
         track_event("setup_completed", {})  # must not raise
