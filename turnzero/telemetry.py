@@ -84,10 +84,11 @@ def track_event(event: str, props: dict[str, Any] | None = None) -> None:
     if not _is_enabled():
         return
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(_post(event, props or {}))
-        else:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_post(event, props or {}))
+    except RuntimeError:
+        import contextlib
+        with contextlib.suppress(Exception):
             asyncio.run(_post(event, props or {}))
     except Exception:
         pass
