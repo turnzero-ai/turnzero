@@ -55,9 +55,11 @@ LOCAL_BLOCKS_DIR = TURNZERO_DATA_DIR / "blocks" / "local"
 
 CLAUDE_BINARY = shutil.which("claude") or "claude"
 GEMINI_BINARY = shutil.which("gemini") or "gemini"
+CODEX_BINARY = shutil.which("codex") or "codex"
 
 CLAUDE_TIMEOUT = 120
 GEMINI_TIMEOUT = 120
+CODEX_TIMEOUT = 180
 
 
 # ---------------------------------------------------------------------------
@@ -520,6 +522,32 @@ def _run_gemini(
     return response, duration, ""
 
 
+def _run_codex(
+    prompt: str,
+    timeout: int = CODEX_TIMEOUT,
+) -> tuple[str, float, str]:
+    t0 = time.time()
+    res = subprocess.run(
+        [
+            CODEX_BINARY,
+            "exec",
+            "-p",
+            prompt,
+            "--dangerously-bypass-approvals-and-sandbox",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=False,
+    )
+    duration = time.time() - t0
+
+    if res.returncode != 0 and not res.stdout.strip():
+        return "", duration, res.stderr[:300]
+
+    return res.stdout, duration, ""
+
+
 # ---------------------------------------------------------------------------
 # Single-run execution
 # ---------------------------------------------------------------------------
@@ -573,14 +601,19 @@ def _run_once(
             stats.error = err
             stats.tool_calls = _read_log_since(ts_before)
 
+        elif agent == "codex":
+            resp, dur, err = _run_codex(scenario["prompt"])
+            stats.response = resp
+            stats.duration_s = dur
+            stats.error = err
+            stats.tool_calls = _read_log_since(ts_before)
+
         else:
             stats.error = f"Unknown agent: {agent}"
 
     except subprocess.TimeoutExpired:
-        stats.error = (
-            f"Timed out after "
-            f"{CLAUDE_TIMEOUT if agent == 'claude' else GEMINI_TIMEOUT}s"
-        )
+        _timeouts = {"claude": CLAUDE_TIMEOUT, "gemini": GEMINI_TIMEOUT, "codex": CODEX_TIMEOUT}
+        stats.error = f"Timed out after {_timeouts.get(agent, 120)}s"
     except FileNotFoundError:
         stats.error = f"{agent} binary not found"
     except Exception as e:
@@ -967,7 +1000,7 @@ def main() -> None:
         "--agents",
         nargs="+",
         default=["claude", "gemini"],
-        choices=["claude", "gemini"],
+        choices=["claude", "gemini", "codex"],
     )
     parser.add_argument(
         "--scenarios",

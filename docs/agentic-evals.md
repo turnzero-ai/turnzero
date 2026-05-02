@@ -51,6 +51,9 @@ python -m tests.evals.benchmark --scenarios 1 2 4 5 7 --repeat 3
 # Single agent
 python -m tests.evals.benchmark --agents claude
 
+# Include Codex
+python -m tests.evals.benchmark --agents claude gemini codex
+
 # Machine-readable output
 python -m tests.evals.benchmark --output-format json
 ```

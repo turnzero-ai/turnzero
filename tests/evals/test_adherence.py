@@ -14,6 +14,7 @@ Eval tests (set TURNZERO_RUN_EVALS=1 to run — require Ollama or real CLIs):
   test_ollama_learning_sensitivity        – Ollama calls submit_candidate on "remember this"
   test_gemini_cli_instruction_adherence   – Gemini CLI follows rule baked into GEMINI.md
   test_claude_cli_instruction_adherence   – Claude Code CLI follows rule baked into CLAUDE.md
+  test_codex_cli_instruction_adherence    – Codex CLI follows rule baked into AGENTS.md
 """
 
 from __future__ import annotations
@@ -272,5 +273,32 @@ def test_claude_cli_instruction_adherence() -> None:
 
     assert "vault_conn" in response, (
         f"Expected 'vault_conn' in Claude response.\n"
+        f"Response:\n{response[:1500]}"
+    )
+
+
+@evals_only
+@pytest.mark.evals
+def test_codex_cli_instruction_adherence() -> None:
+    """Codex CLI follows a constraint baked directly into AGENTS.md.
+
+    This tests the instruction-file injection path (no MCP required).
+    If Codex CLI is not installed, this test errors with a clear message.
+    """
+    constraint = (
+        "MANDATORY NAMING RULE: When writing any Python function that opens a database "
+        "connection, you MUST name the connection variable `vault_conn`. "
+        "This is a non-negotiable project convention. Do not use any other variable name."
+    )
+    with EvalEnvironment() as env:
+        env.inject_constraint_into_instructions(constraint)
+        agent = RealCLIProjectAgent(env, binary="codex")
+        response = agent.chat(
+            "Write a short Python function `get_db()` that opens a PostgreSQL connection "
+            "and returns it. Follow all project rules in AGENTS.md."
+        )
+
+    assert "vault_conn" in response, (
+        f"Expected 'vault_conn' in Codex response.\n"
         f"Response:\n{response[:1500]}"
     )
