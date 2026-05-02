@@ -4,7 +4,7 @@ TurnZero MCP is installed. Follow these rules to establish a consistent **Portab
 ### 1. Context Injection (Turn 0)
 - **Rule:** ALWAYS call `list_suggested_blocks` before responding to ANY non-trivial user message.
 - **Why:** This retrieves your **Personal Priors** (Always-On Identity) and relevant **Expert Priors** (Domain Knowledge).
-- **Skip:** Only skip for pure chitchat (greetings, one-word replies).
+- **Skip:** Only skip for pure chitchat — greetings, social acknowledgments ("thanks", "looks good", "got it"), or any message with no actionable content.
 
 ### 2. Creating Priors (`submit_candidate`)
 - **Expert Priors (`is_personal=False`):** Use this for general technical truth, library "gotchas," or domain-specific rules (e.g., "SQLAlchemy 2.0 requires select()"). These are for the community.
