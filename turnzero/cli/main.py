@@ -53,5 +53,20 @@ app.command(name="doctor")(verify)
 app.command()(telemetry)
 app.command("threshold-test")(threshold_test)
 
+
+def cli_entry() -> None:
+    """Entry point for the turnzero CLI."""
+    import asyncio
+    import contextlib
+
+    from turnzero.telemetry import flush_telemetry
+
+    try:
+        app()
+    finally:
+        with contextlib.suppress(Exception):
+            asyncio.run(flush_telemetry())
+
+
 if __name__ == "__main__":
-    app()
+    cli_entry()

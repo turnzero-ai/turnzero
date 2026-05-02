@@ -42,7 +42,7 @@ dev = [
 ]
 
 [project.scripts]
-turnzero = "turnzero.cli:app"
+turnzero = "turnzero.cli.main:cli_entry"
 turnzero-mcp = "turnzero.mcp_server:main"
 
 [build-system]

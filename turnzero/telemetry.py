@@ -21,6 +21,9 @@ _POSTHOG_HOST = "https://eu.i.posthog.com"
 # In-memory set of session_ids that already fired session_start this process.
 _session_start_fired: set[str] = set()
 
+# Track background tasks to allow flushing before exit.
+_pending_tasks: set[asyncio.Task[None]] = set()
+
 
 def _is_enabled() -> bool:
     if os.environ.get("TURNZERO_TELEMETRY", "").strip() in ("0", "false", "off"):
@@ -57,39 +60,33 @@ def _os_type() -> str:
 
 
 def _base_props() -> dict[str, Any]:
-    version = _client_version()
     return {
-        "$lib": "turnzero",
-        "$lib_version": version,
-        "client_version": version,
-        "os_type": _os_type(),
         "lib": "turnzero",
+        "client_version": _client_version(),
+        "os_type": _os_type(),
     }
 
 
 async def _post(event: str, props: dict[str, Any]) -> None:
-    try:
+    import contextlib
+
+    with contextlib.suppress(Exception):
         import logging
 
         import httpx
 
         logging.getLogger("httpx").setLevel(logging.WARNING)
-        anon_id = _anonymous_id()
         payload = {
             "api_key": _POSTHOG_API_KEY,
             "event": event,
-            "distinct_id": anon_id,
+            "distinct_id": _anonymous_id(),
             "properties": {
-                "distinct_id": anon_id,
-                "$process_person_profile": False,
                 **_base_props(),
                 **props,
             },
         }
         async with httpx.AsyncClient(timeout=3.0) as client:
-            await client.post(f"{_POSTHOG_HOST}/capture/", json=payload)
-    except Exception:
-        pass
+            await client.post(f"{_POSTHOG_HOST}/capture", json=payload)
 
 
 def track_event(event: str, props: dict[str, Any] | None = None) -> None:
@@ -98,16 +95,30 @@ def track_event(event: str, props: dict[str, Any] | None = None) -> None:
         return
     if not _is_enabled():
         return
-    try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(_post(event, props or {}))
-    except RuntimeError:
-        import contextlib
+    import contextlib
 
+    with contextlib.suppress(Exception):
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(_post(event, props or {}))
+        _pending_tasks.add(task)
+        task.add_done_callback(_pending_tasks.discard)
+    if not _pending_tasks:  # If create_task failed (no loop)
         with contextlib.suppress(Exception):
             asyncio.run(_post(event, props or {}))
-    except Exception:
-        pass
+
+
+async def flush_telemetry(timeout: float = 2.0) -> None:
+    """Wait for all pending telemetry tasks to complete."""
+    if not _pending_tasks:
+        return
+    import contextlib
+
+    with contextlib.suppress(Exception):
+        await asyncio.wait_for(
+            asyncio.gather(*_pending_tasks, return_exceptions=True),
+            timeout=timeout,
+        )
+    _pending_tasks.clear()
 
 
 def track_session_start(

@@ -170,10 +170,9 @@ def test_track_event_canonical_payload_structure() -> None:
     props = payload.get("properties", {})
 
     assert payload["distinct_id"] == "test-uuid"
-    assert props["distinct_id"] == "test-uuid"
-    assert props["$lib"] == "turnzero"
-    assert props["$process_person_profile"] is False
+    assert props["lib"] == "turnzero"
     assert props["extra"] == "prop"
+    assert "$process_person_profile" not in props
 
 
 def test_track_event_silent_on_network_error() -> None:
