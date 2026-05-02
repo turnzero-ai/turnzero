@@ -225,6 +225,23 @@ See [ROADMAP.md](ROADMAP.md).
 
 ---
 
+## Give feedback
+
+```bash
+turnzero feedback
+```
+
+This opens the configured hosted TurnZero feedback form in your browser. Public
+or private response visibility depends on the settings of that hosted form.
+
+Please do not include secrets, raw prompts, transcripts, API keys, private repo
+names, customer data, or confidential priors. Feedback is separate from
+anonymous telemetry. Local correction feedback created with
+`turnzero feedback --prompt ... --correction ...` stays local unless you
+manually share it.
+
+---
+
 ## Telemetry
 
 TurnZero collects anonymous usage telemetry by default using [PostHog](https://posthog.com).

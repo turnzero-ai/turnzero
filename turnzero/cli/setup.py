@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+import webbrowser
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,7 @@ from turnzero.cli.base import (
     console,
     err_console,
 )
+from turnzero.config import feedback_form_url, feedback_form_url_is_placeholder
 
 source_app = typer.Typer(
     help="Enable or disable Expert Prior sources (local/community/team).",
@@ -812,22 +814,19 @@ def setup(
         )
 
 
-def feedback(
-    prompt: str = typer.Option(
-        ..., "--prompt", "-p", help="The opening prompt that was used."
-    ),
-    correction: str = typer.Option(
-        ..., "--correction", "-c", help="The correction text (what the user clarified)."
-    ),
-    slug: str = typer.Option(
-        None,
-        "--slug",
-        "-s",
-        help="The slug of the block that was suggested/injected (optional).",
-    ),
-) -> None:
-    """Log user feedback/correction when a suggestion was missed or incorrect."""
+_FEEDBACK_PRIVACY_REMINDER = (
+    "Feedback form opened. Please do not include secrets, API keys, raw prompts, "
+    "transcripts, private repo names, customer data, or confidential priors."
+)
+_FEEDBACK_SETUP_WARNING = (
+    "Feedback form URL has not been configured yet. Set TURNZERO_FEEDBACK_URL or "
+    "replace the placeholder in the repo."
+)
 
+
+def _log_local_correction_feedback(
+    *, prompt: str, correction: str, slug: str | None
+) -> None:
     feedback_data = {
         "timestamp": int(time.time()),
         "prompt": prompt,
@@ -841,10 +840,65 @@ def feedback(
     with feedback_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(feedback_data) + "\n")
 
-    console.print(f"[green]✓ Feedback logged to {feedback_file}[/green]")
+    console.print(f"[green]✓ Local correction feedback logged to {feedback_file}[/green]")
     console.print(
-        "[dim]This data will be used to improve future Expert Prior extractions.[/dim]"
+        "[dim]This stays local. It is not uploaded, sent to the hosted feedback "
+        "form, or included in telemetry unless you manually share it.[/dim]"
     )
+
+
+def feedback(
+    prompt: str | None = typer.Option(
+        None, "--prompt", "-p", help="Local-only: the opening prompt that was used."
+    ),
+    correction: str | None = typer.Option(
+        None,
+        "--correction",
+        "-c",
+        help="Local-only: the correction text that the user clarified.",
+    ),
+    slug: str | None = typer.Option(
+        None,
+        "--slug",
+        "-s",
+        help="Local-only: the slug of the block that was suggested/injected.",
+    ),
+    no_browser: bool = typer.Option(
+        False,
+        "--no-browser",
+        help="Print the hosted feedback form URL instead of opening a browser.",
+    ),
+) -> None:
+    """Open the hosted feedback form or log explicit local correction feedback."""
+
+    has_local_args = any(value is not None for value in (prompt, correction, slug))
+    if has_local_args:
+        if prompt is None or correction is None:
+            err_console.print(
+                "[red]Local correction feedback requires both --prompt and "
+                "--correction. It is stored locally only and is not sent to the "
+                "hosted feedback form.[/red]"
+            )
+            raise typer.Exit(1)
+        _log_local_correction_feedback(prompt=prompt, correction=correction, slug=slug)
+        return
+
+    url = feedback_form_url()
+    if feedback_form_url_is_placeholder(url):
+        console.print(f"[yellow]{_FEEDBACK_SETUP_WARNING}[/yellow]")
+
+    if no_browser:
+        console.print(url)
+        return
+
+    opened = False
+    with contextlib.suppress(Exception):
+        opened = bool(webbrowser.open(url))
+
+    console.print(_FEEDBACK_PRIVACY_REMINDER)
+    if not opened:
+        console.print("Unable to open a browser automatically. Feedback form URL:")
+        console.print(url)
 
 
 @source_app.command("list")

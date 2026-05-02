@@ -8,6 +8,8 @@ from pathlib import Path
 import yaml
 
 TIERS = ("local", "community", "team", "personal")
+TURNZERO_FEEDBACK_URL_ENV = "TURNZERO_FEEDBACK_URL"
+TURNZERO_FEEDBACK_FORM_URL = "https://tally.so/r/REPLACE_WITH_TURNZERO_FORM_ID"
 
 _DEFAULTS: dict[str, dict[str, bool]] = {
     "sources": {
@@ -34,6 +36,18 @@ def _blocks_dir() -> Path:
 
 def _index_path() -> Path:
     return _data_dir() / "index.jsonl"
+
+
+def feedback_form_url() -> str:
+    """Return the hosted feedback form URL, allowing an environment override."""
+    return os.environ.get(TURNZERO_FEEDBACK_URL_ENV, "").strip() or (
+        TURNZERO_FEEDBACK_FORM_URL
+    )
+
+
+def feedback_form_url_is_placeholder(url: str) -> bool:
+    """Return True when the repository placeholder feedback URL is still active."""
+    return url == TURNZERO_FEEDBACK_FORM_URL
 
 
 def _affinity_path() -> Path:

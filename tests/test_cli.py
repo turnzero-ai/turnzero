@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
@@ -13,6 +15,7 @@ from turnzero.cli.setup import (
     _setup_codex_agents_md,
     _setup_codex_mcp,
 )
+from turnzero.config import TURNZERO_FEEDBACK_FORM_URL, feedback_form_url
 
 runner = CliRunner()
 
@@ -33,6 +36,122 @@ def test_help_lists_commands() -> None:
     assert result.exit_code == 0
     for cmd in ("setup", "query", "preview", "stats", "index"):
         assert cmd in result.output
+
+
+# ---------------------------------------------------------------------------
+# Hosted feedback form
+# ---------------------------------------------------------------------------
+
+
+def test_feedback_url_resolution_uses_repo_placeholder(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TURNZERO_FEEDBACK_URL", raising=False)
+
+    assert feedback_form_url() == TURNZERO_FEEDBACK_FORM_URL
+
+
+def test_feedback_url_resolution_prefers_env_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TURNZERO_FEEDBACK_URL", "https://forms.example/turnzero")
+
+    assert feedback_form_url() == "https://forms.example/turnzero"
+
+
+def test_feedback_no_browser_prints_configured_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TURNZERO_FEEDBACK_URL", "https://forms.example/turnzero")
+
+    result = runner.invoke(app, ["feedback", "--no-browser"])
+
+    assert result.exit_code == 0
+    assert "https://forms.example/turnzero" in result.output
+
+
+def test_feedback_opens_browser(monkeypatch: pytest.MonkeyPatch) -> None:
+    opened_urls: list[str] = []
+    monkeypatch.setenv("TURNZERO_FEEDBACK_URL", "https://forms.example/turnzero")
+
+    def fake_open(url: str) -> bool:
+        opened_urls.append(url)
+        return True
+
+    monkeypatch.setattr("turnzero.cli.setup.webbrowser.open", fake_open)
+
+    result = runner.invoke(app, ["feedback"])
+
+    assert result.exit_code == 0
+    assert opened_urls == ["https://forms.example/turnzero"]
+    assert "Feedback form opened. Please do not include secrets" in result.output
+
+
+def test_feedback_browser_failure_prints_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TURNZERO_FEEDBACK_URL", "https://forms.example/turnzero")
+    monkeypatch.setattr("turnzero.cli.setup.webbrowser.open", lambda url: False)
+
+    result = runner.invoke(app, ["feedback"])
+
+    assert result.exit_code == 0
+    assert "Unable to open a browser automatically" in result.output
+    assert "https://forms.example/turnzero" in result.output
+
+
+def test_feedback_placeholder_prints_setup_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("TURNZERO_FEEDBACK_URL", raising=False)
+
+    result = runner.invoke(app, ["feedback", "--no-browser"])
+
+    assert result.exit_code == 0
+    assert "Feedback form URL has not been configured yet" in result.output
+    assert TURNZERO_FEEDBACK_FORM_URL in result.output
+
+
+def test_feedback_local_correction_stays_local(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback",
+            "--prompt",
+            "Building an async FastAPI endpoint",
+            "--correction",
+            "Use asyncpg, not psycopg2.",
+            "--slug",
+            "fastapi-async-build",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Local correction feedback logged" in result.output
+    assert "not uploaded" in result.output
+    payloads = [
+        json.loads(line) for line in (tmp_path / "feedback.jsonl").read_text().splitlines()
+    ]
+    assert payloads == [
+        {
+            "timestamp": payloads[0]["timestamp"],
+            "prompt": "Building an async FastAPI endpoint",
+            "correction": "Use asyncpg, not psycopg2.",
+            "slug": "fastapi-async-build",
+        }
+    ]
+
+
+def test_feedback_partial_local_correction_errors() -> None:
+    result = runner.invoke(app, ["feedback", "--prompt", "Only one side"])
+
+    assert result.exit_code == 1
+    assert "requires both --prompt and --correction" in result.output
 
 
 # ---------------------------------------------------------------------------
