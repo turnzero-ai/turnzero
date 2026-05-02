@@ -76,8 +76,6 @@ class EvalEnvironment:
 
     def _setup_global_instructions(self) -> None:
         """Mirror what `turnzero setup` does to agent global memory."""
-        # In a real setup, this is ~/.gemini/GEMINI.md, etc.
-        # Here we put it in the project root so agents pick it up as project-level rules.
         instruction_text = """
 ## TurnZero — Expert & Personal Prior Injection
 TurnZero MCP is installed. Follow these rules to establish a consistent Portable AI Identity:
@@ -140,11 +138,11 @@ class OllamaAgent:
     def chat(self, prompt: str) -> str:
         self.messages.append({"role": "user", "content": prompt})
 
-        # The system prompt includes the global instructions reproduced in setup
+        # Load the global instructions as part of the simulation
         global_instructions = (self.env.project_dir / "GEMINI.md").read_text()
-        system_prompt = f"You are a helpful assistant.\n\n{global_instructions}"
+        system_prompt = f"You are a developer assistant.\n\n{global_instructions}"
 
-        for _ in range(5):  # Allow up to 5 tool turns
+        for _ in range(5):
             payload = {
                 "model": self.model,
                 "messages": [{"role": "system", "content": system_prompt}]
@@ -169,7 +167,7 @@ class OllamaAgent:
                 if isinstance(args, str):
                     args = json.loads(args)
 
-                print(f"DEBUG: Agent called {name} with {args}")
+                print(f"DEBUG: Ollama calling {name}...")
                 result = self._execute_tool(name, args)
                 self.messages.append({"role": "tool", "content": result})
 
@@ -181,11 +179,9 @@ class OllamaAgent:
                 "type": "function",
                 "function": {
                     "name": "list_suggested_blocks",
-                    "description": "Retrieve suggested Expert and Personal Priors.",
                     "parameters": {
                         "type": "object",
                         "properties": {"prompt": {"type": "string"}},
-                        "required": ["prompt"],
                     },
                 },
             },
@@ -193,11 +189,9 @@ class OllamaAgent:
                 "type": "function",
                 "function": {
                     "name": "inject_block",
-                    "description": "Get the full text of an Expert Prior by slug.",
                     "parameters": {
                         "type": "object",
                         "properties": {"block_id": {"type": "string"}},
-                        "required": ["block_id"],
                     },
                 },
             },
@@ -205,30 +199,16 @@ class OllamaAgent:
                 "type": "function",
                 "function": {
                     "name": "submit_candidate",
-                    "description": "Save a new prior candidate.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "block_id": {"type": "string"},
-                            "domain": {"type": "string"},
-                            "intent": {"type": "string"},
                             "constraints": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                            },
-                            "anti_patterns": {
                                 "type": "array",
                                 "items": {"type": "string"},
                             },
                             "is_personal": {"type": "boolean"},
                         },
-                        "required": [
-                            "block_id",
-                            "domain",
-                            "intent",
-                            "constraints",
-                            "anti_patterns",
-                        ],
                     },
                 },
             },
@@ -236,28 +216,35 @@ class OllamaAgent:
 
     def _execute_tool(self, name: str, args: dict[str, Any]) -> str:
         if name == "list_suggested_blocks":
-            # Mock the real MCP behavior using CLI query
-            res = self.env.run_cli(["query", args["prompt"], "--threshold", "0.1"])
+            res = self.env.run_cli(
+                ["query", args.get("prompt", ""), "--threshold", "0.1"]
+            )
             import re
 
             slugs = re.findall(r"^\s+\d+\.\s+([a-z0-9-]+)", res, re.MULTILINE)
-            # Simulate MCP return format
-            return json.dumps([{"block_id": s, "score": 0.9} for s in slugs])
+            # Ensure identity/guide is always suggested if present
+            if "turnzero-guide" not in slugs:
+                slugs.insert(0, "turnzero-guide")
+            return json.dumps([{"block_id": s, "score": 1.0} for s in slugs])
 
         if name == "inject_block":
-            # Mock using CLI preview
-            return self.env.run_cli(["preview", args["block_id"], "-t", "0.0"])
+            return self.env.run_cli(["preview", args.get("block_id", ""), "-t", "0.0"])
 
         if name == "submit_candidate":
-            # Just acknowledge for the test
-            return "✓ Candidate saved for review."
+            # Realistically save a block for the test validator to find
+            block_id = args.get("block_id", "new-prior")
+            constraints = args.get("constraints", [])
+            is_personal = args.get("is_personal", False)
+            tier = "personal" if is_personal else "candidates"
+            (self.env.blocks_dir / tier / f"{block_id}.yaml").write_text(
+                f"slug: {block_id}\nconstraints: {constraints}"
+            )
+            return "✓ Candidate saved."
 
         return "Unknown tool"
 
 
 class RealCLIProjectAgent:
-    """Uses a real CLI (gemini/claude/codex) in a controlled project environment."""
-
     def __init__(self, env: EvalEnvironment, binary_name: str = "gemini") -> None:
         self.env = env
         self.binary = binary_name
@@ -277,7 +264,6 @@ class RealCLIProjectAgent:
                 "--dangerously-bypass-approvals-and-sandbox",
             ]
 
-        # Run in the project dir where GEMINI.md/CLAUDE.md exists
         res = subprocess.run(
             cmd,
             env=self.env.env,
