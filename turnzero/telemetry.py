@@ -57,8 +57,11 @@ def _os_type() -> str:
 
 
 def _base_props() -> dict[str, Any]:
+    version = _client_version()
     return {
-        "client_version": _client_version(),
+        "$lib": "turnzero",
+        "$lib_version": version,
+        "client_version": version,
         "os_type": _os_type(),
         "lib": "turnzero",
     }
@@ -71,11 +74,17 @@ async def _post(event: str, props: dict[str, Any]) -> None:
         import httpx
 
         logging.getLogger("httpx").setLevel(logging.WARNING)
+        anon_id = _anonymous_id()
         payload = {
             "api_key": _POSTHOG_API_KEY,
             "event": event,
-            "distinct_id": _anonymous_id(),
-            "properties": {**_base_props(), **props},
+            "distinct_id": anon_id,
+            "properties": {
+                "distinct_id": anon_id,
+                "$process_person_profile": False,
+                **_base_props(),
+                **props,
+            },
         }
         async with httpx.AsyncClient(timeout=3.0) as client:
             await client.post(f"{_POSTHOG_HOST}/capture/", json=payload)
