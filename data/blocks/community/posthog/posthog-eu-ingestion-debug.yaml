@@ -1,0 +1,34 @@
+id: posthog-eu-ingestion-debug-version-1-0-0
+slug: posthog-eu-ingestion-debug-version-1-0-0
+version: 1.0.0
+domain: posthog
+intent: debug
+last_verified: '2026-05-02'
+tags:
+- posthog
+- telemetry
+- eu-cloud
+- ingestion
+context_weight: 316
+conflicts_with: []
+requires: []
+constraints:
+- When sending events to PostHog EU Cloud (eu.i.posthog.com), always use the /capture
+  endpoint without a trailing slash to avoid silent drops by the Envoy proxy.
+- 'Set $process_person_profile: false in the properties of anonymous events when using
+  the identified_only project setting to ensure ingestion.'
+anti_patterns:
+- Do not include a trailing slash in the PostHog capture URL (e.g., use /capture,
+  not /capture/).
+- Do not assume a 200 OK response from PostHog means the event was successfully ingested;
+  check the dashboard Live Events.
+rationale: PostHog EU Cloud uses an Envoy-based ingestion pipeline that often redirects
+  or silently drops requests with trailing slashes while still returning a 200 OK.
+  Standardizing on the slashless endpoint and disabling person-profile processing
+  for anonymous events ensures reliable ingestion.
+doc_anchors:
+- url: https://posthog.com/docs/api/capture
+  verified: '2026-05-02'
+confidence: 0.95
+archived: false
+project_hash: null
