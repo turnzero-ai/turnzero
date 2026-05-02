@@ -30,7 +30,7 @@ Circle 3 — Enterprise (Phase 5)
 - [x] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing (v0.8.0+).
 - [x] **ONNX embedding research** — Research concluded: preferred Ollama/OpenAI fallback chain for reliability and lower runtime dependency overhead.
 - [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
-- [x] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, Claude Desktop, and Gemini CLI.
+- [x] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, Claude Desktop, Gemini CLI, and Codex.
 - [ ] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
 - [ ] **Privacy disclosure** — Document that `harvest` stores local transcript data; user opt-in.
 
@@ -46,6 +46,9 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **Hosted block registry** — Static nginx on Hetzner, versioned YAML + pre-computed embeddings.
 - [ ] **`turnzero sync`** — Pull community blocks + index, no local model required.
 - [ ] **Community submission flow** — `submit_candidate` → registry PR → merged → synced.
+- [ ] **Correction prevention rate** — Instrument sessions to measure whether injected priors actually prevented mid-session corrections. The real quality signal beyond tool-call compliance.
+- [ ] **Block discoverability** — `turnzero list --domain <domain>` to surface available blocks before a session starts.
+- [ ] **Per-turn domain shift** — Optional lightweight re-call of `list_suggested_blocks` when domain context shifts mid-session.
 
 ---
 
@@ -59,10 +62,11 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
-- [x] v0.6.0 — Implement Session Deduplication and Persistent Project Affinity.
-- [x] v0.5.4 — Fix `turnzero setup` index build, add `turnzero.cli` module entry point.
-- [x] v0.2.7 — Runtime contract hardening, mandatory local Ollama for stability.
-- [x] v0.2.5 — Domain-agnostic gate, integration tests, Codex support.
+- [x] v0.8.14 — Agentic benchmark harness (Claude/Gemini/Codex, 7 scenarios); chitchat skip rule improved; AGENTS.md added for Codex.
+- [x] v0.8.12 — Fast setup via bundled index; no Ollama required on first install.
+- [x] v0.8.8 — Security hardening: auto-approve guard (SEC-1), path traversal protection (SEC-2).
+- [x] v0.8.6 — Anonymous telemetry (PostHog EU, opt-out), incremental indexing, atomic index writes.
+- [x] v0.6.0 — Session deduplication and persistent project affinity.
 - [x] v0.2.0 — MCP-first architecture, `submit_candidate` learning loop.
 - [x] v0.1.0 — Core engine, hybrid retrieval, three-layer injection gate.
 

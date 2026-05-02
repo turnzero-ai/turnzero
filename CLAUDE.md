@@ -4,19 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.8.7** (PyPI live).
+TurnZero is at **v0.8.14** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 143 Expert Priors across 37 domains shipped in wheel
-- 244 tests passing; Hit Rate@3 = 0.778 on validation set
+- 281 tests passing; Hit Rate@3 = 0.778 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
 - Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
+- Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini/Codex, 7 scenarios
 
 ## What TurnZero Does
 
@@ -157,6 +158,13 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 5. Version bumped in `pyproject.toml` in its own commit
 6. Tagged: `git tag vX.Y.Z`
 7. Confirm with Darijo before running `hatch publish`
+
+### Doc sync checklist (every release)
+- `SECURITY.md` — update supported version table to match new version
+- `CLAUDE.md` — update version and test count in Project Status header
+- `README.md` / `FAQ.md` — scan for client list; add any newly supported client
+- `ROADMAP.md` Maintenance & Done — add completed milestone with version tag
+- `internal/PROJECT_STATE.md` — mark completed tickets, add new debt found
 
 ### Block YAML schema
 - Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)

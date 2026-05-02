@@ -62,6 +62,15 @@ pip install -e ".[dev]"
 pytest
 ```
 
+Unit tests run without any LLM or API keys. To run the full agentic eval suite (spawns real Claude Code, Gemini CLI, or Codex — requires those CLIs to be installed):
+
+```bash
+TURNZERO_RUN_EVALS=1 pytest tests/evals/ -m evals -s
+
+# Or the standalone benchmark (7 scenarios, real agents):
+python -m tests.evals.benchmark --agents claude gemini
+```
+
 ## Questions
 
 Open an issue. Tag it `question`.

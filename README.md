@@ -47,7 +47,7 @@ turnzero setup
 
 Python support: `3.12`, `3.13`, and `3.14`.
 
-`turnzero setup` registers the TurnZero MCP server with Claude Code, Cursor, Claude Desktop, and Gemini CLI. It builds the embedding index and confirms your embedding backend is working.
+`turnzero setup` registers the TurnZero MCP server with Claude Code, Cursor, Claude Desktop, Gemini CLI, and Codex. It copies the bundled Expert Prior index and confirms your embedding backend is working.
 
 **Embedding backend — pick one:**
 
@@ -93,6 +93,14 @@ turnzero setup
 ```
 
 MCP server registered in `~/.gemini/settings.json`, rules added to `~/.gemini/GEMINI.md`.
+
+### Codex
+
+```bash
+turnzero setup
+```
+
+MCP server registered in `~/.codex/config.toml`, rules added to `~/.codex/agents.md`.
 
 ### Any other MCP-compatible client
 

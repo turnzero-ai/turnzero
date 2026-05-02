@@ -32,9 +32,9 @@ No. TurnZero has two embedding backends and falls back automatically: ollama (lo
 
 ---
 
-**Does it work with ChatGPT or Gemini?**
+**Does it work with Gemini CLI or Codex?**
 
-Not yet. TurnZero uses the MCP (Model Context Protocol) standard, which Claude Code, Cursor, and Claude Desktop support. ChatGPT and Gemini don't expose an MCP interface. For clients without MCP, use `turnzero query "<prompt>"` or `turnzero preview "<prompt>"` to find the relevant blocks, then `turnzero show <slug>` or `turnzero inject <slug>` to print the formatted prior text and paste it manually. Not seamless, but it works. MCP adoption is growing; more clients are expected to add support.
+Yes. Gemini CLI and OpenAI Codex both support MCP and work with TurnZero out of the box. `turnzero setup` registers the MCP server and writes instruction files for all supported clients automatically. ChatGPT (web) doesn't expose an MCP interface yet. For clients without MCP, use `turnzero query "<prompt>"` or `turnzero preview "<prompt>"` to find relevant blocks, then `turnzero inject <slug>` to print the formatted prior and paste it manually.
 
 ---
 
@@ -52,7 +52,7 @@ The highest-signal source is mid-session corrections: when the AI gets something
 
 **What if there are no relevant priors for my domain?**
 
-TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`.
+TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`. To see all available blocks for a domain, run `turnzero query "<domain> task"`.
 
 ---
 
