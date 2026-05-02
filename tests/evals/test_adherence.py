@@ -1,109 +1,276 @@
+"""Agentic evaluation tests for TurnZero prior injection and adherence.
+
+Unit tests (always run — no LLM or Ollama required):
+  test_environment_structure              – EvalEnvironment creates correct dirs
+  test_add_block_creates_yaml             – add_block writes valid YAML
+  test_direct_bridge_inject_known_block   – inject_block returns constraint text
+  test_simulated_agent_tool_call_order    – list called before inject
+  test_simulated_agent_returns_text       – SimulatedAgent returns non-empty text
+  test_injected_text_contains_constraint  – custom constraint propagates to injection
+  test_submit_candidate_raw_saves_file    – submit_candidate_raw creates YAML file
+
+Eval tests (set TURNZERO_RUN_EVALS=1 to run — require Ollama or real CLIs):
+  test_ollama_quirk_adherence             – Ollama uses project-specific naming from prior
+  test_ollama_learning_sensitivity        – Ollama calls submit_candidate on "remember this"
+  test_gemini_cli_instruction_adherence   – Gemini CLI follows rule baked into GEMINI.md
+  test_claude_cli_instruction_adherence   – Claude Code CLI follows rule baked into CLAUDE.md
+"""
+
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 
-from .runner import Agent, EvalEnvironment, OllamaAgent, RealCLIProjectAgent
+import pytest
+import yaml
 
-# --- CI SAFETY GATE ---
-# These tests consume tokens and require local setup (Ollama/CLIs).
-# They are EXCLUDED from standard CI/CD runs.
+from .runner import (
+    DirectBridge,
+    EvalEnvironment,
+    OllamaAgent,
+    RealCLIProjectAgent,
+    SimulatedAgent,
+)
+
 RUN_EVALS = os.environ.get("TURNZERO_RUN_EVALS", "0").lower() in ("1", "true", "yes")
+evals_only = pytest.mark.skipif(
+    not RUN_EVALS,
+    reason="Set TURNZERO_RUN_EVALS=1 to run agentic evals (requires Ollama or real CLIs)",
+)
 
-# --- AGENT TOGGLES ---
-# Edit this list to enable/disable specific AI agents for benchmarking.
-# Supported: "gemini", "claude", "codex", "ollama"
-ENABLED_AGENTS = ["gemini", "ollama"]
-
-
-def run_benchmark(
-    test_name: str,
-    prompt: str,
-    constraints: list[str] | None,
-    validator_fn: Callable[[str, EvalEnvironment], tuple[bool, str]],
-    tier: str = "local",
-) -> None:
-    if not RUN_EVALS:
-        return
-    print(f"\n=== BENCHMARK: {test_name} ===")
-    env = EvalEnvironment()
-    try:
-        if constraints:
-            env.add_block(slug="project-quirk", tier=tier, constraints=constraints)
-
-        agents: dict[str, Agent] = {}
-        if "ollama" in ENABLED_AGENTS:
-            agents["Ollama (Simulation)"] = OllamaAgent(env)
-        if "gemini" in ENABLED_AGENTS:
-            agents["Gemini CLI (Real)"] = RealCLIProjectAgent(env, "gemini")
-        if "claude" in ENABLED_AGENTS:
-            agents["Claude CLI (Real)"] = RealCLIProjectAgent(env, "claude")
-        if "codex" in ENABLED_AGENTS:
-            agents["Codex CLI (Real)"] = RealCLIProjectAgent(env, "codex")
-
-        for name, agent in agents.items():
-            print(f"\nTesting {name}...")
-            try:
-                response = agent.chat(prompt)
-                success, reason = validator_fn(response, env)
-                status = "✅ PASS" if success else f"❌ FAIL ({reason})"
-                print(f"Result: {status}")
-            except Exception as e:
-                print(f"Result: ⚠️ ERROR ({e})")
-    finally:
-        env.cleanup()
+# ---------------------------------------------------------------------------
+# Unit tests — always run, no LLM required
+# ---------------------------------------------------------------------------
 
 
-def quirk_validator(response: str, env: EvalEnvironment) -> tuple[bool, str]:
-    # Rule: use project-specific terminology 'The Vault'
-    marker_ok = "📎" in response
-    rule_ok = "THE VAULT" in response.upper()
-    if marker_ok and rule_ok:
-        return True, ""
-    return False, f"Marker: {marker_ok}, Rule: {rule_ok}"
+def test_environment_structure() -> None:
+    with EvalEnvironment() as env:
+        assert env.data_dir.exists()
+        assert env.project_dir.exists()
+        for tier in ["personal", "local", "community", "candidates"]:
+            assert (env.blocks_dir / tier).exists(), f"missing tier dir: {tier}"
+        assert (env.project_dir / "CLAUDE.md").exists()
+        assert (env.project_dir / "GEMINI.md").exists()
+        assert (env.project_dir / "AGENTS.md").exists()
 
 
-def learning_validator(response: str, env: EvalEnvironment) -> tuple[bool, str]:
-    # Check if a new file was created in 'candidates' or 'personal'
-    candidate_files = list((env.blocks_dir / "candidates").glob("*.yaml"))
-    personal_files = list((env.blocks_dir / "personal").glob("*.yaml"))
-    # We started with 1 personal file (turnzero-guide.yaml)
-    if candidate_files or len(personal_files) > 1:
-        return True, ""
-    return False, "No new prior was saved to disk"
-
-
-if __name__ == "__main__":
-    if not RUN_EVALS:
-        print("AGENTIC EVALS: Skipping suite (Set TURNZERO_RUN_EVALS=1 to enable).")
-    else:
-        # Test 1: Project-Specific Quirk (The "Realistic" Expert Prior)
-        # Testing if the AI adopts a project-unique term it couldn't possibly know.
-        expert_prompt = (
-            "I'm setting up the new database connection module for this project. "
-            "Can you write a Python function that initializes the main project database? "
-            "Please use our specific internal project naming conventions for the database "
-            "as defined in our TurnZero priors."
+def test_add_block_creates_yaml() -> None:
+    constraint = "Always name the primary database connection variable `vault_conn`."
+    with EvalEnvironment() as env:
+        env.add_block(
+            slug="eval-db-naming",
+            tier="local",
+            constraints=[constraint],
+            domain="fastapi",
+            intent="build",
         )
-        run_benchmark(
-            "Project Quirk Adherence",
-            expert_prompt,
-            [
-                "PROJECT RULE: In this codebase, we ALWAYS refer to the primary PostgreSQL database as 'THE VAULT' in all code comments and variable names."
-            ],
-            quirk_validator,
+        block_path = env.blocks_dir / "local" / "eval-db-naming.yaml"
+        assert block_path.exists()
+        data = yaml.safe_load(block_path.read_text())
+        assert data["slug"] == "eval-db-naming"
+        assert constraint in data["constraints"]
+        assert data["domain"] == "fastapi"
+
+
+def test_direct_bridge_inject_known_block() -> None:
+    """inject_block on a bundled community block returns its constraint text.
+
+    Uses the bundled index fallback — no index build needed.
+    """
+    with EvalEnvironment() as env:
+        bridge = DirectBridge(env)
+        text = bridge.inject_block("nextjs15-approuter-build")
+        assert len(text) > 50
+        assert "next" in text.lower() or "Next" in text
+
+
+def test_simulated_agent_tool_call_order() -> None:
+    """list_suggested_blocks is called first, then inject_block for each result."""
+    with EvalEnvironment() as env:
+        bridge = DirectBridge(env)
+        agent = SimulatedAgent(bridge)
+        agent.chat("build a Next.js app with Supabase authentication")
+
+        assert agent.tool_calls, "no tool calls recorded"
+        assert agent.tool_calls[0] == "list_suggested_blocks"
+        inject_calls = [c for c in agent.tool_calls if c.startswith("inject_block:")]
+        assert inject_calls, "no inject_block calls made"
+
+
+def test_simulated_agent_returns_text() -> None:
+    """SimulatedAgent returns non-empty injection text for a real prompt."""
+    with EvalEnvironment() as env:
+        bridge = DirectBridge(env)
+        agent = SimulatedAgent(bridge)
+        result = agent.chat("build a Next.js app with Supabase authentication")
+        assert len(result) > 100, f"injection text too short: {len(result)} chars"
+
+
+def test_injected_text_contains_constraint() -> None:
+    """A constraint added via add_block propagates into SimulatedAgent's injection.
+
+    This is the core retrieval-to-injection pipeline test:
+    add block → build index → retrieve → inject → constraint text present.
+    """
+    constraint = "Always name the primary database connection variable `vault_conn`."
+    with EvalEnvironment() as env:
+        env.add_block(
+            slug="eval-db-naming",
+            tier="local",
+            constraints=[constraint],
+            domain="fastapi",
+            intent="build",
+        )
+        bridge = DirectBridge(env)
+        agent = SimulatedAgent(bridge)
+        result = agent.chat(
+            "I am building a FastAPI app with PostgreSQL. "
+            "How do I set up the database connection?"
         )
 
-        # Test 2: Learning Sensitivity (New Prior Creation)
-        # Testing if the AI realizes a user instruction is a permanent rule and calls the tool.
-        learning_prompt = (
-            "This is a new rule for this project that you must remember: "
-            "Every time you write a docstring, you must include the word 'AUTHENTICATED' "
-            "at the very end of it. Please save this rule for future sessions."
+        assert "vault_conn" in result, (
+            f"Constraint keyword 'vault_conn' not found in injected text.\n"
+            f"Injected blocks: {agent.injected_blocks}\n"
+            f"Result (first 800 chars):\n{result[:800]}"
         )
-        run_benchmark(
-            "Learning Sensitivity",
-            learning_prompt,
-            None,
-            learning_validator,
+
+
+def test_submit_candidate_raw_saves_file() -> None:
+    """submit_candidate_raw writes a YAML file to candidates/."""
+    with EvalEnvironment() as env:
+        bridge = DirectBridge(env)
+        path = bridge.submit_candidate_raw(
+            block_id="my-test-rule",
+            content="slug: my-test-rule\nconstraints:\n- Always use snake_case.\n",
         )
+        assert path.exists()
+        assert path.stem == "my-test-rule"
+        data = yaml.safe_load(path.read_text())
+        assert data["slug"] == "my-test-rule"
+
+
+# ---------------------------------------------------------------------------
+# Eval tests — require TURNZERO_RUN_EVALS=1
+# ---------------------------------------------------------------------------
+
+
+@evals_only
+@pytest.mark.evals
+def test_ollama_quirk_adherence() -> None:
+    """Ollama adopts a project-specific naming convention injected via Expert Prior.
+
+    What this proves: when a constraint is in the index, the agent retrieves it,
+    reads it via inject_block, and applies it to the generated code.
+    """
+    constraint = (
+        "PROJECT RULE: Always name the primary PostgreSQL connection variable `vault_conn`. "
+        "Reference the database as 'the vault' in all code comments and docstrings."
+    )
+    with EvalEnvironment() as env:
+        env.add_block(
+            slug="project-db-naming-convention",
+            tier="local",
+            constraints=[constraint],
+            domain="postgresql",
+            intent="build",
+        )
+        agent = OllamaAgent(env)
+        response = agent.chat(
+            "Write a Python function `get_db_connection()` that opens and returns "
+            "a PostgreSQL connection. Use the naming conventions from our project's Expert Priors."
+        )
+
+    assert "vault_conn" in response or "vault" in response.lower(), (
+        f"Expected 'vault_conn' or 'vault' in response.\n"
+        f"Tool calls made: {agent.tool_calls_made}\n"
+        f"Response:\n{response[:1500]}"
+    )
+    assert "list_suggested_blocks" in agent.tool_calls_made, (
+        "Agent never called list_suggested_blocks — prior injection didn't happen."
+    )
+
+
+@evals_only
+@pytest.mark.evals
+def test_ollama_learning_sensitivity() -> None:
+    """Ollama calls submit_candidate when the user explicitly asks to save a rule.
+
+    What this proves: the agent recognises 'remember this' intent and triggers
+    the learning tool rather than just acknowledging verbally.
+    """
+    with EvalEnvironment() as env:
+        agent = OllamaAgent(env)
+        agent.chat(
+            "New project rule that you must save for future sessions: "
+            "Every Python function in this project must include a docstring "
+            "that ends with the token 'VERIFIED'. "
+            "Please remember and save this rule now."
+        )
+
+        assert "submit_candidate" in agent.tool_calls_made, (
+            f"Expected submit_candidate to be called.\n"
+            f"Tool calls made: {agent.tool_calls_made}"
+        )
+
+        candidates = list((env.data_dir / "candidates").glob("*.yaml"))
+        personal = [
+            f
+            for f in (env.blocks_dir / "personal").glob("*.yaml")
+            if f.stem != "turnzero-guide"
+        ]
+        assert candidates or personal, (
+            "submit_candidate was called but no file was saved to disk."
+        )
+
+
+@evals_only
+@pytest.mark.evals
+def test_gemini_cli_instruction_adherence() -> None:
+    """Gemini CLI follows a constraint baked directly into GEMINI.md.
+
+    This tests the instruction-file injection path (no MCP required).
+    If Gemini CLI is not installed, this test errors with a clear message.
+    """
+    constraint = (
+        "MANDATORY NAMING RULE: When writing any Python function that opens a database "
+        "connection, you MUST name the connection variable `vault_conn`. "
+        "This is a non-negotiable project convention. Do not use any other variable name."
+    )
+    with EvalEnvironment() as env:
+        env.inject_constraint_into_instructions(constraint)
+        agent = RealCLIProjectAgent(env, binary="gemini")
+        response = agent.chat(
+            "Write a short Python function `get_db()` that opens a PostgreSQL connection "
+            "and returns it. Follow all project rules in GEMINI.md."
+        )
+
+    assert "vault_conn" in response, (
+        f"Expected 'vault_conn' in Gemini response.\n"
+        f"Response:\n{response[:1500]}"
+    )
+
+
+@evals_only
+@pytest.mark.evals
+def test_claude_cli_instruction_adherence() -> None:
+    """Claude Code CLI follows a constraint baked directly into CLAUDE.md.
+
+    This tests the instruction-file injection path (no MCP required).
+    If Claude CLI is not installed, this test errors with a clear message.
+    """
+    constraint = (
+        "MANDATORY NAMING RULE: When writing any Python function that opens a database "
+        "connection, you MUST name the connection variable `vault_conn`. "
+        "This is a non-negotiable project convention. Do not use any other variable name."
+    )
+    with EvalEnvironment() as env:
+        env.inject_constraint_into_instructions(constraint)
+        agent = RealCLIProjectAgent(env, binary="claude")
+        response = agent.chat(
+            "Write a short Python function `get_db()` that opens a PostgreSQL connection "
+            "and returns it. Follow all project rules in CLAUDE.md."
+        )
+
+    assert "vault_conn" in response, (
+        f"Expected 'vault_conn' in Claude response.\n"
+        f"Response:\n{response[:1500]}"
+    )

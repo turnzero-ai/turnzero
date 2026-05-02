@@ -455,7 +455,10 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
     """
     result = _inject_block(block_id, session_id=session_id, project_root=Path.cwd())
     _log_tool_call(
-        "inject_block", {"block_id": block_id, "session_id": session_id}, result
+        "inject_block",
+        {"block_id": block_id, "session_id": session_id},
+        result,
+        meta={"block_id": block_id},
     )
     from turnzero.telemetry import track_block_injected
 

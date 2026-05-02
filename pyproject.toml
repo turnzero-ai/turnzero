@@ -85,5 +85,6 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests as integration tests (skipped by default with -m 'not integration')",
+    "evals: agentic evals requiring Ollama or real CLIs (run with TURNZERO_RUN_EVALS=1)",
 ]
 addopts = "-m 'not integration'"
