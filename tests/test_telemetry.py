@@ -146,6 +146,35 @@ def test_anonymous_id_generated_and_stable(tmp_path: Path) -> None:
     assert reloaded["anonymous_id"] == cfg["anonymous_id"]
 
 
+def test_track_event_canonical_payload_structure() -> None:
+    import asyncio
+
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=MagicMock())
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("turnzero.telemetry._is_enabled", return_value=True),
+        patch("turnzero.telemetry._anonymous_id", return_value="test-uuid"),
+        patch("turnzero.telemetry._POSTHOG_API_KEY", "phc_real_key"),
+        patch("httpx.AsyncClient", return_value=mock_ctx),
+    ):
+        from turnzero.telemetry import _post
+
+        asyncio.run(_post("test_event", {"extra": "prop"}))
+
+    assert mock_client.post.called
+    payload = mock_client.post.call_args.kwargs.get("json", {})
+    props = payload.get("properties", {})
+
+    assert payload["distinct_id"] == "test-uuid"
+    assert props["lib"] == "turnzero"
+    assert props["extra"] == "prop"
+    assert "$process_person_profile" not in props
+
+
 def test_track_event_silent_on_network_error() -> None:
     with (
         patch("turnzero.telemetry._is_enabled", return_value=True),
