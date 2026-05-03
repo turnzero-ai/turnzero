@@ -33,16 +33,44 @@ from turnzero.telemetry import (
 # Per-source index cache: path → (mtime, entries)
 _INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
 
+# Blocks cache: (blocks_dir, tuple(sources)) → (mtime, blocks_dict)
+_BLOCKS_CACHE: dict[tuple[Path, tuple[str, ...]], tuple[float, dict[str, Block]]] = {}
+
 
 def _active_sources() -> list[str]:
     return enabled_sources(get_data_dir())
+
+
+def _get_blocks_mtime(blocks_dir: Path, sources: list[str]) -> float:
+    """Calculate the max mtime of all *.yaml files within enabled source tiers."""
+    max_mtime = 0.0
+    for tier in sources:
+        tier_dir = blocks_dir / tier
+        if tier_dir.exists():
+            for path in tier_dir.rglob("*.yaml"):
+                try:
+                    max_mtime = max(max_mtime, path.stat().st_mtime)
+                except FileNotFoundError:
+                    continue
+    return max_mtime
 
 
 def _load_active_blocks() -> dict[str, Block]:
     blocks_dir = get_blocks_dir()
     if not blocks_dir.exists():
         blocks_dir = get_bundled_blocks_dir()
-    return load_all_blocks(blocks_dir, sources=_active_sources())
+    sources = _active_sources()
+    sources_tuple = tuple(sorted(sources))
+    cache_key = (blocks_dir, sources_tuple)
+
+    mtime = _get_blocks_mtime(blocks_dir, sources)
+    cached = _BLOCKS_CACHE.get(cache_key)
+    if cached and cached[0] == mtime:
+        return cached[1]
+
+    blocks = load_all_blocks(blocks_dir, sources=sources)
+    _BLOCKS_CACHE[cache_key] = (mtime, blocks)
+    return blocks
 
 
 def _load_source_index(source: str) -> list[IndexEntry]:
