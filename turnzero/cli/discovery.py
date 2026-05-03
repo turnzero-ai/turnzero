@@ -10,6 +10,7 @@ from rich import box
 from rich.table import Table
 
 from turnzero.blocks import Block
+from turnzero.formatters import block_fmt
 from turnzero.cli.base import (
     DEFAULT_THRESHOLD,
     MAX_PREVIEW_ANTI_PATTERNS,
@@ -310,7 +311,7 @@ def inject(
     for val in inputs:
         # 1. Direct slug match
         if val in blocks:
-            parts.append(blocks[val].to_injection_text())
+            parts.append(block_fmt.to_injection_text(blocks[val]))
             continue
 
         # 2. Query retrieval fallback
@@ -329,7 +330,7 @@ def inject(
                 err_console.print(
                     f"[dim]✓ No slug match for '{val}' — retrieving best match: [bold]{block.slug}[/bold][/dim]"
                 )
-                parts.append(block.to_injection_text())
+                parts.append(block_fmt.to_injection_text(block))
             else:
                 err_console.print(
                     f"[red]Error: '{val}' is not a slug and no relevant blocks were found.[/red]"

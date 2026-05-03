@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from turnzero.blocks import Block
+from turnzero.formatters import block_fmt
 
 
 def _tokenize(text: str) -> set[str]:
@@ -26,7 +27,7 @@ def test_similarity(prompt: str, block: Block) -> float:
             " ".join(block.tags),
             " ".join(block.provides),
             " ".join(block.requires),
-            block.to_injection_text(),
+            block_fmt.to_injection_text(block),
         ]
     )
     block_tokens = _tokenize(block_text)

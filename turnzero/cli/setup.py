@@ -14,6 +14,7 @@ from typing import Any
 
 import typer
 
+from turnzero.formatters import block_fmt
 from turnzero.cli.base import (
     HTTP_OK,
     get_data_dir,
@@ -77,7 +78,7 @@ try:
     names = " · ".join(b.slug for b, _ in results)
     print(f"[TurnZero] Auto-injecting {{len(results)}} Expert Prior(s): {{names}}\\n")
     for block, _score in results:
-        print(block.to_injection_text())
+        print(block_fmt.to_injection_text(block))
         print()
 
     print(

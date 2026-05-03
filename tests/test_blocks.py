@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from turnzero.blocks import Block, DocAnchor, load_all_blocks, load_block
+from turnzero.formatters import block_fmt
 
 BLOCKS_DIR = Path("data/blocks")
 
@@ -47,14 +48,14 @@ def test_seed_blocks_not_stale(all_blocks: dict[str, Block]) -> None:
 
 def test_search_text_contains_domain(all_blocks: dict[str, Block]) -> None:
     for block_id, block in all_blocks.items():
-        text = block.to_search_text()
+        text = block_fmt.to_search_text(block)
         assert block.domain in text, f"{block_id}: domain missing from search text"
         assert len(text) > 10, f"{block_id}: search text too short"
 
 
 def test_injection_text_has_sections(all_blocks: dict[str, Block]) -> None:
     for block_id, block in all_blocks.items():
-        text = block.to_injection_text()
+        text = block_fmt.to_injection_text(block)
         assert "# EXPERT_PRIOR_IDENTITY" in text, (
             f"{block_id}: missing Identity section"
         )

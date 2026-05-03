@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from turnzero.blocks import Block, load_block
+from turnzero.formatters import block_fmt
 
 
 def test_load_block_fails_without_rationale(tmp_path: Path):
@@ -57,6 +58,6 @@ def test_injection_text_includes_rationale():
         rationale="Research shows Y causes Z.",
     )
 
-    text = block.to_injection_text()
+    text = block_fmt.to_injection_text(block)
     assert "# RATIONALE" in text
     assert "Research shows Y causes Z." in text

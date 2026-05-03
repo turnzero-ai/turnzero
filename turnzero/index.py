@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 
 from turnzero.blocks import load_all_blocks, load_block
+from turnzero.formatters import block_fmt
 from turnzero.embed import embed, get_model_id
 
 
@@ -57,7 +58,7 @@ def build(blocks_dir: Path, index_path: Path, data_dir: Path | None = None) -> i
                 rel = path.relative_to(blocks_dir)
                 source = rel.parts[0] if len(rel.parts) > 1 else "local"
                 block = load_block(path, tier=source)
-                search_text = block.to_search_text()
+                search_text = block_fmt.to_search_text(block)
                 embedding = embed(search_text)
                 line = json.dumps(
                     {

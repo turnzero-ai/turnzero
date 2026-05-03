@@ -20,6 +20,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from turnzero.blocks import Block, compute_confidence, load_all_blocks
+from turnzero.formatters import block_fmt
 from turnzero.config import (
     get_blocks_dir,
     get_bundled_blocks_dir,
@@ -273,7 +274,7 @@ def _inject_block(
     if project_root:
         record_project_affinity(project_root, block_id)
 
-    return blocks[block_id].to_injection_text()
+    return block_fmt.to_injection_text(blocks[block_id])
 
 
 # ---------------------------------------------------------------------------
@@ -796,7 +797,7 @@ def submit_candidate(
 
             try:
                 new_block = load_block(block_path, tier=tier)
-                embedding = embed(new_block.to_search_text())
+                embedding = embed(block_fmt.to_search_text(new_block))
 
                 line = json.dumps(
                     {
