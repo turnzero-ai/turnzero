@@ -145,7 +145,17 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 ```
 
 ### Versioning
-- semver: `PATCH` = bug fix, `MINOR` = new feature, `MAJOR` = breaking CLI/MCP/schema change
+
+**When to bump what:**
+
+| Bump | Rule | Examples |
+|------|------|---------|
+| `MAJOR` | Breaking change — users must act after upgrade | CLI command renamed/removed, MCP tool signature changed, block schema field removed, config format incompatible |
+| `MINOR` | New capability OR structural growth | New CLI command, new MCP tool, new AI client supported, internal restructuring touching ≥5 files or introducing new modules/layers, accumulated patches that together represent more than isolated fixes |
+| `PATCH` | Isolated fix or trivial change | Single bug fix, doc-only update, refactor touching ≤4 files with no structural change, test additions |
+
+**Hygiene rule:** Patch count should not reach 10 within a minor version. If it does, retrospectively ask whether accumulated changes deserved a minor bump. Goal: patch stays in single digits.
+
 - Bump only in `pyproject.toml` — consumed via `importlib.metadata`
 - Version bump is a **dedicated commit immediately before `hatch publish`** — never mixed into feature work
 - Tag every PyPI release: `git tag vX.Y.Z`
