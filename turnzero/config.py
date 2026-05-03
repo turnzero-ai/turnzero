@@ -19,7 +19,7 @@ _DEFAULTS: dict[str, dict[str, bool]] = {
 }
 
 
-def _data_dir() -> Path:
+def get_data_dir() -> Path:
     if env := os.environ.get("TURNZERO_DATA_DIR"):
         return Path(env)
     user_dir = Path.home() / ".turnzero"
@@ -28,25 +28,25 @@ def _data_dir() -> Path:
     return Path("data")
 
 
-def _blocks_dir() -> Path:
-    return _data_dir() / "blocks"
+def get_blocks_dir() -> Path:
+    return get_data_dir() / "blocks"
 
 
-def _index_path() -> Path:
-    return _data_dir() / "index.jsonl"
+def get_index_path() -> Path:
+    return get_data_dir() / "index.jsonl"
 
 
-def _affinity_path() -> Path:
+def get_affinity_path() -> Path:
     """Return the path to the project affinity storage."""
-    return _data_dir() / "affinity.json"
+    return get_data_dir() / "affinity.json"
 
 
-def _session_injections_dir() -> Path:
+def get_session_injections_dir() -> Path:
     """Return the directory where transient session injections are tracked."""
-    return _data_dir() / "sessions"
+    return get_data_dir() / "sessions"
 
 
-def _bundled_index_path() -> Path:
+def get_bundled_index_path() -> Path:
     """Return the pre-built index shipped inside the package (no setup needed)."""
     # Path(__file__) is turnzero/config.py
     # .parent is turnzero/
@@ -56,10 +56,10 @@ def _bundled_index_path() -> Path:
     repo = Path(__file__).parent.parent / "data" / "index.jsonl"
     if repo.exists():
         return repo
-    return _index_path()
+    return get_index_path()
 
 
-def _bundled_blocks_dir() -> Path:
+def get_bundled_blocks_dir() -> Path:
     """Return the blocks directory shipped inside the package (no setup needed)."""
     pkg = Path(__file__).parent / "data" / "blocks"
     if pkg.exists():
@@ -67,7 +67,7 @@ def _bundled_blocks_dir() -> Path:
     repo = Path(__file__).parent.parent / "data" / "blocks"
     if repo.exists():
         return repo
-    return _blocks_dir()
+    return get_blocks_dir()
 
 
 def load_config(data_dir: Path) -> dict[str, dict[str, bool]]:

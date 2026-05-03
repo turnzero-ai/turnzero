@@ -16,7 +16,7 @@ import typer
 
 from turnzero.cli.base import (
     HTTP_OK,
-    _data_dir,
+    get_data_dir,
     console,
     err_console,
 )
@@ -622,9 +622,9 @@ def setup(
     index_ok = False
 
     # Check for bundled index first to avoid 20-25min build
-    from turnzero.config import _bundled_index_path
+    from turnzero.config import get_bundled_index_path
 
-    bundled_index = _bundled_index_path()
+    bundled_index = get_bundled_index_path()
 
     if bundled_index.exists() and bundled_index != index_path:
         if not index_path.exists() or force:
@@ -835,8 +835,8 @@ def feedback(
         "slug": slug,
     }
 
-    feedback_file = _data_dir() / "feedback.jsonl"
-    _data_dir().mkdir(parents=True, exist_ok=True)
+    feedback_file = get_data_dir() / "feedback.jsonl"
+    get_data_dir().mkdir(parents=True, exist_ok=True)
 
     with feedback_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(feedback_data) + "\n")
@@ -852,7 +852,7 @@ def source_list() -> None:
     """List available Expert Prior sources and their status."""
     from turnzero.config import load_config
 
-    cfg = load_config(_data_dir())
+    cfg = load_config(get_data_dir())
     console.print("\n[bold]Expert Prior Sources[/bold]\n")
     for tier, enabled in cfg["sources"].items():
         status = "[green]enabled[/green]" if enabled else "[dim]disabled[/dim]"
@@ -871,9 +871,9 @@ def source_enable(
         err_console.print(f"[red]Invalid tier: {tier}[/red]")
         raise typer.Exit(1)
 
-    cfg = load_config(_data_dir())
+    cfg = load_config(get_data_dir())
     cfg["sources"][tier] = True
-    save_config(_data_dir(), cfg)
+    save_config(get_data_dir(), cfg)
     console.print(f"[green]✓ Source '[bold]{tier}[/bold]' enabled.[/green]")
 
 
@@ -888,7 +888,7 @@ def source_disable(
         err_console.print("[red]Cannot disable 'local' source.[/red]")
         raise typer.Exit(1)
 
-    cfg = load_config(_data_dir())
+    cfg = load_config(get_data_dir())
     cfg["sources"][tier] = False
-    save_config(_data_dir(), cfg)
+    save_config(get_data_dir(), cfg)
     console.print(f"[dim]✓ Source '[bold]{tier}[/bold]' disabled.[/dim]")

@@ -6,7 +6,7 @@ import hashlib
 import json
 from pathlib import Path
 
-from turnzero.config import _affinity_path, _session_injections_dir
+from turnzero.config import get_affinity_path, get_session_injections_dir
 
 
 def _get_project_hash(project_root: Path) -> str:
@@ -19,7 +19,7 @@ def get_session_injections(session_id: str) -> set[str]:
     if not session_id:
         return set()
 
-    path = _session_injections_dir() / f"{session_id}_injections.json"
+    path = get_session_injections_dir() / f"{session_id}_injections.json"
     if not path.exists():
         return set()
 
@@ -34,7 +34,7 @@ def record_session_injection(session_id: str, block_id: str) -> None:
     if not session_id:
         return
 
-    dir_path = _session_injections_dir()
+    dir_path = get_session_injections_dir()
     dir_path.mkdir(parents=True, exist_ok=True)
 
     path = dir_path / f"{session_id}_injections.json"
@@ -46,14 +46,14 @@ def record_session_injection(session_id: str, block_id: str) -> None:
 
 def clear_session_injections(session_id: str) -> None:
     """Delete the injection history for a session."""
-    path = _session_injections_dir() / f"{session_id}_injections.json"
+    path = get_session_injections_dir() / f"{session_id}_injections.json"
     if path.exists():
         path.unlink()
 
 
 def get_project_affinity(project_root: Path) -> dict[str, int]:
     """Return the block affinity mapping for a project."""
-    path = _affinity_path()
+    path = get_affinity_path()
     if not path.exists():
         return {}
 
@@ -67,7 +67,7 @@ def get_project_affinity(project_root: Path) -> dict[str, int]:
 
 def record_project_affinity(project_root: Path, block_id: str) -> None:
     """Increment the affinity count for a block in a project."""
-    path = _affinity_path()
+    path = get_affinity_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     project_hash = _get_project_hash(project_root)
 

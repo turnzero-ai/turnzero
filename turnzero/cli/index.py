@@ -11,9 +11,9 @@ from rich.table import Table
 from turnzero.cli.base import (
     THRESHOLD_TEST_GOOD_RECALL,
     THRESHOLD_TEST_WARN_RECALL,
-    _blocks_dir,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_data_dir,
+    get_index_path,
     console,
     err_console,
 )
@@ -26,14 +26,14 @@ def index_build() -> None:
     """Embed all blocks and write the similarity index."""
     from turnzero.index import build as _build
 
-    console.print(f"Building index from [bold]{_blocks_dir()}[/bold] ...")
+    console.print(f"Building index from [bold]{get_blocks_dir()}[/bold] ...")
     try:
-        count = _build(_blocks_dir(), _index_path(), data_dir=_data_dir())
+        count = _build(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
     except (FileNotFoundError, ValueError, RuntimeError) as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[green]✓[/green] Indexed {count} block(s) → {_index_path()}")
+    console.print(f"[green]✓[/green] Indexed {count} block(s) → {get_index_path()}")
 
 
 @index_app.command("verify")
@@ -44,7 +44,7 @@ def index_verify(
     from turnzero.index import verify as _verify
 
     try:
-        stale = _verify(_blocks_dir(), max_age_days)
+        stale = _verify(get_blocks_dir(), max_age_days)
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -101,8 +101,8 @@ def validate(
         raise typer.Exit(1)
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
-        index = load_index(_index_path())
+        blocks = load_all_blocks(get_blocks_dir())
+        index = load_index(get_index_path())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -215,8 +215,8 @@ def threshold_test(
     from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
-        index = load_index(_index_path())
+        blocks = load_all_blocks(get_blocks_dir())
+        index = load_index(get_index_path())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)

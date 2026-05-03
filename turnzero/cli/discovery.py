@@ -19,11 +19,11 @@ from turnzero.cli.base import (
     err_console,
 )
 from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_bundled_blocks_dir,
+    get_bundled_index_path,
+    get_data_dir,
+    get_index_path,
 )
 from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
 
@@ -101,12 +101,12 @@ def query(
     from turnzero.retrieval import query as _query
 
     try:
-        blocks_dir = _blocks_dir()
-        index_path = _index_path()
+        blocks_dir = get_blocks_dir()
+        index_path = get_index_path()
 
         if not index_path.exists():
-            blocks_dir = _bundled_blocks_dir()
-            index_path = _bundled_index_path()
+            blocks_dir = get_bundled_blocks_dir()
+            index_path = get_bundled_index_path()
 
         if not index_path.exists():
             raise FileNotFoundError("No index found. Run: turnzero setup")
@@ -144,11 +144,11 @@ def query(
         return
 
     # Load session analytics
-    analytics = SessionAnalytics.load(session, _data_dir())
+    analytics = SessionAnalytics.load(session, get_data_dir())
 
     # Update session ROI
     analytics.log_injection([b.slug for b, _ in results])
-    analytics.save(_data_dir())
+    analytics.save(get_data_dir())
 
     _display_preview(results, threshold)
 
@@ -170,8 +170,8 @@ def preview(
     from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
-        index = load_index(_index_path())
+        blocks = load_all_blocks(get_blocks_dir())
+        index = load_index(get_index_path())
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -241,7 +241,7 @@ def show(
     from turnzero.blocks import load_all_blocks
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
+        blocks = load_all_blocks(get_blocks_dir())
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -301,7 +301,7 @@ def inject(
     from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(_blocks_dir())
+        blocks = load_all_blocks(get_blocks_dir())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -315,7 +315,7 @@ def inject(
 
         # 2. Query retrieval fallback
         try:
-            index = load_index(_index_path())
+            index = load_index(get_index_path())
             results = _query(
                 val,
                 index,
@@ -352,7 +352,7 @@ def stats() -> None:
     from turnzero.blocks import load_all_blocks
     from turnzero.retrieval import load_index
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
 
     # ── Live injection log ───────────────────────────────────────────────
     log_path = data_dir / "hook_log.jsonl"
@@ -392,7 +392,7 @@ def stats() -> None:
 
     # ── Library stats ─────────────────────────────────────────────────────
     try:
-        blocks = load_all_blocks(_blocks_dir())
+        blocks = load_all_blocks(get_blocks_dir())
     except FileNotFoundError:
         blocks = {}
 
@@ -446,7 +446,7 @@ def stats() -> None:
     )
 
     try:
-        index = load_index(_index_path())
+        index = load_index(get_index_path())
         lib.add_row("Index entries", str(len(index)))
     except FileNotFoundError:
         lib.add_row("Index", "[yellow]not built[/yellow]")

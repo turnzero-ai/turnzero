@@ -28,17 +28,17 @@ _pending_tasks: set[asyncio.Task[None]] = set()
 def _is_enabled() -> bool:
     if os.environ.get("TURNZERO_TELEMETRY", "").strip() in ("0", "false", "off"):
         return False
-    from turnzero.config import _data_dir, load_telemetry_config
+    from turnzero.config import get_data_dir, load_telemetry_config
 
-    return bool(load_telemetry_config(_data_dir()).get("enabled", True))
+    return bool(load_telemetry_config(get_data_dir()).get("enabled", True))
 
 
 def _anonymous_id() -> str:
     import uuid
 
-    from turnzero.config import _data_dir, load_telemetry_config, save_telemetry_config
+    from turnzero.config import get_data_dir, load_telemetry_config, save_telemetry_config
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     cfg = load_telemetry_config(data_dir)
     if not cfg.get("anonymous_id"):
         cfg["anonymous_id"] = str(uuid.uuid4())

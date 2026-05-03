@@ -11,9 +11,9 @@ import httpx
 from rich.table import Table
 
 from turnzero.cli.base import (
-    _blocks_dir,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_data_dir,
+    get_index_path,
     console,
 )
 from turnzero.mcp_server import _list_suggested_blocks
@@ -25,7 +25,7 @@ def verify() -> None:
     """Run a full system diagnostic to confirm TurnZero is ready and correctly registered."""
     console.print("\n[bold]TurnZero Doctor — Diagnostic Report[/bold]\n")
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
 
     # 1. Embedding Backend
     _verify_embeddings()
@@ -74,7 +74,7 @@ def _verify_embeddings() -> None:
             console.print(
                 "  [red]✗[/red] ollama server is not reachable (check if it is running)"
             )
-    elif os.environ.get("OPENAI_API_KEY") or (_data_dir() / "openai_key").exists():
+    elif os.environ.get("OPENAI_API_KEY") or (get_data_dir() / "openai_key").exists():
         console.print("  [green]✓[/green] OpenAI API key is configured")
     else:
         console.print("  [red]✗[/red] No embedding backend found (ollama or OpenAI)")
@@ -84,7 +84,7 @@ def _verify_embeddings() -> None:
 def _verify_index_and_library(data_dir: Path) -> None:
     console.print("[bold]2. Library & Index[/bold]")
 
-    blocks_dir = _blocks_dir()
+    blocks_dir = get_blocks_dir()
     if blocks_dir.exists():
         n_blocks = len(list(blocks_dir.rglob("*.yaml")))
         console.print(
@@ -93,7 +93,7 @@ def _verify_index_and_library(data_dir: Path) -> None:
     else:
         console.print(f"  [red]✗[/red] Library not found at {blocks_dir}")
 
-    index_path = _index_path()
+    index_path = get_index_path()
     if index_path.exists():
         try:
             with open(index_path, encoding="utf-8") as f:

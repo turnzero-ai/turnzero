@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import typer
 
-from turnzero.config import _data_dir, load_telemetry_config, save_telemetry_config
+from turnzero.config import get_data_dir, load_telemetry_config, save_telemetry_config
 
 _HELP = "Manage anonymous usage telemetry (on / off / status)."
 
@@ -16,7 +16,7 @@ def telemetry(
     from rich.console import Console
 
     con = Console()
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     cfg = load_telemetry_config(data_dir)
 
     if action == "off":

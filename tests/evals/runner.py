@@ -241,12 +241,12 @@ class DirectBridge:
     ) -> Path:
         """Write YAML content to candidates/ or blocks/<tier>/. Returns the path."""
         with _patched_env(**self._override):
-            from turnzero.config import _data_dir
+            from turnzero.config import get_data_dir
 
             dest_dir = (
-                _data_dir() / "candidates"
+                get_data_dir() / "candidates"
                 if tier == "candidates"
-                else _data_dir() / "blocks" / tier
+                else get_data_dir() / "blocks" / tier
             )
             dest_dir.mkdir(parents=True, exist_ok=True)
             path = dest_dir / f"{block_id}.yaml"

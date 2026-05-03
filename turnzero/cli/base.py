@@ -8,19 +8,19 @@ import typer
 from rich.console import Console
 
 from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_bundled_blocks_dir,
+    get_bundled_index_path,
+    get_data_dir,
+    get_index_path,
 )
 
 __all__ = [
-    "_blocks_dir",
-    "_bundled_blocks_dir",
-    "_bundled_index_path",
-    "_data_dir",
-    "_index_path",
+    "get_blocks_dir",
+    "get_bundled_blocks_dir",
+    "get_bundled_index_path",
+    "get_data_dir",
+    "get_index_path",
     "console",
     "err_console",
     "DEFAULT_THRESHOLD",

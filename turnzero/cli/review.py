@@ -8,9 +8,9 @@ import typer
 
 from turnzero.cli.base import (
     LOW_CONFIDENCE_THRESHOLD,
-    _blocks_dir,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_data_dir,
+    get_index_path,
     console,
     err_console,
 )
@@ -46,7 +46,7 @@ def harvest(
         write_candidate,
     )
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     candidates_dir = data_dir / "candidates"
     candidates_dir.mkdir(parents=True, exist_ok=True)
 
@@ -126,9 +126,9 @@ def review() -> None:
     from turnzero.blocks import load_all_blocks
     from turnzero.index import build as _build
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     candidates_dir = data_dir / "candidates"
-    blocks_dir = _blocks_dir()
+    blocks_dir = get_blocks_dir()
 
     candidate_count = (
         len(list(candidates_dir.glob("*.yaml"))) if candidates_dir.exists() else 0
@@ -224,7 +224,7 @@ def review() -> None:
         console.print("[dim]No new harvested candidates to review.[/dim]")
         # If we made changes to the library, we still need to rebuild
         if any(typer.confirm("Rebuild index now?", default=True) for _ in [1]):
-            _build(blocks_dir, _index_path(), data_dir=data_dir)
+            _build(blocks_dir, get_index_path(), data_dir=data_dir)
         return
 
     pending = sorted(candidates_dir.glob("*.yaml"))
@@ -283,6 +283,6 @@ def review() -> None:
     if approved > 0:
         console.print(f"[green]✓ Approved {approved} new Expert Priors.[/green]")
         if typer.confirm("Rebuild index now?", default=True):
-            _build(blocks_dir, _index_path(), data_dir=data_dir)
+            _build(blocks_dir, get_index_path(), data_dir=data_dir)
     elif rejected > 0:
         console.print(f"[dim]Rejected {rejected} candidates.[/dim]")

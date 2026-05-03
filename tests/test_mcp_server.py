@@ -287,9 +287,9 @@ def test_compute_confidence_reason_bonus() -> None:
 def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None:
     import turnzero.mcp_server as mcp
 
-    orig_data = mcp._data_dir
-    orig_blocks = mcp._blocks_dir
-    orig_index = mcp._index_path
+    orig_data = mcp.get_data_dir
+    orig_blocks = mcp.get_blocks_dir
+    orig_index = mcp.get_index_path
 
     data_dir = tmp_path / "data"
     blocks_dir = tmp_path / "blocks"
@@ -297,9 +297,9 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
     data_dir.mkdir()
     blocks_dir.mkdir()
 
-    mcp._data_dir = lambda: data_dir
-    mcp._blocks_dir = lambda: blocks_dir
-    mcp._index_path = lambda: index_file
+    mcp.get_data_dir = lambda: data_dir
+    mcp.get_blocks_dir = lambda: blocks_dir
+    mcp.get_index_path = lambda: index_file
 
     try:
         from turnzero.mcp_server import submit_candidate
@@ -321,9 +321,9 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
         assert 0.0 < data["confidence"] <= 0.95
         assert data["archived"] is False
     finally:
-        mcp._data_dir = orig_data
-        mcp._blocks_dir = orig_blocks
-        mcp._index_path = orig_index
+        mcp.get_data_dir = orig_data
+        mcp.get_blocks_dir = orig_blocks
+        mcp.get_index_path = orig_index
 
 
 # ---------------------------------------------------------------------------

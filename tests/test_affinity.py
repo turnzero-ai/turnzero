@@ -21,7 +21,7 @@ def test_session_deduplication(tmp_path: Path):
     session_id = "test-session"
     block_id = "fastapi-async-build"
 
-    with patch("turnzero.config._data_dir", return_value=data_dir):
+    with patch("turnzero.config.get_data_dir", return_value=data_dir):
         # 1. Record injection
         record_session_injection(session_id, block_id)
 
@@ -68,7 +68,7 @@ def test_project_affinity_boosting(tmp_path: Path):
     project_root.mkdir()
     block_id = "fastapi-async-build"
 
-    with patch("turnzero.config._data_dir", return_value=data_dir):
+    with patch("turnzero.config.get_data_dir", return_value=data_dir):
         # 1. Record affinity
         record_project_affinity(project_root, block_id)
 

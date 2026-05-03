@@ -21,11 +21,11 @@ from mcp.server.fastmcp import FastMCP
 
 from turnzero.blocks import Block, compute_confidence, load_all_blocks
 from turnzero.config import (
-    _blocks_dir,
-    _bundled_blocks_dir,
-    _bundled_index_path,
-    _data_dir,
-    _index_path,
+    get_blocks_dir,
+    get_bundled_blocks_dir,
+    get_bundled_index_path,
+    get_data_dir,
+    get_index_path,
     allow_mcp_auto_approve,
     enabled_sources,
 )
@@ -80,27 +80,27 @@ mcp = FastMCP(
 
 
 def _active_sources() -> list[str]:
-    return enabled_sources(_data_dir())
+    return enabled_sources(get_data_dir())
 
 
 def _load_active_blocks() -> dict[str, Block]:
-    blocks_dir = _blocks_dir()
+    blocks_dir = get_blocks_dir()
     if not blocks_dir.exists():
         # Fallback to bundled blocks
-        blocks_dir = _bundled_blocks_dir()
+        blocks_dir = get_bundled_blocks_dir()
     return load_all_blocks(blocks_dir, sources=_active_sources())
 
 
 def _load_source_index(source: str) -> list[IndexEntry]:
     """Load index for one source tier, using mtime-based cache."""
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     per_source_path = data_dir / f"index_{source}.jsonl"
 
-    path = per_source_path if per_source_path.exists() else _index_path()
+    path = per_source_path if per_source_path.exists() else get_index_path()
 
     if not path.exists():
         # Fallback to bundled index
-        path = _bundled_index_path()
+        path = get_bundled_index_path()
 
     try:
         mtime = path.stat().st_mtime
@@ -111,7 +111,7 @@ def _load_source_index(source: str) -> list[IndexEntry]:
     if cached and cached[0] == mtime:
         return cached[1]
 
-    entries = load_index(path, sources=[source] if path == _index_path() else None)
+    entries = load_index(path, sources=[source] if path == get_index_path() else None)
     _INDEX_CACHE[path] = (mtime, entries)
     return entries
 
@@ -301,9 +301,9 @@ def _log_mcp_injection(
             "session_id": session_id,
         }
     )
-    log_path = _data_dir() / "hook_log.jsonl"
+    log_path = get_data_dir() / "hook_log.jsonl"
     try:
-        _data_dir().mkdir(parents=True, exist_ok=True)
+        get_data_dir().mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(entry + "\n")
     except Exception:
@@ -336,8 +336,8 @@ def _log_tool_call(
                 **(meta or {}),
             }
         )
-        log_path = _data_dir() / "tool_call_log.jsonl"
-        _data_dir().mkdir(parents=True, exist_ok=True)
+        log_path = get_data_dir() / "tool_call_log.jsonl"
+        get_data_dir().mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
             f.write(entry + "\n")
     except Exception:
@@ -485,7 +485,7 @@ def get_stats() -> dict[str, Any]:
     import time
     from collections import Counter
 
-    data_dir = _data_dir()
+    data_dir = get_data_dir()
     log_path = data_dir / "hook_log.jsonl"
     entries: list[dict[str, Any]] = []
     if log_path.exists():
@@ -522,8 +522,8 @@ def get_stats() -> dict[str, Any]:
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
     personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
     candidates = (
-        list((_data_dir() / "candidates").glob("*.yaml"))
-        if (_data_dir() / "candidates").exists()
+        list((get_data_dir() / "candidates").glob("*.yaml"))
+        if (get_data_dir() / "candidates").exists()
         else []
     )
 
@@ -777,17 +777,17 @@ def submit_candidate(
 
     if auto_approve:
         tier = "personal" if is_personal else "local"
-        dest_dir = safe_path(_blocks_dir(), tier, domain)
+        dest_dir = safe_path(get_blocks_dir(), tier, domain)
         dest_dir.mkdir(parents=True, exist_ok=True)
         block_path = safe_path(dest_dir, f"{block_id}.yaml")
         with open(block_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
 
         # Incremental Indexing: append new entry to index.jsonl instead of full rebuild
-        if not _index_path().exists():
+        if not get_index_path().exists():
             from turnzero.index import build as build_index
 
-            build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+            build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
         else:
             import json
 
@@ -810,12 +810,12 @@ def submit_candidate(
                 )
 
                 # Append to merged index
-                path = _index_path()
+                path = get_index_path()
                 with open(path, "a", encoding="utf-8") as f:
                     f.write(line + "\n")
 
                 # Append to per-source index
-                tier_index_path = _data_dir() / f"index_{tier}.jsonl"
+                tier_index_path = get_data_dir() / f"index_{tier}.jsonl"
                 if tier_index_path.exists():
                     with open(tier_index_path, "a", encoding="utf-8") as f:
                         f.write(line + "\n")
@@ -823,12 +823,12 @@ def submit_candidate(
                     # If per-source index doesn't exist, we must rebuild to create it
                     from turnzero.index import build as build_index
 
-                    build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+                    build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
             except Exception:
                 # Fallback to full rebuild if anything goes wrong during incremental path
                 from turnzero.index import build as build_index
 
-                build_index(_blocks_dir(), _index_path(), data_dir=_data_dir())
+                build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
 
         result = (
             f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index updated incrementally. "
@@ -836,7 +836,7 @@ def submit_candidate(
             + (f" Reason: {reason}" if reason else "")
         )
     else:
-        candidates_dir = _data_dir() / "candidates"
+        candidates_dir = get_data_dir() / "candidates"
         candidates_dir.mkdir(parents=True, exist_ok=True)
         candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
         with open(candidate_path, "w", encoding="utf-8") as f:
@@ -884,7 +884,7 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
     validate_session_name(session_name)
 
     # Ensure the conversations directory exists
-    conv_dir = _data_dir() / "conversations"
+    conv_dir = get_data_dir() / "conversations"
     conv_dir.mkdir(parents=True, exist_ok=True)
 
     # Write the transcript with a timestamp
