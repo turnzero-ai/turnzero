@@ -19,9 +19,15 @@ from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.repositories.index_repo import IndexEntry, load_index
 from turnzero.retrieval import query as _query
 from turnzero.state import (
+    clear_session_injections,
     get_session_injections,
     record_project_affinity,
     record_session_injection,
+)
+from turnzero.telemetry import (
+    track_block_injected,
+    track_session_start,
+    track_session_summary,
 )
 
 # Per-source index cache: path → (mtime, entries)
@@ -76,6 +82,7 @@ def list_suggested_blocks(
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
     from turnzero.retrieval import get_identity_context
+    from turnzero.services import stats_svc
 
     blocks = _load_active_blocks()
     index = _load_active_index()
@@ -103,7 +110,9 @@ def list_suggested_blocks(
     def _expert_preview(block: Any) -> str:
         text = block.constraints[0] if block.constraints else ""
         words = text.split()
-        return " ".join(words[:_PREVIEW_WORDS]) + ("…" if len(words) > _PREVIEW_WORDS else "")
+        return " ".join(words[:_PREVIEW_WORDS]) + (
+            "…" if len(words) > _PREVIEW_WORDS else ""
+        )
 
     formatted: list[dict[str, Any]] = [
         {
@@ -144,6 +153,26 @@ def list_suggested_blocks(
                 "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
             }
         )
+
+    # Logging and telemetry
+    if formatted:
+        stats_svc.log_injection(
+            block_ids=[s["block_id"] for s in formatted if s["block_id"] != "personal-priors-limit-warning"],
+            domains=list({s["domain"] for s in formatted if s.get("domain")}),
+            prompt_words=len(prompt.split()),
+            session_id=session_id,
+        )
+
+    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
+    track_session_start(
+        session_id=session_id,
+        blocks_suggested=len(formatted),
+        domains=list({s["domain"] for s in formatted if s.get("domain")}),
+        has_personal_priors=len(personal_results) > 0,
+        personal_block_count=personal_count,
+        total_block_count=len(blocks),
+    )
+
     return formatted
 
 
@@ -171,7 +200,9 @@ def get_block(block_id: str) -> dict[str, Any]:
         "conflicts_with_tags": block.conflicts_with_tags,
         "constraints": block.constraints,
         "anti_patterns": block.anti_patterns,
-        "doc_anchors": [{"url": a.url, "verified": a.verified} for a in block.doc_anchors],
+        "doc_anchors": [
+            {"url": a.url, "verified": a.verified} for a in block.doc_anchors
+        ],
         "conflicts_with": block.conflicts_with,
         "requires": block.requires,
     }
@@ -193,4 +224,17 @@ def inject_block(
         record_session_injection(session_id, block_id)
     if project_root:
         record_project_affinity(project_root, block_id)
-    return block_fmt.to_injection_text(blocks[block_id])
+
+    block = blocks[block_id]
+    track_block_injected(domain=block.domain, tier=block.tier or "local")
+    return block_fmt.to_injection_text(block)
+
+
+def reset_session(session_id: str | None = None) -> str:
+    """Clear session memory and fire telemetry summary."""
+    track_session_summary(session_id=session_id)
+    clear_session_injections(session_id)
+    if session_id:
+        return f"✓ TurnZero session memory cleared for {session_id}."
+    return "✓ TurnZero session memory cleared."
+

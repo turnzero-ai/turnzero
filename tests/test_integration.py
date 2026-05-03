@@ -73,7 +73,7 @@ class TestLearningLoop:
                 ],
                 rationale="Iterating over related objects without prefetching causes a database hit per iteration (N+1 problem). select_related joins at the SQL level, while prefetch_related batches the second query.",
                 tags=["django", "orm", "performance"],
-                reason="AI suggested iterating querysets without select_related",
+                reason="user asked to remember this: AI suggested iterating querysets without select_related",
                 auto_approve=True,
             )
 
@@ -110,6 +110,7 @@ class TestLearningLoop:
                 ],
                 rationale="Stripe webhook verification ensures the event came from Stripe. Using the raw body is critical because JSON parsing can change the byte representation, causing signature mismatches.",
                 tags=["stripe", "webhooks", "security"],
+                reason="user asked to save this",
                 auto_approve=True,
             )
 
@@ -392,6 +393,7 @@ class TestInjectionSequence:
                 ],
                 rationale="Missing dependencies in useEffect cause stale closures and bugs. useCallback prevents unnecessary re-renders when functions are used as dependencies.",
                 tags=["react", "hooks"],
+                reason="explicit note to save this",
                 auto_approve=True,
             )
 

@@ -95,31 +95,10 @@ def list_suggested_blocks(
         suggestions = retrieval_svc.list_suggested_blocks(
             prompt, project_root=Path.cwd(), session_id=session_id
         )
-        if suggestions:
-            stats_svc.log_injection(
-                block_ids=[s["block_id"] for s in suggestions],
-                domains=list({s["domain"] for s in suggestions}),
-                prompt_words=len(prompt.split()),
-                session_id=session_id,
-            )
         stats_svc.log_tool_call(
             "list_suggested_blocks",
             {"prompt": prompt, "session_id": session_id},
             suggestions,
-        )
-        from turnzero.telemetry import track_session_start
-
-        _PERSONAL_SCORE = 2
-        personal = [s for s in suggestions if s.get("score", 0) >= _PERSONAL_SCORE]
-        all_blocks = retrieval_svc._load_active_blocks()
-        personal_count = sum(1 for b in all_blocks.values() if b.tier == "personal")
-        track_session_start(
-            session_id=session_id,
-            blocks_suggested=len(suggestions),
-            domains=list({s["domain"] for s in suggestions if s.get("domain")}),
-            has_personal_priors=len(personal) > 0,
-            personal_block_count=personal_count,
-            total_block_count=len(all_blocks),
         )
         return suggestions
     except RuntimeError as e:
@@ -185,12 +164,6 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         result,
         meta={"block_id": block_id},
     )
-    from turnzero.telemetry import track_block_injected
-
-    blocks = retrieval_svc._load_active_blocks()
-    if block_id in blocks:
-        b = blocks[block_id]
-        track_block_injected(domain=b.domain, tier=b.tier or "local")
     return result
 
 
@@ -219,14 +192,8 @@ def reset_session(session_id: str | None = None) -> str:
     Portable Identity (Personal Priors) and relevant Expert Priors are
     re-suggested in the next turn.
     """
-    from turnzero.state import clear_session_injections
-    from turnzero.telemetry import track_session_summary
+    return retrieval_svc.reset_session(session_id)
 
-    track_session_summary(session_id=session_id)
-    if session_id:
-        clear_session_injections(session_id)
-        return f"✓ TurnZero session memory cleared for {session_id}."
-    return "✓ TurnZero session memory cleared."
 
 
 @mcp.tool()
