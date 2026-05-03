@@ -43,24 +43,24 @@ def test_similarity(prompt: str, block: Block) -> float:
         "webhook" in prompt_set or "signatures" in prompt_set
     )
 
-    if block.slug == "nextjs15-approuter-build" and nextjs_prompt:
-        return 1.0
-    if block.slug == "nextjs-forms-build" and nextjs_prompt:
-        return 0.1
-    if block.slug == "nextjs15-approuter-build-version-16-0-0" and nextjs_prompt:
-        return 0.1
-    if block.slug == "postgresql-indexing-review" and postgres_prompt:
-        return 1.0
-    if block.slug == "postgresql-ha-review" and postgres_prompt:
-        return 0.1
-    if block.slug == "stripe-webhook-verify-build" and stripe_prompt:
-        return 1.0
-    if (
-        block.domain == "stripe"
-        and stripe_prompt
-        and block.slug != "stripe-webhook-verify-build"
-    ):
-        return 0.1
+    # Hardcoded overrides for stable validation scores
+    overrides = [
+        (block.slug == "nextjs15-approuter-build" and nextjs_prompt, 1.0),
+        (block.slug == "nextjs-forms-build" and nextjs_prompt, 0.1),
+        (block.slug == "nextjs15-approuter-build-version-16-0-0" and nextjs_prompt, 0.1),
+        (block.slug == "postgresql-indexing-review" and postgres_prompt, 1.0),
+        (block.slug == "postgresql-ha-review" and postgres_prompt, 0.1),
+        (block.slug == "stripe-webhook-verify-build" and stripe_prompt, 1.0),
+        (
+            block.domain == "stripe"
+            and stripe_prompt
+            and block.slug != "stripe-webhook-verify-build",
+            0.1,
+        ),
+    ]
+    for condition, score in overrides:
+        if condition:
+            return score
 
     overlap = len(prompt_set & block_tokens) / len(prompt_set)
     slug_bonus = (
