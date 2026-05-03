@@ -47,7 +47,7 @@ def test_build_writes_valid_index(tmp_path: Path) -> None:
     index_path = tmp_path / "index.jsonl"
 
     with patch(
-        "turnzero.index.embed",
+        "turnzero.repositories.index_repo.embed",
         return_value=np.array(_fake_embedding(), dtype=np.float32),
     ):
         from turnzero.index import build
@@ -72,7 +72,7 @@ def test_build_no_tmp_file_left_on_success(tmp_path: Path) -> None:
     tmp_file = index_path.with_suffix(".tmp")
 
     with patch(
-        "turnzero.index.embed",
+        "turnzero.repositories.index_repo.embed",
         return_value=np.array(_fake_embedding(), dtype=np.float32),
     ):
         from turnzero.index import build
@@ -92,7 +92,7 @@ def test_build_leaves_old_index_intact_on_embed_failure(tmp_path: Path) -> None:
     index_path.write_text(original_content)
 
     with (
-        patch("turnzero.index.embed", side_effect=RuntimeError("ollama timeout")),
+        patch("turnzero.repositories.index_repo.embed", side_effect=RuntimeError("ollama timeout")),
         pytest.raises(RuntimeError, match="ollama timeout"),
     ):
         from turnzero.index import build

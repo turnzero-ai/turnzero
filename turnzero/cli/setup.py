@@ -64,7 +64,8 @@ try:
     # 2. Query Expert Priors
     os.environ["TURNZERO_DATA_DIR"] = str(DATA_DIR)
     from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.retrieval import load_index, query as _query
+    from turnzero.retrieval import query as _query
+    from turnzero.repositories.index_repo import load_index
 
     blocks = load_all_blocks(DATA_DIR / "blocks")
     index = load_index(DATA_DIR / "index.jsonl")

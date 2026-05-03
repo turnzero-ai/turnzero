@@ -31,7 +31,7 @@ from turnzero.config import (
     allow_mcp_auto_approve,
     enabled_sources,
 )
-from turnzero.retrieval import IndexEntry, load_index
+from turnzero.repositories.index_repo import IndexEntry, load_index, append_block
 from turnzero.retrieval import query as _query
 from turnzero.state import (
     get_session_injections,
@@ -785,52 +785,12 @@ def submit_candidate(
         with open(block_path, "w", encoding="utf-8") as f:
             _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
 
-        # Incremental Indexing: append new entry to index.jsonl instead of full rebuild
         if not get_index_path().exists():
-            from turnzero.index import build as build_index
+            from turnzero.repositories.index_repo import build as build_index
 
             build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
         else:
-            import json
-
-            from turnzero.repositories.block_repo import load_block
-            from turnzero.embed import embed
-
-            try:
-                new_block = load_block(block_path, tier=tier)
-                embedding = embed(block_fmt.to_search_text(new_block))
-
-                line = json.dumps(
-                    {
-                        "block_id": new_block.slug,
-                        "embedding": embedding.tolist(),
-                        "domain": new_block.domain,
-                        "intent": new_block.intent,
-                        "tags": new_block.tags,
-                        "source": new_block.tier,
-                    }
-                )
-
-                # Append to merged index
-                path = get_index_path()
-                with open(path, "a", encoding="utf-8") as f:
-                    f.write(line + "\n")
-
-                # Append to per-source index
-                tier_index_path = get_data_dir() / f"index_{tier}.jsonl"
-                if tier_index_path.exists():
-                    with open(tier_index_path, "a", encoding="utf-8") as f:
-                        f.write(line + "\n")
-                else:
-                    # If per-source index doesn't exist, we must rebuild to create it
-                    from turnzero.index import build as build_index
-
-                    build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
-            except Exception:
-                # Fallback to full rebuild if anything goes wrong during incremental path
-                from turnzero.index import build as build_index
-
-                build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
+            append_block(block_path, tier, get_index_path(), get_data_dir())
 
         result = (
             f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index updated incrementally. "

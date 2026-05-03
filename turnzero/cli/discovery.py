@@ -298,7 +298,7 @@ def inject(
     Otherwise, the input is treated as a query to find the best matching block.
     """
     from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.retrieval import load_index
+    from turnzero.repositories.index_repo import load_index
     from turnzero.retrieval import query as _query
 
     try:
@@ -351,7 +351,7 @@ def stats() -> None:
     from collections import Counter
 
     from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.retrieval import load_index
+    from turnzero.repositories.index_repo import load_index
 
     data_dir = get_data_dir()
 

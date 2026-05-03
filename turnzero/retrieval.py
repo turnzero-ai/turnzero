@@ -1,18 +1,16 @@
-"""Intent classification, index loading, and block retrieval."""
+"""Intent classification and block retrieval."""
 
 from __future__ import annotations
 
-import json
 import re
-import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from turnzero.blocks import Block
-from turnzero.embed import cosine_similarity, get_model_id
+from turnzero.embed import cosine_similarity
+from turnzero.repositories.index_repo import IndexEntry  # re-exported for callers
 
 # ---------------------------------------------------------------------------
 # Intent classifier
@@ -419,81 +417,6 @@ def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> b
     # "CVE" in a passive sentence ("I like reading about CVEs") would fire a false positive.
     # Question patterns in tier 2b already cover professional cross-domain prompts.
     return project_root is not None and detect_domain(prompt, project_root) is not None
-
-
-# ---------------------------------------------------------------------------
-# Index
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class IndexEntry:
-    block_id: str
-    embedding: np.ndarray[Any, np.dtype[np.float32]]
-    domain: str
-    intent: str
-    tags: list[str]
-    source: str = "local"
-
-
-def load_index(
-    index_path: Path,
-    sources: list[str] | None = None,
-) -> list[IndexEntry]:
-    """Load index.jsonl written by index.build().
-
-    If sources is given, only return entries whose source tier is in the list.
-    """
-    if not index_path.exists():
-        raise FileNotFoundError(
-            f"Index not found at {index_path}\nBuild it first:  turnzero index build"
-        )
-
-    entries: list[IndexEntry] = []
-    current_model = get_model_id()
-
-    for line in index_path.read_text().splitlines():
-        if not line.strip():
-            continue
-        data = json.loads(line)
-
-        # Handle header line
-        if "header" in data:
-            built_model = data["header"].get("model_id")
-            if built_model and built_model != current_model:
-                # Use Rich if available (it is in our dependencies)
-                try:
-                    from rich.console import Console
-
-                    console = Console(stderr=True)
-                    console.print(
-                        f"\n[bold yellow]⚠[/bold yellow] [yellow]Index model mismatch:[/yellow]\n"
-                        f"  Built with: [cyan]{built_model}[/cyan]\n"
-                        f"  Current:    [cyan]{current_model}[/cyan]\n"
-                        f"  Retrieval scores may be inaccurate. Re-build: [bold]turnzero index build[/bold]\n"
-                    )
-                except ImportError:
-                    print(
-                        f"\nWARNING: Index model mismatch (built with {built_model}, using {current_model}).\n"
-                        "Retrieval scores may be inaccurate. Re-build: turnzero index build\n",
-                        file=sys.stderr,
-                    )
-            continue
-
-        source = data.get("source", "local")
-        if sources is not None and source not in sources:
-            continue
-        entries.append(
-            IndexEntry(
-                block_id=data["block_id"],
-                embedding=np.array(data["embedding"], dtype=np.float32),
-                domain=data.get("domain", data.get("stack", "unknown")),
-                intent=data["intent"],
-                tags=data["tags"],
-                source=source,
-            )
-        )
-    return entries
 
 
 # ---------------------------------------------------------------------------
