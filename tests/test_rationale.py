@@ -8,8 +8,8 @@ import pytest
 import yaml
 
 from turnzero.blocks import Block
-from turnzero.repositories.block_repo import load_block
 from turnzero.formatters import block_fmt
+from turnzero.repositories.block_repo import load_block
 
 
 def test_load_block_fails_without_rationale(tmp_path: Path):

@@ -11,11 +11,11 @@ from rich.table import Table
 from turnzero.cli.base import (
     THRESHOLD_TEST_GOOD_RECALL,
     THRESHOLD_TEST_WARN_RECALL,
+    console,
+    err_console,
     get_blocks_dir,
     get_data_dir,
     get_index_path,
-    console,
-    err_console,
 )
 
 index_app = typer.Typer(help="Manage the embedding index.", no_args_is_help=True)
@@ -211,8 +211,8 @@ def threshold_test(
     import json
 
     from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.retrieval import is_implementation_prompt
     from turnzero.repositories.index_repo import load_index
+    from turnzero.retrieval import is_implementation_prompt
     from turnzero.retrieval import query as _query
 
     try:

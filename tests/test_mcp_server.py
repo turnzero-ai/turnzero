@@ -285,7 +285,6 @@ def test_compute_confidence_reason_bonus() -> None:
 
 
 def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None:
-    import turnzero.mcp_server as mcp
     import turnzero.services.candidate_svc as cand_svc
 
     orig_data = cand_svc.get_data_dir

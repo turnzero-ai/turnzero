@@ -6,7 +6,6 @@ import contextlib
 import json
 import time
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 from turnzero.config import get_data_dir

@@ -23,8 +23,8 @@ import pytest
 
 from turnzero.blocks import Block
 from turnzero.repositories.block_repo import load_all_blocks
-from turnzero.retrieval import IndexEntry
 from turnzero.repositories.index_repo import load_index
+from turnzero.retrieval import IndexEntry
 from turnzero.retrieval import query as _query
 
 # ---------------------------------------------------------------------------

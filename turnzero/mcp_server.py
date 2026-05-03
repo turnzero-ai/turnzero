@@ -19,9 +19,9 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from turnzero.services import candidate_svc, retrieval_svc, stats_svc
-from turnzero.validators import validate_session_name, safe_path
 from turnzero.config import get_data_dir
+from turnzero.services import candidate_svc, retrieval_svc, stats_svc
+from turnzero.validators import safe_path, validate_session_name
 
 # ---------------------------------------------------------------------------
 # Re-exports for test compat (tests import these names from mcp_server)

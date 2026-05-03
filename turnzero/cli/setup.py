@@ -14,12 +14,11 @@ from typing import Any
 
 import typer
 
-from turnzero.formatters import block_fmt
 from turnzero.cli.base import (
     HTTP_OK,
-    get_data_dir,
     console,
     err_console,
+    get_data_dir,
 )
 
 source_app = typer.Typer(

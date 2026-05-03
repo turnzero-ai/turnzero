@@ -36,7 +36,11 @@ def _is_enabled() -> bool:
 def _anonymous_id() -> str:
     import uuid
 
-    from turnzero.config import get_data_dir, load_telemetry_config, save_telemetry_config
+    from turnzero.config import (
+        get_data_dir,
+        load_telemetry_config,
+        save_telemetry_config,
+    )
 
     data_dir = get_data_dir()
     cfg = load_telemetry_config(data_dir)

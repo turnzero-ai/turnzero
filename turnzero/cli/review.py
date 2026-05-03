@@ -8,11 +8,11 @@ import typer
 
 from turnzero.cli.base import (
     LOW_CONFIDENCE_THRESHOLD,
+    console,
+    err_console,
     get_blocks_dir,
     get_data_dir,
     get_index_path,
-    console,
-    err_console,
 )
 
 
@@ -123,8 +123,8 @@ def review() -> None:
     1. Surfaces low-confidence blocks (confidence < 0.7) already in the library.
     2. Shows harvested candidates from data/candidates/ for approval.
     """
-    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.index import build as _build
+    from turnzero.repositories.block_repo import load_all_blocks
 
     data_dir = get_data_dir()
     candidates_dir = data_dir / "candidates"

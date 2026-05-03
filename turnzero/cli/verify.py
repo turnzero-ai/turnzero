@@ -11,10 +11,10 @@ import httpx
 from rich.table import Table
 
 from turnzero.cli.base import (
+    console,
     get_blocks_dir,
     get_data_dir,
     get_index_path,
-    console,
 )
 from turnzero.mcp_server import _list_suggested_blocks
 

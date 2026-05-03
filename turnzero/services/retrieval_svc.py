@@ -261,8 +261,8 @@ def inject_block(
 def reset_session(session_id: str | None = None) -> str:
     """Clear session memory and fire telemetry summary."""
     track_session_summary(session_id=session_id)
-    clear_session_injections(session_id)
     if session_id:
+        clear_session_injections(session_id)
         return f"✓ TurnZero session memory cleared for {session_id}."
     return "✓ TurnZero session memory cleared."
 

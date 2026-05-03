@@ -10,7 +10,6 @@ from rich import box
 from rich.table import Table
 
 from turnzero.blocks import Block
-from turnzero.formatters import block_fmt
 from turnzero.cli.base import (
     DEFAULT_THRESHOLD,
     MAX_PREVIEW_ANTI_PATTERNS,
@@ -26,6 +25,7 @@ from turnzero.config import (
     get_data_dir,
     get_index_path,
 )
+from turnzero.formatters import block_fmt
 from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
 
 discovery_app = typer.Typer(no_args_is_help=True)
@@ -95,9 +95,9 @@ def query(
     """Suggest Expert Priors for an opening prompt."""
     from turnzero.analytics import SessionAnalytics
     from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.repositories.index_repo import load_index
     from turnzero.retrieval import (
         get_identity_context,
-        load_index,
     )
     from turnzero.retrieval import query as _query
 
@@ -163,10 +163,10 @@ def preview(
 ) -> None:
     """Full-content preview of what would be injected for a prompt."""
     from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.repositories.index_repo import load_index
     from turnzero.retrieval import (
         IDENTITY_SCORE_THRESHOLD,
         get_identity_context,
-        load_index,
     )
     from turnzero.retrieval import query as _query
 

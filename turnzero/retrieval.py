@@ -6,8 +6,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from turnzero.blocks import Block
 from turnzero.embed import cosine_similarity
 from turnzero.repositories.index_repo import IndexEntry  # re-exported for callers
