@@ -94,7 +94,7 @@ def query(
 ) -> None:
     """Suggest Expert Priors for an opening prompt."""
     from turnzero.analytics import SessionAnalytics
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import (
         get_identity_context,
         load_index,
@@ -162,7 +162,7 @@ def preview(
     ),
 ) -> None:
     """Full-content preview of what would be injected for a prompt."""
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import (
         IDENTITY_SCORE_THRESHOLD,
         get_identity_context,
@@ -239,7 +239,7 @@ def show(
     slug: str = typer.Argument(..., help="Block slug to display."),
 ) -> None:
     """Display full content of a block."""
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
 
     try:
         blocks = load_all_blocks(get_blocks_dir())
@@ -297,7 +297,7 @@ def inject(
     If an input matches an exact block slug, it is injected directly.
     Otherwise, the input is treated as a query to find the best matching block.
     """
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import load_index
     from turnzero.retrieval import query as _query
 
@@ -350,7 +350,7 @@ def stats() -> None:
     import time
     from collections import Counter
 
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import load_index
 
     data_dir = get_data_dir()

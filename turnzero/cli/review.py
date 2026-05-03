@@ -123,7 +123,7 @@ def review() -> None:
     1. Surfaces low-confidence blocks (confidence < 0.7) already in the library.
     2. Shows harvested candidates from data/candidates/ for approval.
     """
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.index import build as _build
 
     data_dir = get_data_dir()

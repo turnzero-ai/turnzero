@@ -21,7 +21,8 @@ from typing import Any
 
 import pytest
 
-from turnzero.blocks import Block, load_all_blocks
+from turnzero.blocks import Block
+from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.retrieval import IndexEntry, load_index
 from turnzero.retrieval import query as _query
 

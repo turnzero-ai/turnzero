@@ -9,8 +9,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
-from turnzero.blocks import load_all_blocks, load_block
 from turnzero.formatters import block_fmt
+from turnzero.repositories.block_repo import load_all_blocks, load_block
 from turnzero.embed import embed, get_model_id
 
 

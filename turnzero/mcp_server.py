@@ -19,7 +19,8 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from turnzero.blocks import Block, compute_confidence, load_all_blocks
+from turnzero.blocks import Block, compute_confidence
+from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.formatters import block_fmt
 from turnzero.config import (
     get_blocks_dir,
@@ -792,7 +793,7 @@ def submit_candidate(
         else:
             import json
 
-            from turnzero.blocks import load_block
+            from turnzero.repositories.block_repo import load_block
             from turnzero.embed import embed
 
             try:

@@ -85,7 +85,7 @@ def validate(
     """
     import json
 
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import load_index
     from turnzero.retrieval import query as _query
 
@@ -210,7 +210,7 @@ def threshold_test(
     """
     import json
 
-    from turnzero.blocks import load_all_blocks
+    from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.retrieval import is_implementation_prompt, load_index
     from turnzero.retrieval import query as _query
 

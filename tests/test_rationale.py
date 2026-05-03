@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
-from turnzero.blocks import Block, load_block
+from turnzero.blocks import Block
+from turnzero.repositories.block_repo import load_block
 from turnzero.formatters import block_fmt
 
 

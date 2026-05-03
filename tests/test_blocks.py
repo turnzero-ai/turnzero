@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from turnzero.blocks import Block, DocAnchor, load_all_blocks, load_block
+from turnzero.blocks import Block, DocAnchor
 from turnzero.formatters import block_fmt
+from turnzero.repositories.block_repo import load_all_blocks, load_block
 
 BLOCKS_DIR = Path("data/blocks")
 
