@@ -66,8 +66,8 @@ def safe_path(base_dir: Path, *parts: str) -> Path:
         target = (base_dir / Path(*parts)).resolve()
         base = base_dir.resolve()
 
-        # Verify containment
-        if not str(target).startswith(str(base)):
+        # Verify containment — is_relative_to avoids the /base vs /base_evil false match
+        if not target.is_relative_to(base):
             raise ValueError(
                 f"Security violation: path '{target}' escapes base directory '{base}'."
             )
