@@ -586,15 +586,6 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
     return None
 
 
-# ---------------------------------------------------------------------------
-# Query
-# ---------------------------------------------------------------------------
-
-DOMAIN_BOOST = 1.3  # Heavy boost for matching the detected domain
-INTENT_BOOST = 1.1  # Boost for matching intent
-PROJECT_AFFINITY_BOOST = 1.15  # Boost for blocks previously used in this project
-
-
 def _tokenize(text: str) -> set[str]:
     return {t for t in re.split(r"[^a-z0-9]+", text.lower()) if t}
 
