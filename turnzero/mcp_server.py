@@ -1,4 +1,4 @@
-"""TurnZero MCP server — three tools for AI session context injection.
+"""TurnZero MCP server — thin adapter over service layer.
 
 Install:  pip install turnzero
 Run:      turnzero-mcp
@@ -19,37 +19,23 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from turnzero.blocks import Block, compute_confidence
-from turnzero.repositories.block_repo import load_all_blocks
-from turnzero.formatters import block_fmt
-from turnzero.config import (
-    get_blocks_dir,
-    get_bundled_blocks_dir,
-    get_bundled_index_path,
-    get_data_dir,
-    get_index_path,
-    allow_mcp_auto_approve,
-    enabled_sources,
-)
-from turnzero.repositories.index_repo import IndexEntry, load_index, append_block
-from turnzero.retrieval import query as _query
-from turnzero.state import (
-    get_session_injections,
-    record_project_affinity,
-    record_session_injection,
-)
-from turnzero.validators import (
-    safe_path,
-    validate_domain,
-    validate_session_name,
-    validate_slug,
-)
+from turnzero.services import candidate_svc, retrieval_svc, stats_svc
+from turnzero.validators import validate_session_name, safe_path
+from turnzero.config import get_data_dir
 
 # ---------------------------------------------------------------------------
-# Per-source index cache: path → (mtime, entries)
-# Avoids re-reading disk on every Turn 0 — reloads only when file changes.
+# Re-exports for test compat (tests import these names from mcp_server)
 # ---------------------------------------------------------------------------
-_INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
+_INDEX_CACHE = retrieval_svc._INDEX_CACHE
+_list_suggested_blocks = retrieval_svc.list_suggested_blocks
+_get_block = retrieval_svc.get_block
+_inject_block = retrieval_svc.inject_block
+_log_mcp_injection = stats_svc.log_injection
+_log_tool_call = stats_svc.log_tool_call
+
+# ---------------------------------------------------------------------------
+# MCP server
+# ---------------------------------------------------------------------------
 
 mcp = FastMCP(
     "turnzero",
@@ -77,273 +63,8 @@ mcp = FastMCP(
 
 
 # ---------------------------------------------------------------------------
-# Path helpers (centralized in config.py)
+# Tool handlers
 # ---------------------------------------------------------------------------
-
-
-def _active_sources() -> list[str]:
-    return enabled_sources(get_data_dir())
-
-
-def _load_active_blocks() -> dict[str, Block]:
-    blocks_dir = get_blocks_dir()
-    if not blocks_dir.exists():
-        # Fallback to bundled blocks
-        blocks_dir = get_bundled_blocks_dir()
-    return load_all_blocks(blocks_dir, sources=_active_sources())
-
-
-def _load_source_index(source: str) -> list[IndexEntry]:
-    """Load index for one source tier, using mtime-based cache."""
-    data_dir = get_data_dir()
-    per_source_path = data_dir / f"index_{source}.jsonl"
-
-    path = per_source_path if per_source_path.exists() else get_index_path()
-
-    if not path.exists():
-        # Fallback to bundled index
-        path = get_bundled_index_path()
-
-    try:
-        mtime = path.stat().st_mtime
-    except FileNotFoundError:
-        return []
-
-    cached = _INDEX_CACHE.get(path)
-    if cached and cached[0] == mtime:
-        return cached[1]
-
-    entries = load_index(path, sources=[source] if path == get_index_path() else None)
-    _INDEX_CACHE[path] = (mtime, entries)
-    return entries
-
-
-def _load_active_index() -> list[IndexEntry]:
-    """Load and merge index entries for all enabled sources, with caching."""
-    result: list[IndexEntry] = []
-    for source in _active_sources():
-        result.extend(_load_source_index(source))
-    return result
-
-
-# ---------------------------------------------------------------------------
-# Pure tool logic (importable for testing without a live server)
-# ---------------------------------------------------------------------------
-
-
-def _list_suggested_blocks(
-    prompt: str,
-    top_k: int = 5,
-    threshold: float = 0.70,
-    context_weight: int = 5000,
-    strict_intent: bool = True,
-    project_root: Path | None = None,
-    session_id: str | None = None,
-) -> list[dict[str, Any]]:
-    """Return ranked block suggestions for prompt as serialisable dicts."""
-    from turnzero.retrieval import get_identity_context
-
-    blocks = _load_active_blocks()
-    index = _load_active_index()
-
-    # Get already injected blocks to avoid redundancy
-    exclude_ids = get_session_injections(session_id) if session_id else set()
-
-    # 1. Handle Personal Priors (Identity Context)
-    # These are always-on at Turn 0 or on session reset.
-    personal_results, limit_exceeded = get_identity_context(
-        blocks, project_root=project_root, exclude_ids=exclude_ids
-    )
-    personal_weight = sum(b.context_weight for b, _ in personal_results)
-
-    # 2. Standard Expert Prior Retrieval (Semantic Stream)
-    expert_results = _query(
-        prompt,
-        index,
-        blocks,
-        top_k=top_k,
-        threshold=threshold,
-        context_weight=context_weight - personal_weight,
-        strict_intent=strict_intent,
-        project_root=project_root,
-        exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
-    )
-
-    # 3. Combine and Format
-    # Personal priors: suppress preview — relevance is pre-decided; model must call inject_block.
-    # Expert priors: truncate to 6 words so incompleteness is obvious; model must call inject_block.
-    _PREVIEW_WORDS = 6
-
-    def _expert_preview(block: Any) -> str:
-        text = block.constraints[0] if block.constraints else ""
-        words = text.split()
-        return " ".join(words[:_PREVIEW_WORDS]) + (
-            "…" if len(words) > _PREVIEW_WORDS else ""
-        )
-
-    formatted = [
-        {
-            "block_id": block.slug,
-            "score": round(score, 3),
-            "domain": block.domain,
-            "intent": block.intent,
-            "tags": block.tags,
-            "context_weight": block.context_weight,
-            "stale": block.is_stale(),
-            "preview": "[personal prior — call inject_block to read]",
-        }
-        for block, score in personal_results
-    ] + [
-        {
-            "block_id": block.slug,
-            "score": round(score, 3),
-            "domain": block.domain,
-            "intent": block.intent,
-            "tags": block.tags,
-            "context_weight": block.context_weight,
-            "stale": block.is_stale(),
-            "preview": _expert_preview(block),
-        }
-        for block, score in expert_results
-    ]
-
-    if limit_exceeded:
-        formatted.append(
-            {
-                "block_id": "personal-priors-limit-warning",
-                "score": 0.0,
-                "domain": "system",
-                "intent": "review",
-                "tags": ["warning"],
-                "context_weight": 0,
-                "stale": False,
-                "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
-            }
-        )
-
-    return formatted
-
-
-def _get_block(block_id: str) -> dict[str, Any]:
-    """Return full block data as a serialisable dict."""
-    blocks = _load_active_blocks()
-    if block_id not in blocks:
-        available = sorted(blocks.keys())
-        raise ValueError(
-            f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
-        )
-    block: Block = blocks[block_id]
-    return {
-        "id": block.slug,
-        "slug": block.slug,
-        "hash": block.hash,
-        "version": block.version,
-        "domain": block.domain,
-        "intent": block.intent,
-        "last_verified": block.last_verified,
-        "stale": block.is_stale(),
-        "tags": block.tags,
-        "context_weight": block.context_weight,
-        "provides": block.provides,
-        "conflicts_with_tags": block.conflicts_with_tags,
-        "constraints": block.constraints,
-        "anti_patterns": block.anti_patterns,
-        "doc_anchors": [
-            {"url": a.url, "verified": a.verified} for a in block.doc_anchors
-        ],
-        "conflicts_with": block.conflicts_with,
-        "requires": block.requires,
-    }
-
-
-def _inject_block(
-    block_id: str,
-    session_id: str | None = None,
-    project_root: Path | None = None,
-) -> str:
-    """Return formatted injection text for a block and record state."""
-    blocks = _load_active_blocks()
-    if block_id not in blocks:
-        available = sorted(blocks.keys())
-        raise ValueError(
-            f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
-        )
-
-    # Record injection for deduplication and project affinity
-    if session_id:
-        record_session_injection(session_id, block_id)
-    if project_root:
-        record_project_affinity(project_root, block_id)
-
-    return block_fmt.to_injection_text(blocks[block_id])
-
-
-# ---------------------------------------------------------------------------
-# MCP tool definitions
-# ---------------------------------------------------------------------------
-
-
-def _log_mcp_injection(
-    block_ids: list[str],
-    domains: list[str],
-    prompt_words: int,
-    session_id: str | None = None,
-) -> None:
-    """Append a session entry to hook_log.jsonl so get_stats reflects MCP injections."""
-    import json
-    import time
-
-    entry = json.dumps(
-        {
-            "ts": time.time(),
-            "blocks": block_ids,
-            "domains": domains,
-            "prompt_words": prompt_words,
-            "source": "mcp",
-            "session_id": session_id,
-        }
-    )
-    log_path = get_data_dir() / "hook_log.jsonl"
-    try:
-        get_data_dir().mkdir(parents=True, exist_ok=True)
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(entry + "\n")
-    except Exception:
-        pass
-
-
-def _log_tool_call(
-    tool: str,
-    input_obj: Any,
-    output_obj: Any,
-    meta: dict[str, Any] | None = None,
-) -> None:
-    """Append one entry to tool_call_log.jsonl tracking per-tool call counts and token cost.
-
-    Token counts are estimated from JSON-serialised size (chars / 4) — accurate enough
-    for trend monitoring without adding a tokenizer dependency.
-    """
-    import json
-    import time
-
-    try:
-        tokens_in = len(json.dumps(input_obj)) // 4
-        tokens_out = len(json.dumps(output_obj)) // 4
-        entry = json.dumps(
-            {
-                "ts": time.time(),
-                "tool": tool,
-                "tokens_in": tokens_in,
-                "tokens_out": tokens_out,
-                **(meta or {}),
-            }
-        )
-        log_path = get_data_dir() / "tool_call_log.jsonl"
-        get_data_dir().mkdir(parents=True, exist_ok=True)
-        with open(log_path, "a", encoding="utf-8") as f:
-            f.write(entry + "\n")
-    except Exception:
-        pass
 
 
 @mcp.tool()
@@ -371,17 +92,17 @@ def list_suggested_blocks(
         Returns a single error entry if no embedding backend is configured.
     """
     try:
-        suggestions = _list_suggested_blocks(
+        suggestions = retrieval_svc.list_suggested_blocks(
             prompt, project_root=Path.cwd(), session_id=session_id
         )
         if suggestions:
-            _log_mcp_injection(
+            stats_svc.log_injection(
                 block_ids=[s["block_id"] for s in suggestions],
                 domains=list({s["domain"] for s in suggestions}),
                 prompt_words=len(prompt.split()),
                 session_id=session_id,
             )
-        _log_tool_call(
+        stats_svc.log_tool_call(
             "list_suggested_blocks",
             {"prompt": prompt, "session_id": session_id},
             suggestions,
@@ -390,7 +111,7 @@ def list_suggested_blocks(
 
         _PERSONAL_SCORE = 2
         personal = [s for s in suggestions if s.get("score", 0) >= _PERSONAL_SCORE]
-        all_blocks = _load_active_blocks()
+        all_blocks = retrieval_svc._load_active_blocks()
         personal_count = sum(1 for b in all_blocks.values() if b.tier == "personal")
         track_session_start(
             session_id=session_id,
@@ -416,7 +137,7 @@ def list_suggested_blocks(
                 ),
             }
         ]
-        _log_tool_call("list_suggested_blocks", {"prompt": prompt}, result)
+        stats_svc.log_tool_call("list_suggested_blocks", {"prompt": prompt}, result)
         return result
 
 
@@ -434,8 +155,8 @@ def get_block(block_id: str) -> dict[str, Any]:
         Full Expert Prior data including all constraints, anti-patterns,
         doc anchors, version, staleness status, and context weight.
     """
-    result = _get_block(block_id)
-    _log_tool_call("get_block", {"block_id": block_id}, result)
+    result = retrieval_svc.get_block(block_id)
+    stats_svc.log_tool_call("get_block", {"block_id": block_id}, result)
     return result
 
 
@@ -455,8 +176,10 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         Formatted markdown Expert Prior, ready to inject before the
         first AI response.
     """
-    result = _inject_block(block_id, session_id=session_id, project_root=Path.cwd())
-    _log_tool_call(
+    result = retrieval_svc.inject_block(
+        block_id, session_id=session_id, project_root=Path.cwd()
+    )
+    stats_svc.log_tool_call(
         "inject_block",
         {"block_id": block_id, "session_id": session_id},
         result,
@@ -464,7 +187,7 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
     )
     from turnzero.telemetry import track_block_injected
 
-    blocks = _load_active_blocks()
+    blocks = retrieval_svc._load_active_blocks()
     if block_id in blocks:
         b = blocks[block_id]
         track_block_injected(domain=b.domain, tier=b.tier or "local")
@@ -482,113 +205,8 @@ def get_stats() -> dict[str, Any]:
         Dict with sessions, priors injected, estimated turns saved, top domains,
         top blocks, library size, stale block count, and candidates pending review.
     """
-    import contextlib
-    import json
-    import time
-    from collections import Counter
-
-    data_dir = get_data_dir()
-    log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict[str, Any]] = []
-    if log_path.exists():
-        for line in log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                entries.append(json.loads(line))
-
-    now = time.time()
-    week_ago = now - 7 * 86400
-
-    sessions_total = len(entries)
-    sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
-    priors_total = sum(len(e.get("blocks", [])) for e in entries)
-    priors_week = sum(
-        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
-    )
-
-    block_counts: Counter[str] = Counter()
-    domain_counts: Counter[str] = Counter()
-    for e in entries:
-        for slug in e.get("blocks", []):
-            block_counts[slug] += 1
-        for d in e.get("domains", []):
-            domain_counts[d] += 1
-
-    est_turns = round(priors_total * 0.5)
-    est_tokens = round(priors_total * 0.5 * 1500)
-
-    try:
-        blocks = _load_active_blocks()
-    except FileNotFoundError:
-        blocks = {}
-
-    stale_count = sum(1 for b in blocks.values() if b.is_stale())
-    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
-    candidates = (
-        list((get_data_dir() / "candidates").glob("*.yaml"))
-        if (get_data_dir() / "candidates").exists()
-        else []
-    )
-
-    # ── Tool call log ──────────────────────────────────────────────────────
-    tool_log_path = data_dir / "tool_call_log.jsonl"
-    tool_entries: list[dict[str, Any]] = []
-    if tool_log_path.exists():
-        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                tool_entries.append(json.loads(line))
-
-    tool_calls_total = len(tool_entries)
-    tool_calls_week = sum(1 for e in tool_entries if e.get("ts", 0) >= week_ago)
-
-    by_tool: Counter[str] = Counter()
-    tokens_in_total = 0
-    tokens_out_total = 0
-    tokens_in_week = 0
-    tokens_out_week = 0
-    submit_tokens_total = 0
-    for e in tool_entries:
-        by_tool[e.get("tool", "unknown")] += 1
-        tin = e.get("tokens_in", 0)
-        tout = e.get("tokens_out", 0)
-        tokens_in_total += tin
-        tokens_out_total += tout
-        if e.get("ts", 0) >= week_ago:
-            tokens_in_week += tin
-            tokens_out_week += tout
-        if e.get("tool") == "submit_candidate":
-            submit_tokens_total += tin + tout
-
-    result: dict[str, Any] = {
-        "sessions": {"total": sessions_total, "this_week": sessions_week},
-        "priors_injected": {"total": priors_total, "this_week": priors_week},
-        "estimated_turns_saved": est_turns,
-        "estimated_tokens_saved": est_tokens,
-        "top_domains": [d for d, _ in domain_counts.most_common(5)],
-        "top_blocks": [
-            {"block_id": slug, "count": count}
-            for slug, count in block_counts.most_common(3)
-        ],
-        "library": {
-            "total_blocks": len(blocks),
-            "personal_blocks": personal_count,
-            "expert_blocks": len(blocks) - personal_count,
-            "stale_blocks": stale_count,
-            "candidates_pending_review": len(candidates),
-        },
-        "tool_calls": {
-            "total": tool_calls_total,
-            "this_week": tool_calls_week,
-            "by_tool": dict(by_tool.most_common()),
-        },
-        "token_cost": {
-            "total_in": tokens_in_total,
-            "total_out": tokens_out_total,
-            "total": tokens_in_total + tokens_out_total,
-            "this_week": tokens_in_week + tokens_out_week,
-            "submit_candidate_total": submit_tokens_total,
-        },
-    }
-    _log_tool_call("get_stats", {}, result)
+    result = stats_svc.compute()
+    stats_svc.log_tool_call("get_stats", {}, result)
     return result
 
 
@@ -605,67 +223,10 @@ def reset_session(session_id: str | None = None) -> str:
     from turnzero.telemetry import track_session_summary
 
     track_session_summary(session_id=session_id)
-
     if session_id:
         clear_session_injections(session_id)
         return f"✓ TurnZero session memory cleared for {session_id}."
     return "✓ TurnZero session memory cleared."
-
-
-_AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {
-    "remember",
-    "save",
-    "note",
-    "user asked",
-    "explicit",
-}
-
-
-def _check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, bool]:
-    """Return (effective_auto_approve, was_blocked)."""
-    if not auto_approve:
-        return False, False
-    if not allow_mcp_auto_approve():
-        return False, True
-    if not _is_intent_present(reason, _AUTO_APPROVE_INTENT_KEYWORDS):
-        return False, True
-    return True, False
-
-
-def _is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
-    """Check if any keyword is present in text with simple typo tolerance.
-
-    Uses a minimal Levenshtein-like distance check for words of length >= 4.
-    threshold=2 allows for two character differences.
-    """
-    _MIN_FUZZY_LEN = 4
-
-    def _dist(s1: str, s2: str) -> int:
-        if len(s1) < len(s2):
-            return _dist(s2, s1)
-        if not s2:
-            return len(s1)
-        prev: list[int] = list(range(len(s2) + 1))
-        for i, c1 in enumerate(s1):
-            curr = [i + 1]
-            for j, c2 in enumerate(s2):
-                curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + (c1 != c2)))
-            prev = curr
-        return prev[-1]
-
-    text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
-    for kw in keywords:
-        kw_lower = kw.lower()
-        for word in text_words:
-            if word == kw_lower:
-                return True
-            if (
-                len(kw_lower) >= _MIN_FUZZY_LEN
-                and abs(len(word) - len(kw_lower)) <= threshold
-                and _dist(word, kw_lower) <= threshold
-            ):
-                return True
-    return False
 
 
 @mcp.tool()
@@ -721,102 +282,21 @@ def submit_candidate(
         is_personal: If True, save to the private 'personal' tier instead of 'local'.
         project_root: Optional path to current project to pin personal priors.
     """
-    import yaml as _yaml
-
-    # SEC-2: Validate identifiers to prevent path traversal
-    validate_slug(block_id)
-    validate_domain(domain)
-
-    today = __import__("datetime").date.today().isoformat()
-    confidence = compute_confidence(
-        block_id, constraints, anti_patterns or [], tags or [], reason
+    result, input_snapshot = candidate_svc.submit(
+        block_id=block_id,
+        domain=domain,
+        intent=intent,
+        constraints=constraints,
+        anti_patterns=anti_patterns,
+        tags=tags,
+        doc_anchors=doc_anchors,
+        rationale=rationale,
+        reason=reason,
+        auto_approve=auto_approve,
+        is_personal=is_personal,
+        project_root=project_root,
     )
-
-    auto_approve, guard_blocked = _check_auto_approve_guard(auto_approve, reason)
-
-    project_hash = None
-    if is_personal and domain != "global" and project_root:
-        from turnzero.state import _get_project_hash
-
-        project_hash = _get_project_hash(Path(project_root))
-
-    block = {
-        "id": block_id,
-        "slug": block_id,
-        "version": "1.0.0",
-        "domain": domain,
-        "intent": intent,
-        "last_verified": today,
-        "tags": tags or [],
-        "context_weight": sum(
-            len(c.split()) * 4 for c in constraints + (anti_patterns or [])
-        ),
-        "conflicts_with": [],
-        "requires": [],
-        "constraints": constraints,
-        "anti_patterns": anti_patterns or [],
-        "rationale": rationale,
-        "doc_anchors": [{"url": u, "verified": today} for u in (doc_anchors or [])],
-        "confidence": confidence,
-        "archived": False,
-        "project_hash": project_hash,
-    }
-
-    input_snapshot = {
-        "block_id": block_id,
-        "domain": domain,
-        "intent": intent,
-        "constraints": constraints,
-        "anti_patterns": anti_patterns or [],
-        "tags": tags or [],
-        "doc_anchors": doc_anchors or [],
-        "rationale": rationale,
-        "reason": reason,
-        "auto_approve": auto_approve,
-        "is_personal": is_personal,
-        "project_root": project_root,
-    }
-
-    if auto_approve:
-        tier = "personal" if is_personal else "local"
-        dest_dir = safe_path(get_blocks_dir(), tier, domain)
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        block_path = safe_path(dest_dir, f"{block_id}.yaml")
-        with open(block_path, "w", encoding="utf-8") as f:
-            _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-
-        if not get_index_path().exists():
-            from turnzero.repositories.index_repo import build as build_index
-
-            build_index(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
-        else:
-            append_block(block_path, tier, get_index_path(), get_data_dir())
-
-        result = (
-            f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to {tier} library and index updated incrementally. "
-            f"It will be injected in future sessions matching this domain."
-            + (f" Reason: {reason}" if reason else "")
-        )
-    else:
-        candidates_dir = get_data_dir() / "candidates"
-        candidates_dir.mkdir(parents=True, exist_ok=True)
-        candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
-        with open(candidate_path, "w", encoding="utf-8") as f:
-            _yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-
-        if guard_blocked:
-            result = (
-                f"⚠ Auto-approval blocked: explicit user intent (e.g., 'remember this') was not found in the reason. "
-                f"Candidate '{block_id}' has been queued for review instead. "
-                f"Run `turnzero review` to approve it."
-            )
-        else:
-            result = (
-                f"✓ Candidate '{block_id}' queued for review. "
-                f"Run `turnzero review` to approve it into the library."
-                + (f" Reason: {reason}" if reason else "")
-            )
-    _log_tool_call(
+    stats_svc.log_tool_call(
         "submit_candidate",
         input_snapshot,
         result,
@@ -842,18 +322,12 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
     """
     import time
 
-    # SEC-2: Validate session name to prevent path traversal
     validate_session_name(session_name)
-
-    # Ensure the conversations directory exists
     conv_dir = get_data_dir() / "conversations"
     conv_dir.mkdir(parents=True, exist_ok=True)
-
-    # Write the transcript with a timestamp
     timestamp = int(time.time())
     file_path = safe_path(conv_dir, f"{session_name}-{timestamp}.md")
     file_path.write_text(transcript, encoding="utf-8")
-
     return (
         f"✓ Conversation logged to {file_path.name}. "
         "Run `turnzero harvest` to extract Expert Priors from this transcript."

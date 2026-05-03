@@ -69,9 +69,9 @@ def test_personal_priors_always_on_even_with_empty_prompt(mock_data, monkeypatch
     monkeypatch.setenv("TURNZERO_DATA_DIR", str(mock_data["blocks_dir"].parent))
 
     with (
-        patch("turnzero.mcp_server.get_blocks_dir", return_value=mock_data["blocks_dir"]),
-        patch("turnzero.mcp_server._load_active_index", return_value=[]),
-        patch("turnzero.mcp_server.get_session_injections", return_value=set()),
+        patch("turnzero.services.retrieval_svc.get_blocks_dir", return_value=mock_data["blocks_dir"]),
+        patch("turnzero.services.retrieval_svc._load_active_index", return_value=[]),
+        patch("turnzero.services.retrieval_svc.get_session_injections", return_value=set()),
     ):
         # Prompt is generic and project is empty/unknown
         results = _list_suggested_blocks(
@@ -109,9 +109,9 @@ doc_anchors: []
     )
 
     with (
-        patch("turnzero.mcp_server.get_blocks_dir", return_value=mock_data["blocks_dir"]),
-        patch("turnzero.mcp_server._load_active_index", return_value=[]),
-        patch("turnzero.mcp_server.get_session_injections", return_value=set()),
+        patch("turnzero.services.retrieval_svc.get_blocks_dir", return_value=mock_data["blocks_dir"]),
+        patch("turnzero.services.retrieval_svc._load_active_index", return_value=[]),
+        patch("turnzero.services.retrieval_svc.get_session_injections", return_value=set()),
     ):
         results = _list_suggested_blocks("hi", project_root=mock_data["project_root"])
 
