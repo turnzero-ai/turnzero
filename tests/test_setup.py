@@ -175,6 +175,66 @@ def test_template_not_overwritten_when_personal_dir_has_files(tmp_path: Path) ->
     assert existing.exists()
 
 
+# ── RET-1: live injection demo ────────────────────────────────────────────────
+
+
+def test_live_demo_shows_results_when_blocks_returned() -> None:
+    """_print_live_demo prints block slugs and token totals when retrieval succeeds."""
+    fake_results = [
+        {
+            "block_id": "personal-prior-1",
+            "context_weight": 200,
+            "domain": "global",
+            "preview": "[personal prior — call inject_block to read]",
+        },
+        {
+            "block_id": "fastapi-async-build",
+            "context_weight": 800,
+            "domain": "fastapi",
+            "preview": "Use async def for all endpoint…",
+        },
+    ]
+
+    with patch("turnzero.mcp_server._list_suggested_blocks", return_value=fake_results):
+        con = MagicMock()
+        with patch("turnzero.cli.setup.console", con):
+            from turnzero.cli.setup import _print_live_demo
+            _print_live_demo()
+
+    printed = " ".join(str(c) for c in con.print.call_args_list)
+    assert "fastapi-async-build" in printed
+    assert "800" in printed
+    assert "1 personal" in printed
+    assert "1 expert" in printed
+
+
+def test_live_demo_graceful_on_empty_results() -> None:
+    """_print_live_demo prints a warning when no blocks match."""
+    with patch("turnzero.mcp_server._list_suggested_blocks", return_value=[]):
+        con = MagicMock()
+        with patch("turnzero.cli.setup.console", con):
+            from turnzero.cli.setup import _print_live_demo
+            _print_live_demo()
+
+    printed = " ".join(str(c) for c in con.print.call_args_list)
+    assert "No blocks matched" in printed
+
+
+def test_live_demo_graceful_on_exception() -> None:
+    """_print_live_demo catches retrieval errors and prints a fallback."""
+    with patch(
+        "turnzero.mcp_server._list_suggested_blocks",
+        side_effect=RuntimeError("embedding unavailable"),
+    ):
+        con = MagicMock()
+        with patch("turnzero.cli.setup.console", con):
+            from turnzero.cli.setup import _print_live_demo
+            _print_live_demo()
+
+    printed = " ".join(str(c) for c in con.print.call_args_list)
+    assert "Live demo skipped" in printed
+
+
 def test_template_yaml_is_valid_block_schema(tmp_path: Path) -> None:
     import yaml
 

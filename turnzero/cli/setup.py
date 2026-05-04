@@ -800,16 +800,79 @@ def setup(
     console.print()
     if ollama_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")
+        _print_live_demo()
         console.print(
-            "Start a [bold]new[/bold] Claude Code session and paste this prompt to verify:\n\n"
-            "  [cyan]Building a FastAPI REST API with Pydantic models and async SQLAlchemy[/cyan]\n\n"
-            "TurnZero will inject Expert Priors automatically on Turn 0.\n"
-            "Add [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
+            "\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
         )
     else:
         console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
         console.print(
             "Once ollama is ready, re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
+        )
+
+
+_DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
+
+
+def _print_live_demo() -> None:
+    """Run a retrieval probe and print what TurnZero would inject."""
+    from turnzero.mcp_server import _list_suggested_blocks
+
+    console.print("[bold]Live demo[/bold] — what TurnZero injects for a FastAPI prompt:\n")
+    console.print(f"  [dim]{_DEMO_PROMPT}[/dim]\n")
+    try:
+        all_results = [
+            r for r in _list_suggested_blocks(_DEMO_PROMPT)
+            if r.get("block_id") != "personal-priors-limit-warning"
+        ]
+        if not all_results:
+            console.print(
+                "  [yellow]⚠ No blocks matched the demo prompt.[/yellow]\n"
+                "  Run [cyan]turnzero verify[/cyan] to diagnose."
+            )
+            return
+
+        personal = [r for r in all_results if "[personal" in r.get("preview", "")]
+        expert = [r for r in all_results if "[personal" not in r.get("preview", "")]
+
+        if personal:
+            p_tokens = sum(r.get("context_weight", 0) for r in personal)
+            console.print(
+                "  [bold]Personal Priors[/bold]  [dim](your identity — injected every session)[/dim]"
+            )
+            console.print(
+                f"  [dim]{len(personal)} rule{'s' if len(personal) != 1 else ''} · ~{p_tokens} tokens[/dim]\n"
+            )
+
+        if expert:
+            console.print(
+                "  [bold]Expert Priors[/bold]  [dim](domain knowledge — injected when relevant)[/dim]"
+            )
+            for r in expert:
+                slug = r["block_id"]
+                tokens = r.get("context_weight", 0)
+                domain = r.get("domain", "")
+                preview = r.get("preview", "")
+                console.print(
+                    f"  [green]✓[/green] [bold]{slug}[/bold]"
+                    f"  [dim]{domain} · ~{tokens} tokens[/dim]"
+                )
+                if preview:
+                    console.print(f"    [dim]{preview}[/dim]")
+
+        total_tokens = sum(r.get("context_weight", 0) for r in all_results)
+        console.print(
+            f"\n  [bold]Total: ~{total_tokens} tokens[/bold] injected on Turn 0 "
+            f"({len(personal)} personal + {len(expert)} expert)."
+        )
+        console.print(
+            "  This context is added automatically — no prompt changes needed."
+        )
+    except Exception as e:
+        console.print(
+            f"  [yellow]⚠ Live demo skipped ({e}).[/yellow]\n"
+            "  MCP server will inject priors normally when you start a session.\n"
+            "  Run [cyan]turnzero verify[/cyan] to confirm retrieval is working."
         )
 
 
