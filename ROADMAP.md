@@ -62,6 +62,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.10.1 — Token transparency: PRIOR_METADATA in inject output, prior content + MCP overhead rows in stats (RET-3).
 - [x] v0.10.0 — Structural session dedup (WF-1/2/3); setup live injection demo (RET-1); overmatching keyword-overlap gate (RET-2); BENCHMARK.md at repo root.
 - [x] v0.9.0 — DDD architecture refactor; mtime block cache; feedback system.
 - [x] v0.8.14 — Agentic benchmark harness (Claude/Gemini, 7 scenarios); chitchat skip rule improved; AGENTS.md added for Codex.
