@@ -1,0 +1,62 @@
+{
+  "benchmark": "TurnZero Agentic Benchmark",
+  "version": "1.0",
+  "scenarios": {
+    "3": {
+      "name": "Constraint Adherence",
+      "agents": {
+        "codex": {
+          "agent": "codex",
+          "scenario_id": 3,
+          "scenario_name": "Constraint Adherence",
+          "n": 1,
+          "passes": 1,
+          "pass_rate_pct": 100,
+          "list_suggested_rate": [
+            1,
+            1
+          ],
+          "inject_rate": [
+            1,
+            1
+          ],
+          "submit_rate": [
+            0,
+            1
+          ],
+          "avg_duration_s": 40.482279539108276,
+          "sample_blocks": "postgresql-patterns-build, eval-bench-9c518cc1, postgresql-full-text-search-build",
+          "errors": []
+        }
+      }
+    },
+    "6": {
+      "name": "Realistic Prior Adherence",
+      "agents": {
+        "codex": {
+          "agent": "codex",
+          "scenario_id": 6,
+          "scenario_name": "Realistic Prior Adherence",
+          "n": 1,
+          "passes": 0,
+          "pass_rate_pct": 0,
+          "list_suggested_rate": [
+            1,
+            1
+          ],
+          "inject_rate": [
+            0,
+            1
+          ],
+          "submit_rate": [
+            0,
+            1
+          ],
+          "avg_duration_s": 65.31748938560486,
+          "sample_blocks": "\u2014",
+          "errors": []
+        }
+      }
+    }
+  }
+}

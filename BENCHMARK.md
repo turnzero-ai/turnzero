@@ -12,8 +12,8 @@ Two injection paths are tested:
 
 | Path | Mechanism | Tested agents |
 |---|---|---|
-| **MCP tool loop** | Agent calls `list_suggested_blocks` → `inject_block` | Claude Code, Gemini CLI, Ollama local |
-| **Instruction files** | Rules baked into CLAUDE.md / GEMINI.md / AGENTS.md | Claude Code, Gemini CLI |
+| **MCP tool loop** | Agent calls `list_suggested_blocks` → `inject_block` | Claude Code, Gemini CLI, Codex CLI, Ollama local |
+| **Instruction files** | Rules baked into CLAUDE.md / GEMINI.md / AGENTS.md | Claude Code, Gemini CLI, Codex CLI |
 
 ---
 
@@ -31,7 +31,7 @@ Seven scenarios cover the full injection loop:
 | 6 | Realistic Prior Adherence | Plausible constraint (human-readable name) accepted vs. UUID-flavored synthetic | Keyword present in code output |
 | 7 | False-Positive Learning | Neutral knowledge question must NOT trigger `submit_candidate` | `submit_candidate` not called |
 
-Scenarios 3 and 6 require a local Ollama instance for index rebuilding (they inject a unique-per-run keyword via a temp block).
+Scenarios 3 and 6 require a local Ollama instance for embedding a unique-per-run temporary block.
 
 ---
 
@@ -50,6 +50,8 @@ python -m tests.evals.benchmark --scenarios 1 2 4 5 7 --repeat 3
 
 # Single agent
 python -m tests.evals.benchmark --agents claude
+python -m tests.evals.benchmark --agents codex --scenarios 1 2 4 5 7 --repeat 1
+python -m tests.evals.benchmark --agents codex --scenarios 3 6 --repeat 1
 
 # Machine-readable output
 python -m tests.evals.benchmark --output-format json
@@ -80,6 +82,22 @@ Run on 2026-05-04, TurnZero v0.9.0, macOS Darwin 25.3.0. Ollama available — S3
 | S7: False-Positive Learning | ✅ PASS (40.6s) | ✅ PASS (27.0s) |
 
 **Score: Claude Code 6/7 (86%) · Gemini CLI 6/7 (86%)**
+
+## Results — Codex CLI (N=1)
+
+Run on 2026-05-04, TurnZero v0.10.1, Linux 6.8.0-106-generic. Commit `a1a2b8e`. Codex CLI 0.128.0. Ollama available — S3 and S6 ran after the benchmark was updated to append the temporary eval block instead of rebuilding the full index.
+
+| Scenario | Codex CLI |
+|---|---|
+| S1: Tool Call Compliance | ✅ PASS (87.2s) |
+| S2: Block Retrieval Accuracy | ✅ PASS (51.4s) |
+| S3: Constraint Adherence | ✅ PASS (40.5s) |
+| S4: Learning Sensitivity | ✅ PASS (168.0s) |
+| S5: Negative — Chitchat | ✅ PASS (8.9s) |
+| S6: Realistic Prior Adherence | ❌ FAIL — did not call `inject_block` |
+| S7: False-Positive Learning | ✅ PASS (59.7s) |
+
+**Score: Codex CLI 6/7 (86%)**
 
 <details>
 <summary>Previous run — 2026-05-02, v0.8.7 (Claude + Gemini, no Ollama)</summary>
@@ -134,6 +152,26 @@ S4 (Learning Sensitivity) sends an explicit "save this rule" prompt. Both Claude
 
 S7 sent a neutral knowledge question about PostgreSQL performance. Neither Claude nor Gemini called `submit_candidate`. Both correctly retrieved relevant knowledge blocks (`postgresql-indexing-review`, `postgresql-ha-review`) without misidentifying the prompt as a save instruction.
 
+### 7. MCP tool compliance: Codex is reliable on most domain prompts
+
+Codex called `list_suggested_blocks` on every technical scenario in its run: S1, S2, S3, S4, S6, and S7. It followed with `inject_block` on S1, S2, S3, S4, and S7. This is the core injection path and it works in most Codex runs, with one miss on S6.
+
+### 8. Codex retrieval is domain-accurate when injection occurs
+
+Codex surfaced domain-appropriate blocks across the successful injection scenarios. It retrieved FastAPI blocks for S1 (`fastapi-async-build-version-2-0-0`, `fastapi-async-build`, `fastapi-middleware-build`), Next.js blocks for S2 (`nextjs-forms-build`, `nextjs15-approuter-build-version-16-0-0`, `nextjs15-approuter-build`), and PostgreSQL blocks for S7 (`postgresql-ha-review`, `postgresql-indexing-review`, `postgresql-security-review`).
+
+### 9. Codex follows injected constraints, but S6 exposed an injection miss
+
+S3 passed for Codex: the temporary eval prior (`eval-bench-9c518cc1`) was retrieved, injected, and reflected in the response. S6 failed because Codex called `list_suggested_blocks` but did not call `inject_block`, so the realistic `primary_db_conn` prior was not injected or applied. This is an injection-loop miss, not evidence that Codex rejected a human-readable constraint after seeing it.
+
+### 10. Codex chitchat suppression works
+
+S5 ("Thanks, that looks great!") passed for Codex. Codex made no `list_suggested_blocks`, `inject_block`, or `submit_candidate` calls on the social acknowledgment, matching the intended TurnZero skip behavior.
+
+### 11. Codex learning sensitivity works without false-positive learning
+
+S4 passed for Codex: the explicit "save this rule" prompt triggered `submit_candidate`. S7 also passed: a neutral PostgreSQL knowledge question retrieved relevant priors but did not trigger `submit_candidate`. Codex distinguished an explicit learning request from a normal technical question in this run.
+
 ---
 
 ## Test Architecture
@@ -152,14 +190,14 @@ tests/evals/
 
 **`OllamaAgent`** — local Ollama model with live TurnZero tool loop. Tests that the tool dispatch actually works end-to-end with a real (but cheap/local) model.
 
-**`RealCLIProjectAgent`** — spawns the real `claude` or `gemini` binary in an isolated project workspace containing TurnZero instruction files. Tests instruction-file injection without MCP.
+**`RealCLIProjectAgent`** — spawns the real `claude`, `gemini`, or `codex` binary in an isolated project workspace containing TurnZero instruction files. Tests instruction-file injection without MCP.
 
 ### Evidence sources
 
 Tool calls are observed via two complementary sources:
 
 - **Claude**: `--output-format stream-json --verbose` yields structured tool-use events. Used as primary source.
-- **All agents**: `~/.turnzero/tool_call_log.jsonl` records every MCP tool invocation with a timestamp, so tool calls are captured even when CLI output doesn't expose them. Used as primary source for Gemini and Codex.
+- **All agents**: `~/.turnzero/tool_call_log.jsonl` records every MCP tool invocation with a timestamp, so tool calls are captured even when CLI output doesn't expose them. Used as primary source for Gemini and Codex; Codex instruction-file tests use `AGENTS.md`.
 
 The benchmark merges both sources, deduplicating by tool name + timestamp proximity (5s window).
 
@@ -188,7 +226,7 @@ TURNZERO_RUN_EVALS=1 pytest tests/evals/ -m evals -s
 ## Limitations and Future Work
 
 - **N=1 per scenario** — single runs have high variance. Run with `--repeat 3` or higher for meaningful pass rates.
-- **S3/S6 require Ollama** — constraint adherence tests can only run when a local embedding model is available, since a unique per-run keyword is injected via a temp block that needs an index rebuild.
+- **S3/S6 require Ollama** — constraint adherence tests can only run when a local embedding model is available, since a unique per-run keyword is injected via a temp block that must be embedded.
 - **Gemini chitchat suppression** — Gemini calls `list_suggested_blocks` + `inject_block` on social acknowledgments even after the GEMINI.md guard was broadened (commit `63f8f98`). Root cause unknown — the instruction file may not be loaded at session start in non-interactive mode, or Gemini applies a different Turn 0 heuristic. Open issue.
 - **Claude synthetic-name skepticism (S3)** — Claude rejects UUID-flavored injected identifiers even when sourced from a legitimate Expert Prior. This is a model-level behavior, not a TurnZero bug. Use human-readable constraint names in real priors (as S6 demonstrates).
 - **No browser or multi-turn scenarios** — current tests are single-turn. Multi-turn scenarios (prior carries across messages) are planned for a future eval set.
