@@ -372,6 +372,10 @@ def stats() -> None:
     priors_week = sum(
         len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
     )
+    tokens_injected_total = sum(e.get("tokens_injected", 0) for e in entries)
+    tokens_injected_week = sum(
+        e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
+    )
 
     domain_counts: Counter[str] = Counter()
     for e in entries:
@@ -423,9 +427,15 @@ def stats() -> None:
             "Priors applied",
             f"[bold]{priors_total}[/bold]  [dim](+{priors_week} this week)[/dim]",
         )
+        if tokens_injected_total > 0:
+            usage.add_row(
+                "Context injected",
+                f"[bold]{tokens_injected_total:,}[/bold] tokens"
+                f"  [dim](+{tokens_injected_week:,} this week)[/dim]",
+            )
         usage.add_row(
             "Est. turns saved",
-            f"[bold green]~{est_turns}[/bold green]  [dim](~{int(est_tokens / 1000)}k tokens)[/dim]",
+            f"[bold green]~{est_turns}[/bold green]  [dim](~{int(est_tokens / 1000)}k tokens est. saved)[/dim]",
         )
         if top_domains:
             usage.add_row(

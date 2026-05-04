@@ -202,12 +202,14 @@ def list_suggested_blocks(
         )
 
     # Logging and telemetry
+    real_blocks = [s for s in formatted if s["block_id"] != "personal-priors-limit-warning"]
     if formatted:
         stats_svc.log_injection(
-            block_ids=[s["block_id"] for s in formatted if s["block_id"] != "personal-priors-limit-warning"],
-            domains=list({s["domain"] for s in formatted if s.get("domain")}),
+            block_ids=[s["block_id"] for s in real_blocks],
+            domains=list({s["domain"] for s in real_blocks if s.get("domain")}),
             prompt_words=len(prompt.split()),
             session_id=session_id,
+            tokens_injected=sum(s.get("context_weight", 0) for s in real_blocks),
         )
 
     personal_count = sum(1 for b in blocks.values() if b.tier == "personal")

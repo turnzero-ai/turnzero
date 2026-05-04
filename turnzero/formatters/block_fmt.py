@@ -78,4 +78,12 @@ def to_injection_text(block: Block) -> str:
         for anchor in block.doc_anchors:
             lines.append(f"- {anchor.url}")
 
+    lines.extend(
+        [
+            "",
+            "# PRIOR_METADATA",
+            f"~{block.context_weight} tokens · {block.slug} v{block.version}",
+        ]
+    )
+
     return "\n".join(lines)

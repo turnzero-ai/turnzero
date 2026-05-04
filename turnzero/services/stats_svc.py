@@ -16,6 +16,7 @@ def log_injection(
     domains: list[str],
     prompt_words: int,
     session_id: str | None = None,
+    tokens_injected: int = 0,
 ) -> None:
     """Append a session entry to hook_log.jsonl so compute() reflects MCP injections."""
     entry = json.dumps(
@@ -26,6 +27,7 @@ def log_injection(
             "prompt_words": prompt_words,
             "source": "mcp",
             "session_id": session_id,
+            "tokens_injected": tokens_injected,
         }
     )
     log_path = get_data_dir() / "hook_log.jsonl"
@@ -98,6 +100,11 @@ def compute() -> dict[str, Any]:
         for d in e.get("domains", []):
             domain_counts[d] += 1
 
+    tokens_injected_total = sum(e.get("tokens_injected", 0) for e in entries)
+    tokens_injected_week = sum(
+        e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
+    )
+
     est_turns = round(priors_total * 0.5)
     est_tokens = round(priors_total * 0.5 * 1500)
 
@@ -138,6 +145,10 @@ def compute() -> dict[str, Any]:
     return {
         "sessions": {"total": sessions_total, "this_week": sessions_week},
         "priors_injected": {"total": priors_total, "this_week": priors_week},
+        "context_tokens_injected": {
+            "total": tokens_injected_total,
+            "this_week": tokens_injected_week,
+        },
         "estimated_turns_saved": est_turns,
         "estimated_tokens_saved": est_tokens,
         "top_domains": [d for d, _ in domain_counts.most_common(5)],

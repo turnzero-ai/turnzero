@@ -188,6 +188,7 @@ def test_log_mcp_injection_writes_hook_log(tmp_path: Path) -> None:
             block_ids=["nextjs15-approuter-build"],
             domains=["nextjs"],
             prompt_words=12,
+            tokens_injected=480,
         )
         log_path = tmp_path / "hook_log.jsonl"
         assert log_path.exists()
@@ -196,6 +197,7 @@ def test_log_mcp_injection_writes_hook_log(tmp_path: Path) -> None:
         assert entry["domains"] == ["nextjs"]
         assert entry["prompt_words"] == 12
         assert entry["source"] == "mcp"
+        assert entry["tokens_injected"] == 480
         assert "ts" in entry
     finally:
         del os.environ["TURNZERO_DATA_DIR"]
@@ -407,6 +409,28 @@ def test_get_stats_includes_tool_call_counts(tmp_path: Path) -> None:
         assert result["tool_calls"]["total"] >= 2
         assert "list_suggested_blocks" in result["tool_calls"]["by_tool"]
         assert "inject_block" in result["tool_calls"]["by_tool"]
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+def test_inject_block_text_includes_token_metadata() -> None:
+    """inject_block output must include PRIOR_METADATA with token count (RET-3)."""
+    result = _inject_block("fastapi-async-build")
+    assert "# PRIOR_METADATA" in result
+    assert "tokens" in result
+    assert "fastapi-async-build" in result
+
+
+def test_get_stats_includes_context_tokens_injected(tmp_path: Path) -> None:
+    from turnzero.mcp_server import get_stats
+
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        _log_mcp_injection(["block-a"], ["fastapi"], 10, tokens_injected=800)
+        _log_mcp_injection(["block-b"], ["nextjs"], 8, tokens_injected=480)
+        result = get_stats()
+        assert "context_tokens_injected" in result
+        assert result["context_tokens_injected"]["total"] == 1280
     finally:
         del os.environ["TURNZERO_DATA_DIR"]
 
