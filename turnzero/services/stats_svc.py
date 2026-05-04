@@ -70,6 +70,43 @@ def log_tool_call(
         pass
 
 
+_INJECTION_TOOLS = {"list_suggested_blocks", "inject_block"}
+
+
+def _aggregate_tool_tokens(
+    entries: list[dict[str, Any]], week_ago: float
+) -> dict[str, Any]:
+    by_tool: Counter[str] = Counter()
+    tokens_in_total = tokens_out_total = tokens_in_week = tokens_out_week = 0
+    submit_tokens_total = injection_overhead_total = injection_overhead_week = 0
+    for e in entries:
+        tool = e.get("tool", "unknown")
+        by_tool[tool] += 1
+        tin, tout = e.get("tokens_in", 0), e.get("tokens_out", 0)
+        tokens_in_total += tin
+        tokens_out_total += tout
+        is_recent = e.get("ts", 0) >= week_ago
+        if is_recent:
+            tokens_in_week += tin
+            tokens_out_week += tout
+        if tool == "submit_candidate":
+            submit_tokens_total += tin + tout
+        if tool in _INJECTION_TOOLS:
+            injection_overhead_total += tin + tout
+            if is_recent:
+                injection_overhead_week += tin + tout
+    return {
+        "by_tool": by_tool,
+        "tokens_in_total": tokens_in_total,
+        "tokens_out_total": tokens_out_total,
+        "tokens_in_week": tokens_in_week,
+        "tokens_out_week": tokens_out_week,
+        "submit_tokens_total": submit_tokens_total,
+        "injection_overhead_total": injection_overhead_total,
+        "injection_overhead_week": injection_overhead_week,
+    }
+
+
 def compute() -> dict[str, Any]:
     """Return TurnZero usage and library statistics."""
     from turnzero.services.retrieval_svc import _load_active_blocks
@@ -127,20 +164,7 @@ def compute() -> dict[str, Any]:
 
     tool_calls_total = len(tool_entries)
     tool_calls_week = sum(1 for e in tool_entries if e.get("ts", 0) >= week_ago)
-
-    by_tool: Counter[str] = Counter()
-    tokens_in_total = tokens_out_total = tokens_in_week = tokens_out_week = 0
-    submit_tokens_total = 0
-    for e in tool_entries:
-        by_tool[e.get("tool", "unknown")] += 1
-        tin, tout = e.get("tokens_in", 0), e.get("tokens_out", 0)
-        tokens_in_total += tin
-        tokens_out_total += tout
-        if e.get("ts", 0) >= week_ago:
-            tokens_in_week += tin
-            tokens_out_week += tout
-        if e.get("tool") == "submit_candidate":
-            submit_tokens_total += tin + tout
+    tool_stats = _aggregate_tool_tokens(tool_entries, week_ago)
 
     return {
         "sessions": {"total": sessions_total, "this_week": sessions_week},
@@ -148,6 +172,12 @@ def compute() -> dict[str, Any]:
         "context_tokens_injected": {
             "total": tokens_injected_total,
             "this_week": tokens_injected_week,
+            "note": "estimated from context_weight (word_count x 4), not a real tokenizer",
+        },
+        "injection_overhead": {
+            "total": tool_stats["injection_overhead_total"],
+            "this_week": tool_stats["injection_overhead_week"],
+            "note": "MCP call tokens for list_suggested_blocks + inject_block (len(json) // 4)",
         },
         "estimated_turns_saved": est_turns,
         "estimated_tokens_saved": est_tokens,
@@ -166,13 +196,13 @@ def compute() -> dict[str, Any]:
         "tool_calls": {
             "total": tool_calls_total,
             "this_week": tool_calls_week,
-            "by_tool": dict(by_tool.most_common()),
+            "by_tool": dict(tool_stats["by_tool"].most_common()),
         },
         "token_cost": {
-            "total_in": tokens_in_total,
-            "total_out": tokens_out_total,
-            "total": tokens_in_total + tokens_out_total,
-            "this_week": tokens_in_week + tokens_out_week,
-            "submit_candidate_total": submit_tokens_total,
+            "total_in": tool_stats["tokens_in_total"],
+            "total_out": tool_stats["tokens_out_total"],
+            "total": tool_stats["tokens_in_total"] + tool_stats["tokens_out_total"],
+            "this_week": tool_stats["tokens_in_week"] + tool_stats["tokens_out_week"],
+            "submit_candidate_total": tool_stats["submit_tokens_total"],
         },
     }

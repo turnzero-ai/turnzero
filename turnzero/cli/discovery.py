@@ -377,6 +377,26 @@ def stats() -> None:
         e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
     )
 
+    # MCP call overhead: tokens_in + tokens_out for injection tools
+    _INJECTION_TOOLS = {"list_suggested_blocks", "inject_block"}
+    tool_log_path = data_dir / "tool_call_log.jsonl"
+    tool_entries_raw: list[dict[str, Any]] = []
+    if tool_log_path.exists():
+        import contextlib as _cl
+        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
+            with _cl.suppress(json.JSONDecodeError):
+                tool_entries_raw.append(json.loads(line))
+    overhead_total = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries_raw
+        if e.get("tool") in _INJECTION_TOOLS
+    )
+    overhead_week = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries_raw
+        if e.get("tool") in _INJECTION_TOOLS and e.get("ts", 0) >= week_ago
+    )
+
     domain_counts: Counter[str] = Counter()
     for e in entries:
         for d in e.get("domains", []):
@@ -429,9 +449,15 @@ def stats() -> None:
         )
         if tokens_injected_total > 0:
             usage.add_row(
-                "Context injected",
+                "Prior content added (~est)",
                 f"[bold]{tokens_injected_total:,}[/bold] tokens"
                 f"  [dim](+{tokens_injected_week:,} this week)[/dim]",
+            )
+        if overhead_total > 0:
+            usage.add_row(
+                "MCP call overhead (~est)",
+                f"[bold]{overhead_total:,}[/bold] tokens"
+                f"  [dim](+{overhead_week:,} this week)[/dim]",
             )
         usage.add_row(
             "Est. turns saved",

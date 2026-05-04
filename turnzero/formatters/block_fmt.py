@@ -82,7 +82,7 @@ def to_injection_text(block: Block) -> str:
         [
             "",
             "# PRIOR_METADATA",
-            f"~{block.context_weight} tokens · {block.slug} v{block.version}",
+            f"~{block.context_weight} tokens (prior content, est.) · {block.slug} v{block.version}",
         ]
     )
 
