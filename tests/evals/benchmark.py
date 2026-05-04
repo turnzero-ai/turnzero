@@ -52,6 +52,8 @@ TURNZERO_DATA_DIR = Path(
 TOOL_LOG = TURNZERO_DATA_DIR / "tool_call_log.jsonl"
 CANDIDATES_DIR = TURNZERO_DATA_DIR / "candidates"
 LOCAL_BLOCKS_DIR = TURNZERO_DATA_DIR / "blocks" / "local"
+INDEX_PATH = TURNZERO_DATA_DIR / "index.jsonl"
+LOCAL_INDEX_PATH = TURNZERO_DATA_DIR / "index_local.jsonl"
 
 CLAUDE_BINARY = shutil.which("claude") or "claude"
 GEMINI_BINARY = shutil.which("gemini") or "gemini"
@@ -421,9 +423,48 @@ def _rebuild_index() -> bool:
     return r.returncode == 0
 
 
+def _append_temp_block_to_index(path: Path) -> bool:
+    """Append one eval block instead of rebuilding the full user index."""
+    try:
+        from turnzero.repositories.index_repo import append_block
+
+        append_block(path, "local", INDEX_PATH, TURNZERO_DATA_DIR)
+        return True
+    except Exception:
+        return False
+
+
+def _remove_block_from_index_file(index_path: Path, block_id: str) -> None:
+    if not index_path.exists():
+        return
+
+    kept: list[str] = []
+    changed = False
+    for line in index_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError:
+            kept.append(line)
+            continue
+
+        if data.get("block_id") == block_id:
+            changed = True
+            continue
+        kept.append(line)
+
+    if changed:
+        tmp = index_path.with_suffix(".tmp")
+        tmp.write_text("\n".join(kept) + "\n", encoding="utf-8")
+        os.replace(tmp, index_path)
+
+
 def _remove_temp_block(path: Path) -> None:
+    block_id = path.stem
     path.unlink(missing_ok=True)
-    _rebuild_index()
+    _remove_block_from_index_file(INDEX_PATH, block_id)
+    _remove_block_from_index_file(LOCAL_INDEX_PATH, block_id)
 
 
 # ---------------------------------------------------------------------------
@@ -675,8 +716,8 @@ def run_scenario(
                 domain=scenario.get("temp_block_domain", "postgresql"),
                 realistic=is_realistic,
             )
-            if not _rebuild_index():
-                print("  ⚠ Index rebuild failed — skipping run")
+            if not _append_temp_block_to_index(temp_block_path):
+                print("  ⚠ Temp block index append failed — skipping run")
                 if temp_block_path:
                     temp_block_path.unlink(missing_ok=True)
                 continue
