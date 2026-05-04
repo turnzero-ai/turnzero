@@ -522,6 +522,11 @@ _similarity_override: Any = None
 DOMAIN_BOOST = 1.5  # Heavy boost for matching the detected domain
 INTENT_BOOST = 1.2  # Boost for matching intent
 PROJECT_AFFINITY_BOOST = 1.25  # Boost for blocks previously used in this project
+# Penalty when no domain is detected AND block has no keyword overlap with the prompt.
+# Prevents domain-specific blocks (e.g. nextjs-seo-review) from injecting into
+# unrelated sessions where detect_domain returns None (no filesystem or keyword signal).
+# 0.6x makes it impossible to clear the 0.70 threshold (would need raw score > 1.0).
+DOMAIN_OVERLAP_PENALTY = 0.6
 MAX_PERSONAL_WEIGHT = 2500  # Token budget for identity injection
 IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
 HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
@@ -604,6 +609,7 @@ def query(  # noqa: PLR0915
 
     exclude_block_ids = exclude_block_ids or set()
     prompt_embedding = embed(prompt)
+    prompt_lower = prompt.lower()
     intent = classify_intent(prompt)
     domain = detect_domain(prompt, project_root=project_root)
     use_override = _similarity_override is not None
@@ -645,6 +651,16 @@ def query(  # noqa: PLR0915
             boost *= PROJECT_AFFINITY_BOOST
 
         score = min(score * boost, 1.0)
+
+        # Keyword overlap gate: when no domain is detected, penalise blocks whose
+        # tags and domain name share zero words with the prompt. Prevents e.g.
+        # nextjs-seo-review from injecting into a security session where
+        # detect_domain() returns None (no filesystem or keyword signal).
+        if domain is None and entry.domain not in ("global",):
+            overlap_tokens = set(entry.tags) | {entry.domain}
+            if not any(tok in prompt_lower for tok in overlap_tokens):
+                score *= DOMAIN_OVERLAP_PENALTY
+
         scored.append((entry, score))
 
     scored.sort(key=lambda x: x[1], reverse=True)

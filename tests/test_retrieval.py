@@ -337,3 +337,98 @@ def test_query_high_confidence_block_ranks_first() -> None:
         results = query("build a fastapi app", index, blocks, threshold=0.0)
 
     assert results[0][0].slug == "high-conf"
+
+
+# ---------------------------------------------------------------------------
+# Keyword overlap gate (RET-2 overmatching fix)
+# ---------------------------------------------------------------------------
+
+
+def _make_entry_domain(
+    block_id: str,
+    vec: np.ndarray[Any, np.dtype[np.float32]],
+    domain: str,
+    tags: list[str],
+    intent: str = "build",
+) -> IndexEntry:
+    return IndexEntry(
+        block_id=block_id,
+        embedding=vec,
+        domain=domain,
+        intent=intent,
+        tags=tags,
+    )
+
+
+def _make_block_domain(
+    slug: str,
+    domain: str,
+    tags: list[str],
+    intent: str = "build",
+) -> Block:
+    return Block(
+        slug=slug,
+        hash="deadbeef",
+        version="1.0.0",
+        domain=domain,
+        intent=intent,
+        last_verified="2026-01-01",
+        tags=tags,
+        context_weight=100,
+        constraints=["Do something"],
+        anti_patterns=["Do not do something"],
+        doc_anchors=[],
+        confidence=1.0,
+        archived=False,
+    )
+
+
+def test_keyword_overlap_gate_blocks_unrelated_domain_block() -> None:
+    """nextjs block must not inject into a prompt with no nextjs keywords (RET-2 regression)."""
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [_make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])]
+    blocks = {"nextjs-seo-review": _make_block_domain("nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"])}
+
+    # Prompt has no nextjs/seo/web keywords → detect_domain returns None → gate fires
+    prompt = "harden my python service against unauthorised access"
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query(prompt, index, blocks, threshold=0.70, strict_intent=False)
+
+    slugs = [b.slug for b, _ in results]
+    assert "nextjs-seo-review" not in slugs
+
+
+def test_keyword_overlap_gate_allows_matching_domain_block() -> None:
+    """nextjs block must still inject when the prompt contains a nextjs keyword."""
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [_make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])]
+    blocks = {"nextjs-seo-review": _make_block_domain("nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"])}
+
+    prompt = "review the SEO setup in my nextjs app"
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query(prompt, index, blocks, threshold=0.70, strict_intent=False)
+
+    slugs = [b.slug for b, _ in results]
+    assert "nextjs-seo-review" in slugs
+
+
+def test_keyword_overlap_gate_does_not_penalise_global_blocks() -> None:
+    """Global (personal) blocks must not be penalised by the overlap gate.
+
+    Uses a prompt with lexical overlap matching the block's tags so the
+    test-mode similarity scorer produces a score above the 0.70 threshold.
+    If the gate incorrectly fired, the 0.6x penalty would push the score
+    below threshold and the block would disappear from results.
+    """
+    vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
+    index = [_make_entry_domain("my-personal-prior", vec, "global", ["concise", "style"])]
+    blocks = {"my-personal-prior": _make_block_domain("my-personal-prior", "global", ["concise", "style"])}
+
+    # detect_domain returns None; no tag overlap gate should fire for global blocks.
+    # Prompt has lexical overlap ("concise", "style") so test-mode scorer clears threshold.
+    prompt = "use a concise style when writing code"
+    with patch("turnzero.embed.embed", return_value=vec):
+        results = query(prompt, index, blocks, threshold=0.70, strict_intent=False)
+
+    slugs = [b.slug for b, _ in results]
+    assert "my-personal-prior" in slugs
