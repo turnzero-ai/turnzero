@@ -107,6 +107,7 @@ def list_suggested_blocks(
     strict_intent: bool = True,
     project_root: Path | None = None,
     session_id: str | None = None,
+    inject_all: bool = False,
 ) -> list[dict[str, Any]]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
     from turnzero.retrieval import get_identity_context
@@ -116,9 +117,16 @@ def list_suggested_blocks(
     index = _load_active_index()
     exclude_ids = get_session_injections(session_id) if session_id else set()
 
-    personal_results, limit_exceeded = get_identity_context(
-        blocks, project_root=project_root, exclude_ids=exclude_ids
-    )
+    # WF-2: skip personal priors on Turn N — they were already injected this session.
+    # Turn 0 = no injections recorded yet; Turn N = at least one injection exists.
+    is_turn_0 = not exclude_ids
+    if is_turn_0:
+        personal_results, limit_exceeded = get_identity_context(
+            blocks, project_root=project_root, exclude_ids=exclude_ids
+        )
+    else:
+        personal_results, limit_exceeded = [], False
+
     personal_weight = sum(b.context_weight for b, _ in personal_results)
 
     expert_results = _query(
@@ -133,6 +141,8 @@ def list_suggested_blocks(
         exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
     )
 
+    turn = "first" if is_turn_0 else "subsequent"
+
     _PREVIEW_WORDS = 6
 
     def _expert_preview(block: Any) -> str:
@@ -142,8 +152,8 @@ def list_suggested_blocks(
             "…" if len(words) > _PREVIEW_WORDS else ""
         )
 
-    formatted: list[dict[str, Any]] = [
-        {
+    def _build_entry(block: Block, score: float, is_personal: bool) -> dict[str, Any]:
+        entry: dict[str, Any] = {
             "block_id": block.slug,
             "score": round(score, 3),
             "domain": block.domain,
@@ -151,20 +161,28 @@ def list_suggested_blocks(
             "tags": block.tags,
             "context_weight": block.context_weight,
             "stale": block.is_stale(),
-            "preview": "[personal prior — call inject_block to read]",
+            "turn": turn,
+            "preview": (
+                "[personal prior — call inject_block to read]"
+                if is_personal
+                else _expert_preview(block)
+            ),
         }
+        # WF-3: inline full text and record injection when inject_all=True
+        if inject_all:
+            entry["full_text"] = block_fmt.to_injection_text(block)
+            if session_id:
+                record_session_injection(session_id, block.slug)
+            if project_root:
+                record_project_affinity(project_root, block.slug)
+            track_block_injected(domain=block.domain, tier=block.tier or "local")
+        return entry
+
+    formatted: list[dict[str, Any]] = [
+        _build_entry(block, score, is_personal=True)
         for block, score in personal_results
     ] + [
-        {
-            "block_id": block.slug,
-            "score": round(score, 3),
-            "domain": block.domain,
-            "intent": block.intent,
-            "tags": block.tags,
-            "context_weight": block.context_weight,
-            "stale": block.is_stale(),
-            "preview": _expert_preview(block),
-        }
+        _build_entry(block, score, is_personal=False)
         for block, score in expert_results
     ]
 
@@ -178,6 +196,7 @@ def list_suggested_blocks(
                 "tags": ["warning"],
                 "context_weight": 0,
                 "stale": False,
+                "turn": turn,
                 "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
             }
         )
@@ -263,6 +282,5 @@ def reset_session(session_id: str | None = None) -> str:
     track_session_summary(session_id=session_id)
     if session_id:
         clear_session_injections(session_id)
-        return f"✓ TurnZero session memory cleared for {session_id}."
     return "✓ TurnZero session memory cleared."
 

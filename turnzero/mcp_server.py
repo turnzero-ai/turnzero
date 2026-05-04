@@ -14,6 +14,8 @@ Add to Claude Code .claude/settings.json:
 
 from __future__ import annotations
 
+import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +24,36 @@ from mcp.server.fastmcp import FastMCP
 from turnzero.config import get_data_dir
 from turnzero.services import candidate_svc, retrieval_svc, stats_svc
 from turnzero.validators import safe_path, validate_session_name
+
+# ---------------------------------------------------------------------------
+# WF-1: Process-scoped session identity
+# ---------------------------------------------------------------------------
+# Generated once at server startup; used when the agent passes no session_id.
+# Rotated automatically after _SESSION_TTL to prevent cross-conversation bleed
+# when the MCP process spans multiple user conversations.
+# Explicitly rotated by reset_session() so agents that call it get a clean slate.
+
+_SESSION_TTL: float = 4 * 3600.0  # 4 hours
+
+# Mutable container avoids module-level reassignment (PLW0603).
+_proc_session: dict[str, float | str] = {
+    "id": str(uuid.uuid4()),
+    "started": time.time(),
+}
+
+
+def _effective_session_id(caller_id: str | None) -> str:
+    if caller_id:
+        return caller_id
+    if time.time() - float(_proc_session["started"]) > _SESSION_TTL:
+        _proc_session["id"] = str(uuid.uuid4())
+        _proc_session["started"] = time.time()
+    return str(_proc_session["id"])
+
+
+def _rotate_proc_session() -> None:
+    _proc_session["id"] = str(uuid.uuid4())
+    _proc_session["started"] = time.time()
 
 # ---------------------------------------------------------------------------
 # Re-exports for test compat (tests import these names from mcp_server)
@@ -69,35 +101,46 @@ mcp = FastMCP(
 
 @mcp.tool()
 def list_suggested_blocks(
-    prompt: str, session_id: str | None = None
+    prompt: str,
+    session_id: str | None = None,
+    inject_all: bool = False,
 ) -> list[dict[str, Any]]:
     """Suggest Expert Priors relevant to an opening developer prompt.
 
     Returns Personal Priors (always-on identity) and relevant Expert Priors.
     Call this at the start of a session before the user's first question.
 
-    IMPORTANT: preview text is for relevance filtering ONLY — it is intentionally
-    truncated and incomplete. You MUST call inject_block for every suggested block
-    before using or applying any prior content. Never infer or apply constraints
-    from a preview without calling inject_block first.
+    Each result includes a "turn" field: "first" means Personal Priors are
+    included (inject them now); "subsequent" means they were already injected
+    this session and are omitted — only new Expert Priors are returned.
+
+    Set inject_all=True to receive full block text inline ("full_text" field)
+    and skip individual inject_block calls. Reduces N+1 round trips to 1.
+
+    IMPORTANT: when inject_all=False (default), preview text is for relevance
+    filtering ONLY — truncated and incomplete. Call inject_block for every
+    suggested block before applying any prior content.
 
     Args:
         prompt: The user's opening prompt or session description.
         session_id: Optional session identifier for deduplication.
+        inject_all: If True, include full block text inline and record all
+            injections immediately — no inject_block calls needed.
 
     Returns:
         List of Expert Prior suggestions, ranked by relevance score.
         Each item has: block_id, score, domain, intent, tags,
-        context_weight, stale, preview.
+        context_weight, stale, preview, turn.
         Returns a single error entry if no embedding backend is configured.
     """
+    sid = _effective_session_id(session_id)
     try:
         suggestions = retrieval_svc.list_suggested_blocks(
-            prompt, project_root=Path.cwd(), session_id=session_id
+            prompt, project_root=Path.cwd(), session_id=sid, inject_all=inject_all
         )
         stats_svc.log_tool_call(
             "list_suggested_blocks",
-            {"prompt": prompt, "session_id": session_id},
+            {"prompt": prompt, "session_id": sid, "inject_all": inject_all},
             suggestions,
         )
         return suggestions
@@ -155,12 +198,13 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         Formatted markdown Expert Prior, ready to inject before the
         first AI response.
     """
+    sid = _effective_session_id(session_id)
     result = retrieval_svc.inject_block(
-        block_id, session_id=session_id, project_root=Path.cwd()
+        block_id, session_id=sid, project_root=Path.cwd()
     )
     stats_svc.log_tool_call(
         "inject_block",
-        {"block_id": block_id, "session_id": session_id},
+        {"block_id": block_id, "session_id": sid},
         result,
         meta={"block_id": block_id},
     )
@@ -192,7 +236,11 @@ def reset_session(session_id: str | None = None) -> str:
     Portable Identity (Personal Priors) and relevant Expert Priors are
     re-suggested in the next turn.
     """
-    return retrieval_svc.reset_session(session_id)
+    sid = _effective_session_id(session_id)
+    result = retrieval_svc.reset_session(sid)
+    if not session_id:
+        _rotate_proc_session()
+    return result
 
 
 

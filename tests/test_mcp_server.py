@@ -428,3 +428,91 @@ def test_get_stats_includes_token_cost(tmp_path: Path) -> None:
         assert result["token_cost"]["total_out"] >= 0
     finally:
         del os.environ["TURNZERO_DATA_DIR"]
+
+
+# ---------------------------------------------------------------------------
+# WF-1: process-scoped auto session_id
+# ---------------------------------------------------------------------------
+
+
+def test_effective_session_id_returns_caller_id_when_provided() -> None:
+    from turnzero.mcp_server import _effective_session_id
+    assert _effective_session_id("my-session") == "my-session"
+
+
+def test_effective_session_id_returns_stable_proc_id_when_none() -> None:
+    from turnzero.mcp_server import _effective_session_id
+    id1 = _effective_session_id(None)
+    id2 = _effective_session_id(None)
+    assert id1 == id2
+    assert len(id1) == 36  # UUID4 format
+
+
+def test_rotate_proc_session_changes_id() -> None:
+    from turnzero.mcp_server import _effective_session_id, _rotate_proc_session
+    before = _effective_session_id(None)
+    _rotate_proc_session()
+    after = _effective_session_id(None)
+    assert before != after
+
+
+# ---------------------------------------------------------------------------
+# WF-2: turn field and Turn 0 vs Turn N personal prior suppression
+# ---------------------------------------------------------------------------
+
+
+def test_list_suggested_blocks_turn_field_present() -> None:
+    results = _list_suggested_blocks("build a fastapi app with postgres")
+    real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
+    assert all("turn" in r for r in real)
+
+
+def test_list_suggested_blocks_first_turn_without_session() -> None:
+    """No session_id → no exclude_ids → always Turn 0."""
+    results = _list_suggested_blocks("build a fastapi app with postgres")
+    real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
+    assert all(r["turn"] == "first" for r in real)
+
+
+def test_list_suggested_blocks_subsequent_turn_skips_personal(tmp_path: Path) -> None:
+    """After inject_block records an injection, next list call is Turn N."""
+    import os
+    from turnzero.mcp_server import inject_block
+    from turnzero.state import record_session_injection
+
+    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+    try:
+        sid = "wf2-test-session"
+        # Seed a fake injection so exclude_ids is non-empty
+        record_session_injection(sid, "fake-prior-already-injected")
+
+        results = _list_suggested_blocks(
+            "build a fastapi app with postgres", session_id=sid
+        )
+        real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
+        # All results should be Turn N; no personal priors in results
+        assert all(r["turn"] == "subsequent" for r in real)
+        personal = [r for r in real if r.get("preview", "").startswith("[personal")]
+        assert personal == []
+    finally:
+        del os.environ["TURNZERO_DATA_DIR"]
+
+
+# ---------------------------------------------------------------------------
+# WF-3: inject_all flag
+# ---------------------------------------------------------------------------
+
+
+def test_list_suggested_blocks_inject_all_includes_full_text() -> None:
+    results = _list_suggested_blocks(
+        "build a fastapi app with postgres", inject_all=True
+    )
+    real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
+    assert len(real) > 0
+    assert all("full_text" in r for r in real)
+    assert all(isinstance(r["full_text"], str) and len(r["full_text"]) > 0 for r in real)
+
+
+def test_list_suggested_blocks_no_inject_all_has_no_full_text() -> None:
+    results = _list_suggested_blocks("build a fastapi app with postgres")
+    assert all("full_text" not in r for r in results)
