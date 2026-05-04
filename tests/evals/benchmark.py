@@ -531,11 +531,12 @@ def _run_codex(
         [
             CODEX_BINARY,
             "exec",
-            "-p",
-            prompt,
             "--dangerously-bypass-approvals-and-sandbox",
+            "--json",
+            prompt,
         ],
         capture_output=True,
+        stdin=subprocess.DEVNULL,
         text=True,
         timeout=timeout,
         check=False,
@@ -546,6 +547,7 @@ def _run_codex(
         return "", duration, res.stderr[:300]
 
     return res.stdout, duration, ""
+
 
 
 # ---------------------------------------------------------------------------
