@@ -4,20 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.8.14** (PyPI live).
+TurnZero is at **v0.10.0** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 143 Expert Priors across 37 domains shipped in wheel
-- 281 tests passing; Hit Rate@3 = 0.778 on validation set
+- 296 tests passing; Hit Rate@3 = 0.778 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
 - Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
-- Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini/Codex, 7 scenarios
+- Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini, 7 scenarios
 
 ## What TurnZero Does
 

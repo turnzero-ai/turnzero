@@ -62,7 +62,9 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
-- [x] v0.8.14 — Agentic benchmark harness (Claude/Gemini/Codex, 7 scenarios); chitchat skip rule improved; AGENTS.md added for Codex.
+- [x] v0.10.0 — Structural session dedup (WF-1/2/3); setup live injection demo (RET-1); overmatching keyword-overlap gate (RET-2); BENCHMARK.md at repo root.
+- [x] v0.9.0 — DDD architecture refactor; mtime block cache; feedback system.
+- [x] v0.8.14 — Agentic benchmark harness (Claude/Gemini, 7 scenarios); chitchat skip rule improved; AGENTS.md added for Codex.
 - [x] v0.8.12 — Fast setup via bundled index; no Ollama required on first install.
 - [x] v0.8.8 — Security hardening: auto-approve guard (SEC-1), path traversal protection (SEC-2).
 - [x] v0.8.6 — Anonymous telemetry (PostHog EU, opt-out), incremental indexing, atomic index writes.

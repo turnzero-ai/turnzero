@@ -477,7 +477,7 @@ def test_list_suggested_blocks_first_turn_without_session() -> None:
 def test_list_suggested_blocks_subsequent_turn_skips_personal(tmp_path: Path) -> None:
     """After inject_block records an injection, next list call is Turn N."""
     import os
-    from turnzero.mcp_server import inject_block
+
     from turnzero.state import record_session_injection
 
     os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
