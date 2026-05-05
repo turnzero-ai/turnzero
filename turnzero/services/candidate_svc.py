@@ -15,6 +15,7 @@ from turnzero.config import (
     get_index_path,
 )
 from turnzero.repositories.index_repo import append_block, build
+from turnzero.safety import validate_candidate
 from turnzero.validators import safe_path, validate_domain, validate_slug
 
 _AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {
@@ -86,6 +87,40 @@ def submit(
     """Persist a candidate block and return (message, input_snapshot) for logging."""
     validate_slug(block_id)
     validate_domain(domain)
+
+    safety = validate_candidate(constraints, anti_patterns or [], rationale, reason)
+    if not safety.safe:
+        import datetime
+
+        quarantine_dir = get_data_dir() / "quarantine"
+        quarantine_dir.mkdir(parents=True, exist_ok=True)
+        quarantine_path = safe_path(quarantine_dir, f"{block_id}.yaml")
+        quarantine_block: dict[str, Any] = {
+            "slug": block_id,
+            "quarantine_reason": safety.reason_code,
+            "quarantine_detail": safety.detail,
+            "domain": domain,
+            "intent": intent,
+            "constraints": constraints,
+            "anti_patterns": anti_patterns or [],
+            "submitted_at": datetime.date.today().isoformat(),
+        }
+        with open(quarantine_path, "w", encoding="utf-8") as f:
+            yaml.dump(quarantine_block, f, allow_unicode=True, sort_keys=False)
+        quarantine_snapshot: dict[str, Any] = {
+            "block_id": block_id,
+            "domain": domain,
+            "intent": intent,
+            "constraints": constraints,
+            "anti_patterns": anti_patterns or [],
+            "reason": reason,
+            "quarantine_reason": safety.reason_code,
+        }
+        return (
+            f"⚠ Candidate '{block_id}' was quarantined (reason: {safety.reason_code}). "
+            f"{safety.detail} "
+            f"It will NOT be injected into any session."
+        ), quarantine_snapshot
 
     import datetime
 
