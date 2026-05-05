@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
@@ -226,3 +227,59 @@ def test_setup_codex_agents_md_skips_if_no_codex_dir(tmp_path: Path) -> None:
     con = Console(quiet=True)
     _setup_codex_agents_md(force=False, con=con, codex_dir=tmp_path / ".codex-absent")
     assert not (tmp_path / ".codex-absent" / "AGENTS.md").exists()
+
+
+# ---------------------------------------------------------------------------
+# query --explain (RET-4)
+# ---------------------------------------------------------------------------
+
+
+def test_query_explain_chitchat_fails_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Chitchat prompt must show impl gate failure, not inject blocks."""
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["query", "thanks that looks great", "--explain"])
+    assert result.exit_code == 0
+    assert "Explain" in result.output
+    assert "✗ failed" in result.output
+    assert "No blocks inject" in result.output
+    assert "Matched" not in result.output
+
+
+def test_query_explain_impl_prompt_passes_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Technical prompt must show gate passed and intent/domain detection."""
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["query", "build a fastapi endpoint", "--explain"])
+    assert result.exit_code == 0
+    assert "Explain" in result.output
+    assert "✓ passed" in result.output
+    assert "Intent detected" in result.output
+    assert "Domain detected" in result.output
+    assert "Threshold" in result.output
+
+
+def test_query_explain_shows_outcome_section(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explain output shows either matched blocks or 'No Expert Priors' message."""
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["query", "build a fastapi endpoint", "--explain"])
+    assert result.exit_code == 0
+    has_matched = "Matched" in result.output
+    has_no_match = "No Expert Priors above threshold" in result.output
+    assert has_matched or has_no_match
+
+
+def test_query_no_match_hints_explain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When no blocks match without --explain, output hints to use --explain."""
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    # Nonsense prompt has zero lexical overlap with any block → all scores below threshold.
+    # Empty data dir → no personal priors. Combined: results is empty.
+    result = runner.invoke(app, ["query", "xyzzy qwerty plonk frobnicate"])
+    assert result.exit_code == 0
+    assert "--explain" in result.output

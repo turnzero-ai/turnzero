@@ -64,6 +64,91 @@ def _display_preview(results: list[tuple[Block, float]], threshold: float) -> No
     )
 
 
+def _print_explain(
+    prompt: str,
+    index: list[Any],
+    blocks: dict[str, Any],
+    identity_blocks: list[tuple[Any, float]],
+    identity_weight: int,
+    threshold: float,
+    top_k: int,
+    context_weight: int,
+    strict_intent: bool,
+) -> None:
+    from turnzero.retrieval import (  # noqa: I001
+        classify_intent,
+        detect_domain,
+        is_implementation_prompt,
+        query as _query,
+    )
+
+    intent = classify_intent(prompt)
+    domain = detect_domain(prompt, project_root=Path.cwd())
+    is_impl = is_implementation_prompt(prompt, project_root=Path.cwd())
+
+    console.print("\n[bold]TurnZero — Explain[/bold]\n")
+
+    if not is_impl:
+        console.print(
+            "  Impl gate:        [red]✗ failed[/red] — prompt is chitchat or not substantive"
+        )
+        console.print("\n  [dim]No blocks inject for this prompt. This is expected.[/dim]\n")
+        return
+
+    console.print(f"  Intent detected:  [cyan]{intent}[/cyan]")
+    domain_label = f"[cyan]{domain}[/cyan]" if domain else "[dim]none detected[/dim]"
+    console.print(f"  Domain detected:  {domain_label}")
+    console.print("  Impl gate:        [green]✓ passed[/green]")
+    console.print(f"  Threshold:        {threshold}")
+
+    if identity_blocks:
+        console.print(f"\n  [magenta]Personal Priors[/magenta] ({len(identity_blocks)} matched):")
+        for block, _ in identity_blocks:
+            console.print(f"    • {block.slug}  [dim]{block.context_weight} tokens[/dim]")
+    else:
+        console.print("\n  [dim]Personal Priors: none configured[/dim]")
+
+    # Run with no threshold + no intent filter to surface all candidates including near-misses
+    all_candidates = _query(
+        prompt,
+        index,
+        blocks,
+        top_k=max(top_k, 15),
+        threshold=0.0,
+        context_weight=999_999,
+        strict_intent=False,
+        project_root=Path.cwd(),
+        exclude_block_ids={b.slug for b, _ in identity_blocks},
+    )
+
+    above = [(b, s) for b, s in all_candidates if s >= threshold]
+    near_misses = [
+        (b, s)
+        for b, s in all_candidates
+        if s < threshold and s >= threshold * 0.70
+    ][:5]
+
+    if above:
+        console.print(f"\n  [green]Matched (score ≥ {threshold}):[/green]")
+        for block, score in above:
+            intent_tag = f"  [dim]intent: {block.intent}[/dim]" if block.intent != intent else ""
+            console.print(
+                f"    [green]✓[/green] {block.slug:<42} score: {score:.3f}  weight: {block.context_weight}{intent_tag}"
+            )
+    else:
+        console.print(f"\n  [yellow]No Expert Priors above threshold ({threshold}).[/yellow]")
+
+    if near_misses:
+        console.print(f"\n  [dim]Near misses (score < {threshold}, top {len(near_misses)}):[/dim]")
+        for block, score in near_misses:
+            gap = threshold - score
+            console.print(
+                f"    [dim]✗ {block.slug:<42} score: {score:.3f}  (gap: -{gap:.3f})[/dim]"
+            )
+
+    console.print()
+
+
 @discovery_app.command()
 def query(
     prompt: str = typer.Argument(..., help="Opening prompt to find blocks for."),
@@ -90,6 +175,9 @@ def query(
     ),
     session: str = typer.Option(
         "default", "--session", "-s", help="Session ID for cumulative ROI tracking."
+    ),
+    explain: bool = typer.Option(
+        False, "--explain", "-e", help="Show why blocks did or did not inject."
     ),
 ) -> None:
     """Suggest Expert Priors for an opening prompt."""
@@ -124,6 +212,20 @@ def query(
     )
     identity_weight = sum(b.context_weight for b, _ in identity_blocks)
 
+    if explain:
+        _print_explain(
+            prompt=prompt,
+            index=index,
+            blocks=blocks,
+            identity_blocks=identity_blocks,
+            identity_weight=identity_weight,
+            threshold=threshold,
+            top_k=top_k,
+            context_weight=context_weight,
+            strict_intent=strict_intent,
+        )
+        return
+
     # 2. Expert Prior context (semantic)
     expert_results = _query(
         prompt,
@@ -142,6 +244,7 @@ def query(
 
     if not results:
         console.print("\n[dim]No blocks found for this prompt.[/dim]\n")
+        console.print("[dim]Run with --explain to diagnose why.[/dim]\n")
         return
 
     # Load session analytics
