@@ -71,6 +71,9 @@ class EvalEnvironment:
             # Hash-based embeddings: fast, deterministic, no Ollama needed for index builds.
             # Retrieval uses lexical similarity in test mode (retrieval.py:_test_similarity).
             "TURNZERO_TEST_EMBEDDINGS": "1",
+            # Suppress telemetry in all eval runs — prevents eval UUIDs from polluting
+            # PostHog cohorts and inflating real-user counts.
+            "TURNZERO_TELEMETRY": "0",
             "PYTHONPATH": str(Path(os.getcwd())),
         }
 

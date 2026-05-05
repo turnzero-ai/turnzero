@@ -28,6 +28,8 @@ _pending_tasks: set[asyncio.Task[None]] = set()
 def _is_enabled() -> bool:
     if os.environ.get("TURNZERO_TELEMETRY", "").strip() in ("0", "false", "off"):
         return False
+    if os.environ.get("TURNZERO_TEST_EMBEDDINGS", "").strip() in ("1", "true"):
+        return False
     from turnzero.config import get_data_dir, load_telemetry_config
 
     return bool(load_telemetry_config(get_data_dir()).get("enabled", True))

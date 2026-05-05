@@ -185,3 +185,36 @@ def test_track_event_silent_on_network_error() -> None:
         from turnzero.telemetry import track_event
 
         track_event("setup_completed", {})  # must not raise
+
+
+def test_telemetry_disabled_when_test_embeddings_set() -> None:
+    """TURNZERO_TEST_EMBEDDINGS=1 must suppress telemetry — prevents eval runs from
+    polluting PostHog cohorts with synthetic UUIDs."""
+    with patch(
+        "os.environ",
+        {
+            **__import__("os").environ,
+            "TURNZERO_TEST_EMBEDDINGS": "1",
+            "TURNZERO_TELEMETRY": "1",  # explicitly enabled — must still be suppressed
+        },
+    ):
+        from turnzero.telemetry import _is_enabled
+
+        assert _is_enabled() is False
+
+
+def test_telemetry_not_suppressed_without_test_embeddings(tmp_path: Path) -> None:
+    """Without TURNZERO_TEST_EMBEDDINGS, telemetry follows config normally."""
+    clean_env = {
+        k: v
+        for k, v in __import__("os").environ.items()
+        if k not in ("TURNZERO_TEST_EMBEDDINGS", "TURNZERO_TELEMETRY")
+    }
+    with (
+        patch("os.environ", clean_env),
+        patch("turnzero.config.load_telemetry_config", return_value={"enabled": True}),
+        patch("turnzero.config.get_data_dir", return_value=tmp_path),
+    ):
+        from turnzero.telemetry import _is_enabled
+
+        assert _is_enabled() is True

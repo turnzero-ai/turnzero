@@ -1036,6 +1036,10 @@ def _print_plain(
 
 
 def main() -> None:
+    # Suppress telemetry for all benchmark runs — prevents eval UUIDs from polluting
+    # PostHog cohorts. Inherited by all subprocess-spawned CLIs and MCP servers.
+    os.environ["TURNZERO_TELEMETRY"] = "0"
+
     parser = argparse.ArgumentParser(
         description="TurnZero agentic benchmark — tests real AI CLIs against live library"
     )
