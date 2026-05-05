@@ -70,12 +70,6 @@ turnzero setup
 
 MCP server is registered globally. Open a new session — Personal Priors apply once at session start, Expert Priors add when relevant.
 
-```bash
-# Optional: install the UserPromptSubmit hook for guaranteed injection
-# regardless of model behaviour
-turnzero setup --with-hook
-```
-
 ### Claude Code (manual)
 
 ```bash

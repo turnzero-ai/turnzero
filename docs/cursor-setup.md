@@ -12,7 +12,7 @@ Cursor begins its response with:
 
 ## Prerequisites
 
-- TurnZero installed: `pip install turnzero`
+- TurnZero installed: `pipx install turnzero`
 - Index built: `turnzero index build`
 - Cursor 0.40+ (MCP support required)
 

@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.10.1** (PyPI live).
+TurnZero is at **v0.11.0** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 143 Expert Priors across 37 domains shipped in wheel
-- 296 tests passing; Hit Rate@3 = 0.778 on validation set
+- 328 tests passing; Hit Rate@3 = 0.852 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
@@ -89,7 +89,7 @@ After any strategic decision, architectural change, or significant implementatio
 - **Update `internal/PROJECT_STATE.md`** when tickets are completed or new debt is found.
 - **Update `internal/ARCHITECTURE.md`** when any of the following change: module list, data flow, MCP tool surface, block schema, index structure, embedding backend, source tiers, scoring logic, observability files, or release pipeline. Keep ASCII diagrams accurate.
 - **Update [ROADMAP.md](ROADMAP.md)** if high-level phases or milestones changed.
-- Update the relevant memory file(s) in `~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/`
+- Update the relevant memory file(s) in your Claude project memory directory
 - Update `CLAUDE.md` if project status, commands, or constraints changed.
 Do this during the session, not as an afterthought at the end.
 
@@ -167,7 +167,7 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 4. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
 5. Version bumped in `pyproject.toml` in its own commit
 6. Tagged: `git tag vX.Y.Z`
-7. Confirm with Darijo before running `hatch publish`
+7. Confirm with maintainer before running `hatch publish`
 
 ### Doc sync checklist (every release)
 - `SECURITY.md` — update supported version table to match new version

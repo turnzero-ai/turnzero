@@ -311,7 +311,6 @@ class TestValidateCandidate:
 
     def test_quarantine_blocks_auto_approve(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """auto_approve=True must NOT bypass the safety validator."""
-        import os
         data_dir = tmp_path / "data"
         data_dir.mkdir()
         monkeypatch.setenv("TURNZERO_DATA_DIR", str(data_dir))
