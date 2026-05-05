@@ -592,4 +592,13 @@ def stats() -> None:
         lib.add_row("Index", "[yellow]not built[/yellow]")
 
     console.print(lib)
-    console.print()
+
+    from turnzero.upgrade import check_for_upgrade
+
+    latest, is_newer = check_for_upgrade(data_dir)
+    if is_newer:
+        console.print(
+            f"[dim]TurnZero {latest} available — pipx upgrade turnzero[/dim]\n"
+        )
+    else:
+        console.print()
