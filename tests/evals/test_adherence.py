@@ -245,8 +245,7 @@ def test_gemini_cli_instruction_adherence() -> None:
         )
 
     assert "vault_conn" in response, (
-        f"Expected 'vault_conn' in Gemini response.\n"
-        f"Response:\n{response[:1500]}"
+        f"Expected 'vault_conn' in Gemini response.\nResponse:\n{response[:1500]}"
     )
 
 
@@ -272,8 +271,7 @@ def test_claude_cli_instruction_adherence() -> None:
         )
 
     assert "vault_conn" in response, (
-        f"Expected 'vault_conn' in Claude response.\n"
-        f"Response:\n{response[:1500]}"
+        f"Expected 'vault_conn' in Claude response.\nResponse:\n{response[:1500]}"
     )
 
 
@@ -299,6 +297,5 @@ def test_codex_cli_instruction_adherence() -> None:
         )
 
     assert "vault_conn" in response, (
-        f"Expected 'vault_conn' in Codex response.\n"
-        f"Response:\n{response[:1500]}"
+        f"Expected 'vault_conn' in Codex response.\nResponse:\n{response[:1500]}"
     )

@@ -92,7 +92,10 @@ def test_build_leaves_old_index_intact_on_embed_failure(tmp_path: Path) -> None:
     index_path.write_text(original_content)
 
     with (
-        patch("turnzero.repositories.index_repo.embed", side_effect=RuntimeError("ollama timeout")),
+        patch(
+            "turnzero.repositories.index_repo.embed",
+            side_effect=RuntimeError("ollama timeout"),
+        ),
         pytest.raises(RuntimeError, match="ollama timeout"),
     ):
         from turnzero.index import build

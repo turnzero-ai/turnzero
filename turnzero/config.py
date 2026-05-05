@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -15,7 +16,8 @@ _DEFAULTS: dict[str, dict[str, bool]] = {
         "community": True,
         "team": False,
         "personal": True,
-    }
+    },
+    "harvest_opt_in": False,
 }
 
 
@@ -70,14 +72,20 @@ def get_bundled_blocks_dir() -> Path:
     return get_blocks_dir()
 
 
-def load_config(data_dir: Path) -> dict[str, dict[str, bool]]:
+def load_config(data_dir: Path) -> dict[str, Any]:
     path = data_dir / "config.yaml"
     if not path.exists():
-        return {k: dict(v) for k, v in _DEFAULTS.items()}
+        return {
+            k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAULTS.items()
+        }
     raw = yaml.safe_load(path.read_text()) or {}
-    result = {k: dict(v) for k, v in _DEFAULTS.items()}
-    if "sources" in raw:
-        result["sources"].update(raw["sources"])
+    result = {k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAULTS.items()}
+    for k, v in raw.items():
+        if k in result:
+            if isinstance(result[k], dict) and isinstance(v, dict):
+                result[k].update(v)
+            else:
+                result[k] = v
     return result
 
 

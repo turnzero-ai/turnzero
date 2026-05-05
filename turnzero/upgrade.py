@@ -21,6 +21,7 @@ def _installed_version() -> str:
 
 def _is_newer(latest: str, current: str) -> bool:
     try:
+
         def _parts(v: str) -> tuple[int, ...]:
             return tuple(int(x) for x in v.split(".")[:3])
 

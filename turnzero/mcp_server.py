@@ -55,6 +55,7 @@ def _rotate_proc_session() -> None:
     _proc_session["id"] = str(uuid.uuid4())
     _proc_session["started"] = time.time()
 
+
 # ---------------------------------------------------------------------------
 # Re-exports for test compat (tests import these names from mcp_server)
 # ---------------------------------------------------------------------------
@@ -241,7 +242,6 @@ def reset_session(session_id: str | None = None) -> str:
     if not session_id:
         _rotate_proc_session()
     return result
-
 
 
 @mcp.tool()

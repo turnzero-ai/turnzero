@@ -38,6 +38,7 @@ def harvest(
 
     Candidates are written to ~/.turnzero/candidates/ for later review.
     """
+    from turnzero.config import load_config, save_config
     from turnzero.harvest import (
         extract_with_llm,
         harvest,
@@ -51,6 +52,31 @@ def harvest(
     candidates_dir.mkdir(parents=True, exist_ok=True)
 
     if all_new:
+        cfg = load_config(data_dir)
+        if not cfg.get("harvest_opt_in"):
+            console.print("\n[bold]Privacy Disclosure: Harvest[/bold]")
+            console.print(
+                "The [cyan]harvest --all[/cyan] command scans your local AI session files from:\n"
+                "  • Claude Code (~/.claude/projects/)\n"
+                "  • Aider history in common development directories\n"
+                "  • Cursor and Windsurf workspace storage\n"
+                "\n"
+                "Extracted candidates are stored locally in [cyan]~/.turnzero/candidates/[/cyan].\n"
+                "Conversation transcripts are processed by your chosen LLM (local by default).\n"
+                "Raw session files are never moved or modified.\n"
+            )
+            if not typer.confirm(
+                "Do you want to enable session harvesting?", default=False
+            ):
+                console.print(
+                    "\n[yellow]Harvesting cancelled. Use [bold]turnzero harvest <file>[/bold] to harvest a specific file.[/yellow]"
+                )
+                raise typer.Exit(0)
+
+            cfg["harvest_opt_in"] = True
+            save_config(data_dir, cfg)
+            console.print("[green]✓ Harvest opt-in saved.[/green]\n")
+
         processed_file = data_dir / "processed_sessions.txt"
         to_scan = scan_new_sessions(processed_file)
         if not to_scan:

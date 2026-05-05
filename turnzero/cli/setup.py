@@ -485,7 +485,9 @@ def setup(
         if not dest_blocks.exists() or force:
             dest_blocks.mkdir(parents=True, exist_ok=True)
             # Only sync tiers that are present in the source (e.g. 'community')
-            # This preserves 'personal' and 'local' tiers created by the user
+            # This preserves 'personal' and 'local' tiers created by the user.
+            # We use a merge strategy instead of shutil.rmtree to ensure
+            # user-added blocks in these tiers are not lost.
             for tier_dir in source_blocks.iterdir():
                 if tier_dir.is_dir():
                     target_tier = dest_blocks / tier_dir.name
@@ -495,9 +497,15 @@ def setup(
                             f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]"
                         )
                         continue
-                    if target_tier.exists():
-                        shutil.rmtree(target_tier)
-                    shutil.copytree(tier_dir, target_tier)
+
+                    target_tier.mkdir(parents=True, exist_ok=True)
+                    # Merge contents: copy new/updated files, leave others
+                    for item in tier_dir.rglob("*"):
+                        if item.is_file():
+                            rel_path = item.relative_to(tier_dir)
+                            target_file = target_tier / rel_path
+                            target_file.parent.mkdir(parents=True, exist_ok=True)
+                            shutil.copy2(item, target_file)
 
             n = len(list(dest_blocks.rglob("*.yaml")))
             console.print(f"[green]✓[/green] Synchronized {n} blocks → {dest_blocks}")
@@ -818,11 +826,14 @@ def _print_live_demo() -> None:
     """Run a retrieval probe and print what TurnZero would inject."""
     from turnzero.mcp_server import _list_suggested_blocks
 
-    console.print("[bold]Live demo[/bold] — what TurnZero injects for a FastAPI prompt:\n")
+    console.print(
+        "[bold]Live demo[/bold] — what TurnZero injects for a FastAPI prompt:\n"
+    )
     console.print(f"  [dim]{_DEMO_PROMPT}[/dim]\n")
     try:
         all_results = [
-            r for r in _list_suggested_blocks(_DEMO_PROMPT)
+            r
+            for r in _list_suggested_blocks(_DEMO_PROMPT)
             if r.get("block_id") != "personal-priors-limit-warning"
         ]
         if not all_results:

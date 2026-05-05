@@ -209,7 +209,9 @@ def append_block(
         else:
             # Per-source index doesn't exist yet — full rebuild creates it
             from turnzero.config import get_blocks_dir
+
             build(get_blocks_dir(), index_path, data_dir=data_dir)
     except Exception:
         from turnzero.config import get_blocks_dir
+
         build(get_blocks_dir(), index_path, data_dir=data_dir)

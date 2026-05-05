@@ -386,8 +386,14 @@ def _make_block_domain(
 def test_keyword_overlap_gate_blocks_unrelated_domain_block() -> None:
     """nextjs block must not inject into a prompt with no nextjs keywords (RET-2 regression)."""
     vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
-    index = [_make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])]
-    blocks = {"nextjs-seo-review": _make_block_domain("nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"])}
+    index = [
+        _make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])
+    ]
+    blocks = {
+        "nextjs-seo-review": _make_block_domain(
+            "nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"]
+        )
+    }
 
     # Prompt has no nextjs/seo/web keywords → detect_domain returns None → gate fires
     prompt = "harden my python service against unauthorised access"
@@ -401,8 +407,14 @@ def test_keyword_overlap_gate_blocks_unrelated_domain_block() -> None:
 def test_keyword_overlap_gate_allows_matching_domain_block() -> None:
     """nextjs block must still inject when the prompt contains a nextjs keyword."""
     vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
-    index = [_make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])]
-    blocks = {"nextjs-seo-review": _make_block_domain("nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"])}
+    index = [
+        _make_entry_domain("nextjs-seo-review", vec, "nextjs", ["nextjs", "seo", "web"])
+    ]
+    blocks = {
+        "nextjs-seo-review": _make_block_domain(
+            "nextjs-seo-review", "nextjs", ["nextjs", "seo", "web"]
+        )
+    }
 
     prompt = "review the SEO setup in my nextjs app"
     with patch("turnzero.embed.embed", return_value=vec):
@@ -421,8 +433,14 @@ def test_keyword_overlap_gate_does_not_penalise_global_blocks() -> None:
     below threshold and the block would disappear from results.
     """
     vec = np.ones(768, dtype=np.float32) / np.sqrt(768)
-    index = [_make_entry_domain("my-personal-prior", vec, "global", ["concise", "style"])]
-    blocks = {"my-personal-prior": _make_block_domain("my-personal-prior", "global", ["concise", "style"])}
+    index = [
+        _make_entry_domain("my-personal-prior", vec, "global", ["concise", "style"])
+    ]
+    blocks = {
+        "my-personal-prior": _make_block_domain(
+            "my-personal-prior", "global", ["concise", "style"]
+        )
+    }
 
     # detect_domain returns None; no tag overlap gate should fire for global blocks.
     # Prompt has lexical overlap ("concise", "style") so test-mode scorer clears threshold.
