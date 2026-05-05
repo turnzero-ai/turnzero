@@ -92,7 +92,9 @@ def _print_explain(
         console.print(
             "  Impl gate:        [red]✗ failed[/red] — prompt is chitchat or not substantive"
         )
-        console.print("\n  [dim]No blocks inject for this prompt. This is expected.[/dim]\n")
+        console.print(
+            "\n  [dim]No blocks inject for this prompt. This is expected.[/dim]\n"
+        )
         return
 
     console.print(f"  Intent detected:  [cyan]{intent}[/cyan]")
@@ -102,9 +104,13 @@ def _print_explain(
     console.print(f"  Threshold:        {threshold}")
 
     if identity_blocks:
-        console.print(f"\n  [magenta]Personal Priors[/magenta] ({len(identity_blocks)} matched):")
+        console.print(
+            f"\n  [magenta]Personal Priors[/magenta] ({len(identity_blocks)} matched):"
+        )
         for block, _ in identity_blocks:
-            console.print(f"    • {block.slug}  [dim]{block.context_weight} tokens[/dim]")
+            console.print(
+                f"    • {block.slug}  [dim]{block.context_weight} tokens[/dim]"
+            )
     else:
         console.print("\n  [dim]Personal Priors: none configured[/dim]")
 
@@ -123,23 +129,27 @@ def _print_explain(
 
     above = [(b, s) for b, s in all_candidates if s >= threshold]
     near_misses = [
-        (b, s)
-        for b, s in all_candidates
-        if s < threshold and s >= threshold * 0.70
+        (b, s) for b, s in all_candidates if s < threshold and s >= threshold * 0.70
     ][:5]
 
     if above:
         console.print(f"\n  [green]Matched (score ≥ {threshold}):[/green]")
         for block, score in above:
-            intent_tag = f"  [dim]intent: {block.intent}[/dim]" if block.intent != intent else ""
+            intent_tag = (
+                f"  [dim]intent: {block.intent}[/dim]" if block.intent != intent else ""
+            )
             console.print(
                 f"    [green]✓[/green] {block.slug:<42} score: {score:.3f}  weight: {block.context_weight}{intent_tag}"
             )
     else:
-        console.print(f"\n  [yellow]No Expert Priors above threshold ({threshold}).[/yellow]")
+        console.print(
+            f"\n  [yellow]No Expert Priors above threshold ({threshold}).[/yellow]"
+        )
 
     if near_misses:
-        console.print(f"\n  [dim]Near misses (score < {threshold}, top {len(near_misses)}):[/dim]")
+        console.print(
+            f"\n  [dim]Near misses (score < {threshold}, top {len(near_misses)}):[/dim]"
+        )
         for block, score in near_misses:
             gap = threshold - score
             console.print(
@@ -486,6 +496,7 @@ def stats() -> None:
     tool_entries_raw: list[dict[str, Any]] = []
     if tool_log_path.exists():
         import contextlib as _cl
+
         for line in tool_log_path.read_text(encoding="utf-8").splitlines():
             with _cl.suppress(json.JSONDecodeError):
                 tool_entries_raw.append(json.loads(line))

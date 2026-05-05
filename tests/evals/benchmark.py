@@ -46,9 +46,7 @@ try:
 except ImportError:
     _RICH = False
 
-TURNZERO_DATA_DIR = Path(
-    os.environ.get("TURNZERO_DATA_DIR", Path.home() / ".turnzero")
-)
+TURNZERO_DATA_DIR = Path(os.environ.get("TURNZERO_DATA_DIR", Path.home() / ".turnzero"))
 TOOL_LOG = TURNZERO_DATA_DIR / "tool_call_log.jsonl"
 CANDIDATES_DIR = TURNZERO_DATA_DIR / "candidates"
 LOCAL_BLOCKS_DIR = TURNZERO_DATA_DIR / "blocks" / "local"
@@ -108,8 +106,8 @@ SCENARIOS: dict[int, dict[str, Any]] = {
         "expect_no_tools": False,
         "expect_no_submit": False,
         "pass_condition": "constraint_keyword",
-        "constraint_keyword": "",   # filled per-run
-        "constraint_marker": "",    # filled per-run
+        "constraint_keyword": "",  # filled per-run
+        "constraint_marker": "",  # filled per-run
     },
     4: {
         "name": "Learning Sensitivity",
@@ -152,9 +150,9 @@ SCENARIOS: dict[int, dict[str, Any]] = {
         "expect_no_tools": False,
         "expect_no_submit": False,
         "pass_condition": "constraint_keyword",
-        "constraint_keyword": "",   # filled per-run
-        "constraint_marker": "",    # filled per-run
-        "realistic": True,          # use human-readable variable name
+        "constraint_keyword": "",  # filled per-run
+        "constraint_marker": "",  # filled per-run
+        "realistic": True,  # use human-readable variable name
     },
     7: {
         "name": "False-Positive Learning",
@@ -329,9 +327,7 @@ class AgentScenarioResult:
             "list_suggested_rate": self._rate("called_list_suggested"),
             "inject_rate": self._rate("called_inject"),
             "submit_rate": self._rate("called_submit"),
-            "avg_duration_s": (
-                sum(r.duration_s for r in self.runs) / n if n else 0
-            ),
+            "avg_duration_s": (sum(r.duration_s for r in self.runs) / n if n else 0),
             "sample_blocks": self.sample_blocks(),
             "errors": self.errors(),
         }
@@ -379,7 +375,9 @@ def _add_temp_block(
             f"Always name the primary PostgreSQL connection variable `{keyword}`. "
             f"This is a mandatory convention established by the database team."
         )
-        anti = [f"Do not use generic names like conn, db, or cursor instead of `{keyword}`."]
+        anti = [
+            f"Do not use generic names like conn, db, or cursor instead of `{keyword}`."
+        ]
     else:
         constraint = (
             f"[EVAL:{marker}] Always name the primary PostgreSQL connection "
@@ -510,9 +508,10 @@ def _run_claude(
         t = obj.get("type", "")
         if t == "assistant":
             for block in obj.get("message", {}).get("content", []):
-                if block.get("type") == "tool_use" and "turnzero" in block.get(
-                    "name", ""
-                ).lower():
+                if (
+                    block.get("type") == "tool_use"
+                    and "turnzero" in block.get("name", "").lower()
+                ):
                     name = (
                         block["name"]
                         .replace("mcp__turnzero__", "")
@@ -555,9 +554,7 @@ def _run_gemini(
         response = data.get("response", res.stdout)
     except json.JSONDecodeError:
         response = "\n".join(
-            ln
-            for ln in res.stdout.splitlines()
-            if "YOLO mode" not in ln and ln.strip()
+            ln for ln in res.stdout.splitlines() if "YOLO mode" not in ln and ln.strip()
         )
 
     return response, duration, ""
@@ -588,7 +585,6 @@ def _run_codex(
         return "", duration, res.stderr[:300]
 
     return res.stdout, duration, ""
-
 
 
 # ---------------------------------------------------------------------------
@@ -625,13 +621,11 @@ def _run_once(
             log_calls = _read_log_since(ts_before)
             # stream-json is authoritative for Claude; log covers submit_candidate
             # (which goes through a different path and may not appear in stream)
-            merged = {
-                id(c): c for c in stream_tools
-            }
+            merged = {id(c): c for c in stream_tools}
             for lc in log_calls:
                 if not any(
-                    c.get("tool") == lc.get("tool") and
-                    abs(c.get("ts", 0) - lc.get("ts", 0)) < 5
+                    c.get("tool") == lc.get("tool")
+                    and abs(c.get("ts", 0) - lc.get("ts", 0)) < 5
                     for c in merged.values()
                 ):
                     merged[id(lc)] = lc
@@ -655,7 +649,11 @@ def _run_once(
             stats.error = f"Unknown agent: {agent}"
 
     except subprocess.TimeoutExpired:
-        _timeouts = {"claude": CLAUDE_TIMEOUT, "gemini": GEMINI_TIMEOUT, "codex": CODEX_TIMEOUT}
+        _timeouts = {
+            "claude": CLAUDE_TIMEOUT,
+            "gemini": GEMINI_TIMEOUT,
+            "codex": CODEX_TIMEOUT,
+        }
         stats.error = f"Timed out after {_timeouts.get(agent, 120)}s"
     except FileNotFoundError:
         stats.error = f"{agent} binary not found"
@@ -697,15 +695,11 @@ def run_scenario(
         temp_block_path: Path | None = None
         if scenario.get("needs_temp_block"):
             if not _is_ollama_running():
-                print(
-                    f"  ⚠ S{scenario_id} needs Ollama for index rebuild — skipping"
-                )
+                print(f"  ⚠ S{scenario_id} needs Ollama for index rebuild — skipping")
                 return []
             marker = uuid.uuid4().hex
             is_realistic = scenario.get("realistic", False)
-            keyword = (
-                "primary_db_conn" if is_realistic else f"eval_conn_{marker[:6]}"
-            )
+            keyword = "primary_db_conn" if is_realistic else f"eval_conn_{marker[:6]}"
             scenario["constraint_marker"] = marker
             scenario["constraint_keyword"] = keyword
             scenario["_id"] = scenario_id
@@ -852,9 +846,7 @@ def _render_scenario_table(
             agent_val(
                 a,
                 lambda r: (
-                    f"{sum(x.inject_count for x in r.runs) / r.n:.1f}"
-                    if r.n
-                    else "—"
+                    f"{sum(x.inject_count for x in r.runs) / r.n:.1f}" if r.n else "—"
                 ),
             )
             for a in agents
@@ -888,8 +880,7 @@ def _render_scenario_table(
                 a,
                 lambda r: str(
                     sum(
-                        max(0, x.candidates_after - x.candidates_before)
-                        for x in r.runs
+                        max(0, x.candidates_after - x.candidates_before) for x in r.runs
                     )
                 ),
             )
@@ -917,10 +908,7 @@ def _render_scenario_table(
     # error
     t.add_row(
         "errors",
-        *[
-            agent_val(a, lambda r: "; ".join(r.errors())[:40] or "—")
-            for a in agents
-        ],
+        *[agent_val(a, lambda r: "; ".join(r.errors())[:40] or "—") for a in agents],
     )
 
     console.print(t)

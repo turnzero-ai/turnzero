@@ -182,8 +182,7 @@ def list_suggested_blocks(
         _build_entry(block, score, is_personal=True)
         for block, score in personal_results
     ] + [
-        _build_entry(block, score, is_personal=False)
-        for block, score in expert_results
+        _build_entry(block, score, is_personal=False) for block, score in expert_results
     ]
 
     if limit_exceeded:
@@ -202,7 +201,9 @@ def list_suggested_blocks(
         )
 
     # Logging and telemetry
-    real_blocks = [s for s in formatted if s["block_id"] != "personal-priors-limit-warning"]
+    real_blocks = [
+        s for s in formatted if s["block_id"] != "personal-priors-limit-warning"
+    ]
     if formatted:
         stats_svc.log_injection(
             block_ids=[s["block_id"] for s in real_blocks],
@@ -285,4 +286,3 @@ def reset_session(session_id: str | None = None) -> str:
     if session_id:
         clear_session_injections(session_id)
     return "✓ TurnZero session memory cleared."
-

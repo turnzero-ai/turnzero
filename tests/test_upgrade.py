@@ -72,6 +72,7 @@ def test_check_refetches_after_cache_expires(tmp_path: Path) -> None:
     # Set mtime to 25h ago so cache is stale
     stale_mtime = time.time() - 90_000
     import os
+
     os.utime(cache_path, (stale_mtime, stale_mtime))
 
     mock_resp = MagicMock()

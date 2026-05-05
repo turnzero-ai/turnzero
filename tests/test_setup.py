@@ -199,6 +199,7 @@ def test_live_demo_shows_results_when_blocks_returned() -> None:
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
             from turnzero.cli.setup import _print_live_demo
+
             _print_live_demo()
 
     printed = " ".join(str(c) for c in con.print.call_args_list)
@@ -214,6 +215,7 @@ def test_live_demo_graceful_on_empty_results() -> None:
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
             from turnzero.cli.setup import _print_live_demo
+
             _print_live_demo()
 
     printed = " ".join(str(c) for c in con.print.call_args_list)
@@ -229,6 +231,7 @@ def test_live_demo_graceful_on_exception() -> None:
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
             from turnzero.cli.setup import _print_live_demo
+
             _print_live_demo()
 
     printed = " ".join(str(c) for c in con.print.call_args_list)

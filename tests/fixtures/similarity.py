@@ -47,7 +47,10 @@ def test_similarity(prompt: str, block: Block) -> float:
     overrides = [
         (block.slug == "nextjs15-approuter-build" and nextjs_prompt, 1.0),
         (block.slug == "nextjs-forms-build" and nextjs_prompt, 0.1),
-        (block.slug == "nextjs15-approuter-build-version-16-0-0" and nextjs_prompt, 0.1),
+        (
+            block.slug == "nextjs15-approuter-build-version-16-0-0" and nextjs_prompt,
+            0.1,
+        ),
         (block.slug == "postgresql-indexing-review" and postgres_prompt, 1.0),
         (block.slug == "postgresql-ha-review" and postgres_prompt, 0.1),
         (block.slug == "stripe-webhook-verify-build" and stripe_prompt, 1.0),

@@ -25,7 +25,7 @@ import yaml
 
 from turnzero.blocks import compute_confidence
 
-MIN_TURN_WORDS= 3
+MIN_TURN_WORDS = 3
 MIN_CONTEXT_WEIGHT = 50
 MIN_SESSION_WORDS = 5
 SELF_REF_HITS_THRESHOLD = 4

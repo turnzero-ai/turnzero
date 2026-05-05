@@ -461,11 +461,13 @@ def test_get_stats_includes_token_cost(tmp_path: Path) -> None:
 
 def test_effective_session_id_returns_caller_id_when_provided() -> None:
     from turnzero.mcp_server import _effective_session_id
+
     assert _effective_session_id("my-session") == "my-session"
 
 
 def test_effective_session_id_returns_stable_proc_id_when_none() -> None:
     from turnzero.mcp_server import _effective_session_id
+
     id1 = _effective_session_id(None)
     id2 = _effective_session_id(None)
     assert id1 == id2
@@ -474,6 +476,7 @@ def test_effective_session_id_returns_stable_proc_id_when_none() -> None:
 
 def test_rotate_proc_session_changes_id() -> None:
     from turnzero.mcp_server import _effective_session_id, _rotate_proc_session
+
     before = _effective_session_id(None)
     _rotate_proc_session()
     after = _effective_session_id(None)
@@ -513,7 +516,9 @@ def test_list_suggested_blocks_subsequent_turn_skips_personal(tmp_path: Path) ->
         results = _list_suggested_blocks(
             "build a fastapi app with postgres", session_id=sid
         )
-        real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
+        real = [
+            r for r in results if r.get("block_id") != "personal-priors-limit-warning"
+        ]
         # All results should be Turn N; no personal priors in results
         assert all(r["turn"] == "subsequent" for r in real)
         personal = [r for r in real if r.get("preview", "").startswith("[personal")]
@@ -534,7 +539,9 @@ def test_list_suggested_blocks_inject_all_includes_full_text() -> None:
     real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
     assert len(real) > 0
     assert all("full_text" in r for r in real)
-    assert all(isinstance(r["full_text"], str) and len(r["full_text"]) > 0 for r in real)
+    assert all(
+        isinstance(r["full_text"], str) and len(r["full_text"]) > 0 for r in real
+    )
 
 
 def test_list_suggested_blocks_no_inject_all_has_no_full_text() -> None:

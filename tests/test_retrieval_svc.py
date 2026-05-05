@@ -53,24 +53,34 @@ def mock_blocks_2() -> dict[str, Block]:
     }
 
 
-def test_block_cache_invalidation(tmp_path: Path, mock_blocks_1: dict[str, Block], mock_blocks_2: dict[str, Block]) -> None:
+def test_block_cache_invalidation(
+    tmp_path: Path, mock_blocks_1: dict[str, Block], mock_blocks_2: dict[str, Block]
+) -> None:
     """Verify that the block cache invalidates when a file mtime changes."""
     blocks_dir = tmp_path / "blocks"
     local_dir = blocks_dir / "local" / "test"
     local_dir.mkdir(parents=True)
     block_file = local_dir / "test-block-1.yaml"
-    block_file.write_text("slug: test-block-1\nversion: 1.0.0\nintent: build\nlast_verified: '2026-01-01'", encoding="utf-8")
+    block_file.write_text(
+        "slug: test-block-1\nversion: 1.0.0\nintent: build\nlast_verified: '2026-01-01'",
+        encoding="utf-8",
+    )
 
     # Clear cache before starting
     retrieval_svc._BLOCKS_CACHE.clear()
 
-    with patch("turnzero.services.retrieval_svc.get_blocks_dir", return_value=blocks_dir), \
-         patch("turnzero.services.retrieval_svc.enabled_sources", return_value=["local"]), \
-         patch("turnzero.services.retrieval_svc.load_all_blocks") as mock_load:
-        
+    with (
+        patch(
+            "turnzero.services.retrieval_svc.get_blocks_dir", return_value=blocks_dir
+        ),
+        patch(
+            "turnzero.services.retrieval_svc.enabled_sources", return_value=["local"]
+        ),
+        patch("turnzero.services.retrieval_svc.load_all_blocks") as mock_load,
+    ):
         # Setup mock to return different data on successive calls
         mock_load.side_effect = [mock_blocks_1, mock_blocks_2]
-        
+
         # First load - should hit disk
         blocks1 = retrieval_svc._load_active_blocks()
         assert blocks1["test-block-1"].hash == "hash1"
@@ -85,7 +95,7 @@ def test_block_cache_invalidation(tmp_path: Path, mock_blocks_1: dict[str, Block
         # Modify mtime - should invalidate and hit disk
         new_mtime = time.time() + 100
         os.utime(block_file, (new_mtime, new_mtime))
-        
+
         blocks3 = retrieval_svc._load_active_blocks()
         assert mock_load.call_count == 2
         assert blocks3["test-block-1"].hash == "hash2"

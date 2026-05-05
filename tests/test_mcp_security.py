@@ -286,7 +286,9 @@ class TestValidateCandidate:
         assert result.safe is False
         assert result.reason_code == "unsafe_url"
 
-    def test_quarantine_written_to_disk(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_quarantine_written_to_disk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Malicious candidate must be written to quarantine/, not candidates/."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
@@ -309,7 +311,9 @@ class TestValidateCandidate:
             (data_dir / "blocks").rglob("evil-block.yaml")
         )
 
-    def test_quarantine_blocks_auto_approve(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_quarantine_blocks_auto_approve(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """auto_approve=True must NOT bypass the safety validator."""
         data_dir = tmp_path / "data"
         data_dir.mkdir()
