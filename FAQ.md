@@ -16,7 +16,7 @@ AI memory remembers *you*. TurnZero remembers your *domain*. Native memory is pe
 
 **Is my data private? Does TurnZero send my prompts anywhere?**
 
-Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks`, your prompt is embedded either locally via ollama or remotely via OpenAI's embeddings API if you choose that backend. In both cases, TurnZero discards the raw text immediately after embedding and compares only the embedding against a local index. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
+Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks`, your prompt is embedded locally either via ONNX (in-process, default) or via ollama. If neither is available and you choose that backend, it can be embedded remotely via OpenAI's embeddings API. In all cases, TurnZero discards the raw text immediately after embedding and compares only the embedding against a local index. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
 
 ---
 
@@ -71,3 +71,4 @@ Project Scoping allows TurnZero to distinguish between your **Universal Identity
 **Is there scientific backing for the context size TurnZero uses?**
 
 Yes. The 5,000-token limit is designed to optimize for the model's **latent instruction following** capabilities without triggering performance decay. We follow a **Mandate-Constraint-Rationale** hierarchy: we don't just tell the model *what* to do; we provide a logical rationale (*why*), which has been shown to significantly improve LLM adherence and reduce hallucination of constraints for tools not in use.
+nce and reduce hallucination of constraints for tools not in use.

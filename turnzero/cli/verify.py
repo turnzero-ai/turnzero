@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform
 import shutil
 from pathlib import Path
 
@@ -11,14 +12,13 @@ import httpx
 from rich.table import Table
 
 from turnzero.cli.base import (
+    HTTP_OK,
     console,
     get_blocks_dir,
     get_data_dir,
     get_index_path,
 )
 from turnzero.mcp_server import _list_suggested_blocks
-
-HTTP_OK = 200
 
 
 def verify() -> None:
@@ -46,6 +46,17 @@ def verify() -> None:
 
 def _verify_embeddings() -> None:
     console.print("[bold]1. Embedding Backend[/bold]")
+    from turnzero.embed import (
+        _is_onnx_available,
+        _is_onnx_model_downloaded,
+    )
+
+    if _is_onnx_available() and _is_onnx_model_downloaded():
+        console.print(
+            "  [green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)"
+        )
+        return
+
     ollama_path = shutil.which("ollama")
 
     if ollama_path:
@@ -77,7 +88,9 @@ def _verify_embeddings() -> None:
     elif os.environ.get("OPENAI_API_KEY") or (get_data_dir() / "openai_key").exists():
         console.print("  [green]✓[/green] OpenAI API key is configured")
     else:
-        console.print("  [red]✗[/red] No embedding backend found (ollama or OpenAI)")
+        console.print(
+            "  [red]✗[/red] No embedding backend found (ONNX, ollama, or OpenAI)"
+        )
     console.print()
 
 
@@ -125,8 +138,6 @@ def _verify_client_registrations(data_dir: Path) -> None:
     _check_json_mcp(gemini_json, "Gemini CLI", table)
 
     # Cursor
-    import platform
-
     if platform.system() == "Darwin":
         cursor_path = (
             Path.home()
