@@ -63,6 +63,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.11.4 — Docs: synchronized versions; README: restored Ollama documentation.
 - [x] v0.11.3 — Setup: ONNX in-process backend by default; Ollama fallback restored; platform-specific guidance for Intel Macs.
 - [x] v0.11.2 — Setup: merge blocks instead of overwrite (WF-4); Harvest: privacy disclosure and opt-in (SEC-4).
 - [x] v0.11.0 — Security: CandidateSafetyValidator quarantines malicious priors (SEC-3); `query --explain` diagnostics (RET-4); upgrade nudge in stats (RET-5); eval telemetry suppressed (EVAL-4).
