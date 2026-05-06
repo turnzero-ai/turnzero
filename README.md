@@ -47,16 +47,16 @@ turnzero setup
 
 Python support: `3.12`, `3.13`, and `3.14`.
 
-`turnzero setup` registers the TurnZero MCP server with Claude Code, Cursor, Claude Desktop, Gemini CLI, and Codex. It copies the bundled Expert Prior index and confirms your embedding backend is working.
+`turnzero setup` registers the TurnZero MCP server with Claude Code, Cursor, Claude Desktop, Gemini CLI, and Codex. It copies the bundled Expert Prior index, installs the ONNX embedding backend, and downloads the model (~520 MB, one-time).
 
-**Embedding backend — pick one:**
+**Embedding backend:**
 
-| Option | Setup |
-|---|---|
-| ollama (local, free, private) | `ollama serve && ollama pull nomic-embed-text` |
-| OpenAI API | `export OPENAI_API_KEY=sk-...` |
+| Option | Setup | Notes |
+|---|---|---|
+| ONNX (default, local) | `turnzero setup` auto-installs | No daemon, ~520 MB one-time download |
+| OpenAI API (fallback) | `export OPENAI_API_KEY=sk-...` | Prompt text sent to OpenAI for that request |
 
-With `ollama`, embeddings never leave your machine. With OpenAI, the prompt text is sent to OpenAI's embedding API for that request and not stored by TurnZero.
+Embeddings run in-process — no separate server required. With OpenAI, the prompt text is sent to OpenAI's embedding API for that request and not stored by TurnZero.
 
 ---
 
@@ -213,7 +213,7 @@ High-signal source: mid-session corrections. When the AI gets it wrong and you s
 ## Design constraints
 
 - **No raw prompts stored.** Raw prompt text is discarded immediately after embedding.
-- **Embeddings may be local or remote.** With `ollama`, embedding stays local. With `OPENAI_API_KEY`, prompt text is sent to OpenAI's embedding API for that request and is not stored by TurnZero.
+- **Embeddings are local by default.** The ONNX backend runs in-process — no text leaves the machine. With `OPENAI_API_KEY`, prompt text is sent to OpenAI's embedding API for that request and is not stored by TurnZero.
 - **Client-side injection only.** TurnZero never sits in the request path between user and AI provider.
 - **Provider neutral.** Works with any MCP-compatible client.
 - **Token budget aware.** Warns when selected blocks exceed 4000 tokens (configurable).

@@ -5,26 +5,104 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-# Dimension produced by nomic-embed-text. All backends are normalised to this.
+# Dimension produced by nomic-embed-text. All backends normalise to this.
 EMBEDDING_DIM = 768
 HTTP_OK = 200
+
+_ONNX_MODEL_REPO = "nomic-ai/nomic-embed-text-v1.5"
+# (remote_path, local_relative_path) pairs
+_ONNX_MODEL_FILES: list[tuple[str, str]] = [
+    ("onnx/model.onnx", "onnx/model.onnx"),
+    ("tokenizer.json", "tokenizer.json"),
+]
+
+# Mutable cache dict avoids module-level global reassignment (PLW0603).
+# Values are Any because onnxruntime/tokenizers are optional deps.
+_onnx_cache: dict[str, Any] = {}  # keys: "session", "tokenizer"
 
 
 def get_model_id() -> str:
     """Return the ID of the current active embedding model."""
     if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
         return "test-hash-blake2b-768"
-
-    # We check environment before calling Ollama to avoid silent timeout wait
+    if _is_onnx_available() and _is_onnx_model_downloaded():
+        return "onnx:nomic-embed-text-v1.5"
     if os.environ.get("OPENAI_API_KEY") and not _is_ollama_running():
         return "openai:text-embedding-3-small"
-
-    # Default local model
     return "ollama:nomic-embed-text"
+
+
+def _is_onnx_available() -> bool:
+    """Return True if onnxruntime and tokenizers are importable."""
+    try:
+        import onnxruntime  # noqa: F401
+        from tokenizers import Tokenizer  # noqa: F401
+
+        return True
+    except ImportError:
+        return False
+
+
+def _get_onnx_model_dir() -> Path:
+    base = Path(os.environ.get("TURNZERO_DATA_DIR", str(Path.home() / ".turnzero")))
+    return base / "models" / "nomic-embed-text-v1.5"
+
+
+def _is_onnx_model_downloaded() -> bool:
+    model_dir = _get_onnx_model_dir()
+    return (model_dir / "onnx" / "model.onnx").exists() and (
+        model_dir / "tokenizer.json"
+    ).exists()
+
+
+def download_onnx_model(model_dir: Path | None = None) -> None:
+    """Download nomic-embed-text-v1.5 ONNX model files.
+
+    Args:
+        model_dir: Target directory. Defaults to ~/.turnzero/models/nomic-embed-text-v1.5.
+    """
+    import httpx
+    from rich.progress import (
+        BarColumn,
+        DownloadColumn,
+        Progress,
+        SpinnerColumn,
+        TimeRemainingColumn,
+        TransferSpeedColumn,
+    )
+
+    target = model_dir or _get_onnx_model_dir()
+    base_url = f"https://huggingface.co/{_ONNX_MODEL_REPO}/resolve/main"
+
+    for remote_path, local_rel in _ONNX_MODEL_FILES:
+        local_path = target / local_rel
+        if local_path.exists():
+            continue
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        url = f"{base_url}/{remote_path}"
+        filename = Path(remote_path).name
+
+        with httpx.stream("GET", url, follow_redirects=True, timeout=300.0) as resp:
+            resp.raise_for_status()
+            total = int(resp.headers.get("content-length", 0)) or None
+            with Progress(
+                SpinnerColumn(),
+                f"[cyan]{filename}[/cyan]",
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+                TimeRemainingColumn(),
+            ) as progress:
+                task = progress.add_task(filename, total=total)
+                with local_path.open("wb") as fh:
+                    for chunk in resp.iter_bytes(chunk_size=65536):
+                        fh.write(chunk)
+                        progress.update(task, advance=len(chunk))
 
 
 def _is_ollama_running() -> bool:
@@ -43,30 +121,95 @@ def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Embed text, returning a float32 ndarray of shape (768,).
 
     Fallback chain:
-      1. ollama nomic-embed-text       (local server, fastest if already running)
-      2. OpenAI text-embedding-3-small (cloud, OPENAI_API_KEY)
+      1. ONNX nomic-embed-text-v1.5  (in-process, no daemon — pip install turnzero[local])
+      2. ollama nomic-embed-text      (local server)
+      3. OpenAI text-embedding-3-small (cloud, OPENAI_API_KEY)
 
     Everything runs locally by default. No text leaves the machine unless
     OPENAI_API_KEY is explicitly set.
     """
+    if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
+        return _embed_test(text)
+
+    if _is_onnx_available() and _is_onnx_model_downloaded():
+        try:
+            return _embed_onnx(text)
+        except RuntimeError:
+            pass
+
     try:
         return _embed_ollama(text)
     except RuntimeError:
         pass
-
-    if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
-        return _embed_test(text)
 
     if os.environ.get("OPENAI_API_KEY"):
         return _embed_openai(text)
 
     raise RuntimeError(
         "No embedding backend available.\n\n"
-        "Or use a local server:\n"
+        "Install local ONNX backend (recommended, no daemon):\n"
+        "  pip install 'turnzero[local]'\n"
+        "  turnzero setup\n\n"
+        "Or start ollama:\n"
         "  ollama serve && ollama pull nomic-embed-text\n\n"
         "Or use OpenAI:\n"
         "  export OPENAI_API_KEY=sk-..."
     )
+
+
+def _embed_onnx(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+    try:
+        import onnxruntime as ort
+        from tokenizers import Tokenizer
+    except ImportError as exc:
+        raise RuntimeError(
+            f"ONNX deps not installed: {exc}. Run: pip install 'turnzero[local]'"
+        ) from exc
+
+    model_dir = _get_onnx_model_dir()
+
+    if "tokenizer" not in _onnx_cache:
+        tok: Any = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
+        tok.enable_padding(length=512)
+        tok.enable_truncation(max_length=512)
+        _onnx_cache["tokenizer"] = tok
+
+    if "session" not in _onnx_cache:
+        _onnx_cache["session"] = ort.InferenceSession(
+            str(model_dir / "onnx" / "model.onnx"),
+            providers=["CPUExecutionProvider"],
+        )
+
+    tokenizer = _onnx_cache["tokenizer"]
+    session = _onnx_cache["session"]
+
+    encoding = tokenizer.encode(text)
+    input_ids = np.array([encoding.ids], dtype=np.int64)
+    attention_mask = np.array([encoding.attention_mask], dtype=np.int64)
+
+    # Some ONNX exports omit token_type_ids; check dynamically.
+    input_names = {inp.name for inp in session.get_inputs()}
+    feeds: dict[str, np.ndarray[Any, Any]] = {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+    }
+    if "token_type_ids" in input_names:
+        feeds["token_type_ids"] = np.zeros_like(input_ids)
+
+    try:
+        outputs = session.run(None, feeds)
+    except Exception as exc:
+        raise RuntimeError(f"ONNX inference failed: {exc}") from exc
+
+    # Mean-pool last hidden state over sequence dimension, weighted by attention mask.
+    token_embeddings = outputs[0].astype(np.float32)  # (1, seq_len, 768)
+    mask = attention_mask[..., np.newaxis].astype(np.float32)  # (1, seq_len, 1)
+    pooled = (token_embeddings * mask).sum(axis=1) / mask.sum(axis=1)
+    vec: np.ndarray[Any, np.dtype[np.float32]] = pooled[0]
+    norm = float(np.linalg.norm(vec))
+    if norm > 0.0:
+        vec = vec / norm
+    return vec
 
 
 def _ollama_timeout() -> float:

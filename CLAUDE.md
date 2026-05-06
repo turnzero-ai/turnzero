@@ -16,7 +16,7 @@ TurnZero is at **v0.11.1** (PyPI live).
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
-- Embedding: httpx-only fallback chain — ollama (`ollama serve && ollama pull nomic-embed-text`) → OpenAI
+- Embedding: fallback chain — ONNX in-process (`pip install onnxruntime tokenizers`, ~520 MB model) → ollama → OpenAI
 - Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini, 7 scenarios
 
 ## What TurnZero Does

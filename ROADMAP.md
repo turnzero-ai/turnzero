@@ -41,6 +41,7 @@ Circle 3 — Enterprise (Phase 5)
 
 - [ ] **Domain router** — Layer 1 env-based filter eliminates 90%+ of candidates before vector math.
 - [ ] **Semantic deduplication** — Detect and merge blocks with cosine similarity > 0.92 covering the same topic.
+- [ ] **Embedding prefixes** — Add `search_query: ` and `search_document: ` prefixes for nomic-embed-text-v1.5 to improve accuracy.
 - [ ] **Block versioning / deprecation** — `deprecated_by` field on block schema; old versions score-decay.
 - [x] **Outcome feedback loop** — Clean session boosts block confidence; correction decays it (v0.5.0 baseline).
 - [ ] **Hosted block registry** — Static nginx on Hetzner, versioned YAML + pre-computed embeddings.

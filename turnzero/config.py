@@ -10,7 +10,7 @@ import yaml
 
 TIERS = ("local", "community", "team", "personal")
 
-_DEFAULTS: dict[str, dict[str, bool]] = {
+_DEFAULTS: dict[str, Any] = {
     "sources": {
         "local": True,
         "community": True,

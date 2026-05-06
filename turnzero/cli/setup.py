@@ -15,7 +15,6 @@ from typing import Any
 import typer
 
 from turnzero.cli.base import (
-    HTTP_OK,
     console,
     err_console,
     get_data_dir,
@@ -447,10 +446,6 @@ def setup(
     Use --with-hook to also install the Claude Code UserPromptSubmit hook
     for guaranteed injection regardless of model behaviour.
     """
-    import time
-
-    import httpx
-
     claude_dir = Path.home() / ".claude"
     claude_dir.mkdir(exist_ok=True)
 
@@ -536,94 +531,76 @@ def setup(
                 "  Edit or replace it in [cyan]~/.turnzero/blocks/personal/[/cyan]"
             )
 
-    # ── 2. Check embedding backend ────────────────────────────────────────
+    # ── 2. Install ONNX embedding backend ────────────────────────────────────
     console.print()
-    ollama_ok = False
+    from turnzero.embed import (
+        _is_onnx_available,
+        download_onnx_model,
+    )
 
-    # Check if ollama is in PATH
-    ollama_path = shutil.which("ollama")
-    if not ollama_path:
-        console.print("[red]✗[/red] ollama not found in PATH.")
-        console.print(
-            "  Required for local-only privacy. Install from [cyan]https://ollama.com[/cyan]\n"
+    onnx_model_dir = resolved / "models" / "nomic-embed-text-v1.5"
+    onnx_model_ready = (onnx_model_dir / "onnx" / "model.onnx").exists() and (
+        onnx_model_dir / "tokenizer.json"
+    ).exists()
+
+    embedding_ok = False
+
+    # 2a. Ensure onnxruntime + tokenizers are installed
+    if not _is_onnx_available():
+        console.print("Installing ONNX embedding backend…")
+        install_result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "onnxruntime>=1.18", "tokenizers>=0.19"],
+            capture_output=True,
+            text=True,
+            check=False,
         )
-    else:
-        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-        try:
-            # Check if server is running
-            with httpx.Client(timeout=2.0) as client:
-                client.get(f"{host}/api/tags")
+        if install_result.returncode == 0:
+            import importlib as _importlib
 
-            # Server is running, check for model
-            result = subprocess.run(
-                ["ollama", "list"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-            if "nomic-embed-text" in result.stdout:
-                console.print(
-                    "[green]✓[/green] Embedding backend: ollama (nomic-embed-text)"
-                )
-                ollama_ok = True
-            elif force or (
-                interactive
-                and typer.confirm(
-                    "\nollama is running, but 'nomic-embed-text' model is missing. Pull it now? (approx 2GB)"
-                )
-            ):
-                console.print("Pulling nomic-embed-text…")
-                subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
-                console.print("[green]✓[/green] nomic-embed-text pulled")
-                ollama_ok = True
-            else:
-                console.print(
-                    "[yellow]⚠[/yellow] nomic-embed-text missing. Run: [cyan]ollama pull nomic-embed-text[/cyan]"
-                )
-        except (httpx.ConnectError, httpx.TimeoutException):
+            _importlib.invalidate_caches()
+            console.print("[green]✓[/green] onnxruntime + tokenizers installed")
+        else:
             console.print(
-                "[yellow]⚠[/yellow] ollama is installed but the server is not running."
+                "[red]✗ pip install failed.[/red] Run manually:\n"
+                "  [cyan]pip install onnxruntime tokenizers[/cyan]"
             )
-            if interactive and typer.confirm("Attempt to start ollama server?"):
-                console.print("Starting ollama serve in background…")
-                subprocess.Popen(
-                    ["ollama", "serve"],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    start_new_session=True,
+            if install_result.stderr:
+                console.print(f"[dim]{install_result.stderr.strip()}[/dim]")
+
+    # 2b. Download model files if not present
+    if _is_onnx_available():
+        if onnx_model_ready:
+            console.print("[dim]✓ ONNX model already downloaded[/dim]")
+            embedding_ok = True
+        else:
+            console.print(
+                "Downloading nomic-embed-text-v1.5 ONNX model (~520 MB, one-time)…"
+            )
+            try:
+                download_onnx_model(onnx_model_dir)
+                console.print(
+                    "[green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)"
                 )
-                console.print("Waiting for server to start…")
-                for _ in range(5):
-                    time.sleep(1)
-                    try:
-                        with httpx.Client(timeout=1.0) as client:
-                            if client.get(f"{host}/api/tags").status_code == HTTP_OK:
-                                break
-                    except Exception:
-                        pass
-
-                # Try pulling model now
-                try:
-                    subprocess.run(["ollama", "pull", "nomic-embed-text"], check=True)
-                    console.print("[green]✓[/green] ollama started and model pulled")
-                    ollama_ok = True
-                except Exception:
-                    console.print(
-                        "[red]✗ Failed to pull model. Please run 'ollama pull nomic-embed-text' manually.[/red]"
-                    )
-
-    # Check OpenAI as fallback
-    if not ollama_ok and os.environ.get("OPENAI_API_KEY"):
-        console.print("[green]✓[/green] Embedding backend: OpenAI API")
-        ollama_ok = True
-
-    if not ollama_ok:
-        console.print("\n[red]✗ No embedding backend available.[/red]")
+                embedding_ok = True
+            except Exception as exc:
+                console.print(f"[red]✗ Model download failed:[/red] {exc}")
+                console.print(
+                    "  Check your internet connection and re-run [cyan]turnzero setup[/cyan]."
+                )
+    else:
         console.print(
-            "  TurnZero requires either local [bold]ollama[/bold] or [bold]OpenAI[/bold] for embeddings."
+            "[yellow]⚠[/yellow] ONNX deps unavailable after install attempt.\n"
+            "  Re-run [cyan]turnzero setup[/cyan] in a fresh shell."
         )
-        console.print("  Setup will continue, but you must fix this before querying.")
+
+    # Fallback: accept OpenAI if user already has it configured
+    if not embedding_ok and os.environ.get("OPENAI_API_KEY"):
+        console.print("[green]✓[/green] Embedding backend: OpenAI API (fallback)")
+        embedding_ok = True
+
+    if not embedding_ok:
+        console.print("\n[red]✗ No embedding backend available.[/red]")
+        console.print("  Setup will continue, but querying will fail until resolved.")
 
     # ── 3. Build index (or copy pre-built) ────────────────────────────────
     console.print()
@@ -649,7 +626,7 @@ def setup(
         else:
             console.print("[dim]✓ Index already exists[/dim]")
             index_ok = True
-    elif ollama_ok and dest_blocks.exists():
+    elif embedding_ok and dest_blocks.exists():
         if not index_path.exists() or force:
             console.print("Building embedding index from scratch…")
             env = os.environ.copy()
@@ -664,14 +641,14 @@ def setup(
                 index_ok = True
             except subprocess.CalledProcessError:
                 console.print(
-                    "[red]✗ Index build failed — check ollama is running[/red]"
+                    "[red]✗ Index build failed — check embedding backend is ready[/red]"
                 )
         else:
             console.print("[dim]✓ Index already exists[/dim]")
             index_ok = True
     else:
         console.print(
-            "[dim]Skipping index build. Once ollama is ready, run:[/dim]\n"
+            "[dim]Skipping index build. Once embedding backend is ready, run:[/dim]\n"
             f"  [cyan]TURNZERO_DATA_DIR={resolved} turnzero index build[/cyan]"
         )
 
@@ -786,7 +763,14 @@ def setup(
             "Details: [cyan]https://github.com/turnzero-ai/turnzero#telemetry[/cyan]"
         )
 
-    embedding_backend = "ollama" if ollama_ok else "none"
+    from turnzero.embed import _is_onnx_available as _onnx_avail
+
+    if _onnx_avail():
+        embedding_backend = "onnx"
+    elif os.environ.get("OPENAI_API_KEY"):
+        embedding_backend = "openai"
+    else:
+        embedding_backend = "none"
     clients: list[str] = []
     if (Path.home() / ".claude.json").exists():
         import contextlib as _ctx
@@ -806,7 +790,7 @@ def setup(
 
     # ── 8. Summary ────────────────────────────────────────────────────────
     console.print()
-    if ollama_ok and index_ok:
+    if embedding_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")
         _print_live_demo()
         console.print(
@@ -815,7 +799,7 @@ def setup(
     else:
         console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
         console.print(
-            "Once ollama is ready, re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
+            "Resolve the issues above, then re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
         )
 
 
