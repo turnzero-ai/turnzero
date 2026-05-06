@@ -28,11 +28,11 @@ Circle 3 — Enterprise (Phase 5)
 *Goal: Remove every remaining friction point. Any user, any setup.*
 
 - [x] **Ollama setup automation** — Update `turnzero setup` to proactively pull `nomic-embed-text` and offer to start the server if missing (v0.8.0+).
-- [x] **ONNX embedding research** — Research concluded: preferred Ollama/OpenAI fallback chain for reliability and lower runtime dependency overhead.
+- [x] **ONNX embedding backend** — In-process local embedding via `onnxruntime` + `tokenizers` (v0.11.2+).
 - [x] **Index model versioning** — Add `model_id` header to index to prevent silent score corruption.
 - [x] **Multi-client auto-detection** — `turnzero setup` wires Claude Code, Cursor, Claude Desktop, Gemini CLI, and Codex.
-- [ ] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
-- [ ] **Privacy disclosure** — Document that `harvest` stores local transcript data; user opt-in.
+- [x] **Setup upgrade safety** — Ensure `turnzero setup` doesn't overwrite community/team tiers on upgrade.
+- [x] **Privacy disclosure** — Document that `harvest` stores local transcript data; user opt-in.
 
 ---
 
@@ -47,7 +47,7 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **Hosted block registry** — Static nginx on Hetzner, versioned YAML + pre-computed embeddings.
 - [ ] **`turnzero sync`** — Pull community blocks + index, no local model required.
 - [ ] **Community submission flow** — `submit_candidate` → registry PR → merged → synced.
-- [ ] **Correction prevention rate** — Instrument sessions to measure whether injected priors actually prevented mid-session corrections. The real quality signal beyond tool-call compliance.
+- [ ] **Correction prevention rate** — Instrument sessions to measure whether injected priors actually prevented mid-session corrections.
 - [ ] **Block discoverability** — `turnzero list --domain <domain>` to surface available blocks before a session starts.
 - [ ] **Per-turn domain shift** — Optional lightweight re-call of `list_suggested_blocks` when domain context shifts mid-session.
 
@@ -63,7 +63,8 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
-- [x] v0.11.1 — Setup: merge blocks instead of overwrite (WF-4); Harvest: privacy disclosure and opt-in (SEC-4).
+- [x] v0.11.3 — Setup: ONNX in-process backend by default; Ollama fallback restored; platform-specific guidance for Intel Macs.
+- [x] v0.11.2 — Setup: merge blocks instead of overwrite (WF-4); Harvest: privacy disclosure and opt-in (SEC-4).
 - [x] v0.11.0 — Security: CandidateSafetyValidator quarantines malicious priors (SEC-3); `query --explain` diagnostics (RET-4); upgrade nudge in stats (RET-5); eval telemetry suppressed (EVAL-4).
 - [x] v0.10.1 — Token transparency: PRIOR_METADATA in inject output, prior content + MCP overhead rows in stats (RET-3).
 - [x] v0.10.0 — Structural session dedup (WF-1/2/3); setup live injection demo (RET-1); overmatching keyword-overlap gate (RET-2); BENCHMARK.md at repo root.

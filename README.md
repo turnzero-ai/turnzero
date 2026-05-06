@@ -53,10 +53,11 @@ Python support: `3.12`, `3.13`, and `3.14`.
 
 | Option | Setup | Notes |
 |---|---|---|
-| ONNX (default, local) | `turnzero setup` auto-installs | No daemon, ~520 MB one-time download |
+| ONNX (default, local) | `turnzero setup` auto-installs | In-process, no daemon, ~520 MB one-time download |
+| ollama (local, optional) | `ollama serve && ollama pull nomic-embed-text` | Local server, free, private |
 | OpenAI API (fallback) | `export OPENAI_API_KEY=sk-...` | Prompt text sent to OpenAI for that request |
 
-Embeddings run in-process — no separate server required. With OpenAI, the prompt text is sent to OpenAI's embedding API for that request and not stored by TurnZero.
+Embeddings run in-process by default. TurnZero automatically falls back to Ollama or OpenAI if configured. With local backends, embeddings never leave your machine. With OpenAI, the prompt text is sent to OpenAI's embedding API for that request and not stored by TurnZero.
 
 ---
 
