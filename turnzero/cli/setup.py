@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextlib
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ from typing import Any
 import typer
 
 from turnzero.cli.base import (
+    HTTP_OK,
     console,
     err_console,
     get_data_dir,
@@ -549,7 +551,14 @@ def setup(
     if not _is_onnx_available():
         console.print("Installing ONNX embedding backend…")
         install_result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "onnxruntime>=1.18", "tokenizers>=0.19"],
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "onnxruntime>=1.18",
+                "tokenizers>=0.19",
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -561,7 +570,7 @@ def setup(
             console.print("[green]✓[/green] onnxruntime + tokenizers installed")
         else:
             console.print("[red]✗ ONNX backend installation failed.[/red]")
-            
+
             # Check for common platform mismatch (Intel Mac + New Python)
             is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
             if is_intel_mac:
@@ -574,7 +583,7 @@ def setup(
                 console.print(
                     "  Run manually: [cyan]pip install onnxruntime tokenizers[/cyan]"
                 )
-                
+
             if install_result.stderr:
                 console.print(f"[dim]{install_result.stderr.strip()}[/dim]")
 
@@ -607,10 +616,11 @@ def setup(
     # Fallback 1: Ollama
     if not embedding_ok:
         import httpx
+
         host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
         try:
             with httpx.Client(timeout=1.0) as client:
-                if client.get(f"{host}/api/tags").status_code == 200:
+                if client.get(f"{host}/api/tags").status_code == HTTP_OK:
                     # Check for model
                     result = subprocess.run(
                         ["ollama", "list"],
