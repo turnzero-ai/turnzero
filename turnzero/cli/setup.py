@@ -841,7 +841,7 @@ def setup(
     console.print()
     if embedding_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")
-        _print_live_demo()
+        _print_setup_finale(interactive)
         console.print(
             "\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
         )
@@ -855,23 +855,19 @@ def setup(
 _DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
 
 
-def _print_live_demo() -> None:
-    """Run a retrieval probe and print what TurnZero would inject."""
+def _render_demo_results(prompt: str) -> None:
+    """Run retrieval for prompt and print what TurnZero would inject."""
     from turnzero.mcp_server import _list_suggested_blocks
 
-    console.print(
-        "[bold]Live demo[/bold] — what TurnZero injects for a FastAPI prompt:\n"
-    )
-    console.print(f"  [dim]{_DEMO_PROMPT}[/dim]\n")
     try:
         all_results = [
             r
-            for r in _list_suggested_blocks(_DEMO_PROMPT)
+            for r in _list_suggested_blocks(prompt)
             if r.get("block_id") != "personal-priors-limit-warning"
         ]
         if not all_results:
             console.print(
-                "  [yellow]⚠ No blocks matched the demo prompt.[/yellow]\n"
+                "  [yellow]⚠ No blocks matched.[/yellow]\n"
                 "  Run [cyan]turnzero verify[/cyan] to diagnose."
             )
             return
@@ -918,6 +914,39 @@ def _print_live_demo() -> None:
             "  MCP server will inject priors normally when you start a session.\n"
             "  Run [cyan]turnzero verify[/cyan] to confirm retrieval is working."
         )
+
+
+def _print_setup_finale(interactive: bool) -> None:
+    """Show what TurnZero injects — user's own prompt if interactive, else demo."""
+    prompt = ""
+
+    if interactive:
+        console.print("[bold]See your priors in action[/bold]\n")
+        console.print(
+            "  [dim]Type your typical opening message and see exactly what"
+            " TurnZero will load into your AI session.[/dim]\n"
+        )
+        try:
+            user_input = console.input("  [bold]>[/bold] ").strip()
+            prompt = user_input
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+    if not prompt:
+        if interactive:
+            console.print(
+                f"\n  [dim]Using demo prompt: {_DEMO_PROMPT}[/dim]"
+            )
+        else:
+            console.print(
+                f"[bold]Live demo[/bold] — what TurnZero injects:\n\n"
+                f"  [dim]{_DEMO_PROMPT}[/dim]\n"
+            )
+        prompt = _DEMO_PROMPT
+    else:
+        console.print()
+
+    _render_demo_results(prompt)
 
 
 def feedback(

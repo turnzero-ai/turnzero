@@ -179,7 +179,7 @@ def test_template_not_overwritten_when_personal_dir_has_files(tmp_path: Path) ->
 
 
 def test_live_demo_shows_results_when_blocks_returned() -> None:
-    """_print_live_demo prints block slugs and token totals when retrieval succeeds."""
+    """_render_demo_results prints block slugs and token totals when retrieval succeeds."""
     fake_results = [
         {
             "block_id": "personal-prior-1",
@@ -198,9 +198,9 @@ def test_live_demo_shows_results_when_blocks_returned() -> None:
     with patch("turnzero.mcp_server._list_suggested_blocks", return_value=fake_results):
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
-            from turnzero.cli.setup import _print_live_demo
+            from turnzero.cli.setup import _render_demo_results
 
-            _print_live_demo()
+            _render_demo_results("test prompt")
 
     printed = " ".join(str(c) for c in con.print.call_args_list)
     assert "fastapi-async-build" in printed
@@ -210,29 +210,29 @@ def test_live_demo_shows_results_when_blocks_returned() -> None:
 
 
 def test_live_demo_graceful_on_empty_results() -> None:
-    """_print_live_demo prints a warning when no blocks match."""
+    """_render_demo_results prints a warning when no blocks match."""
     with patch("turnzero.mcp_server._list_suggested_blocks", return_value=[]):
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
-            from turnzero.cli.setup import _print_live_demo
+            from turnzero.cli.setup import _render_demo_results
 
-            _print_live_demo()
+            _render_demo_results("test prompt")
 
     printed = " ".join(str(c) for c in con.print.call_args_list)
     assert "No blocks matched" in printed
 
 
 def test_live_demo_graceful_on_exception() -> None:
-    """_print_live_demo catches retrieval errors and prints a fallback."""
+    """_render_demo_results catches retrieval errors and prints a fallback."""
     with patch(
         "turnzero.mcp_server._list_suggested_blocks",
         side_effect=RuntimeError("embedding unavailable"),
     ):
         con = MagicMock()
         with patch("turnzero.cli.setup.console", con):
-            from turnzero.cli.setup import _print_live_demo
+            from turnzero.cli.setup import _render_demo_results
 
-            _print_live_demo()
+            _render_demo_results("test prompt")
 
     printed = " ".join(str(c) for c in con.print.call_args_list)
     assert "Live demo skipped" in printed

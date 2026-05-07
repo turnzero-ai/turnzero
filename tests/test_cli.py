@@ -452,3 +452,58 @@ def test_stats_personal_prior_growth(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert "Personal Priors" in result.output
     # Growth trajectory present (0 → N in Xw)
     assert "0 →" in result.output
+
+
+# ---------------------------------------------------------------------------
+# RET-7: setup finale interactive demo
+# ---------------------------------------------------------------------------
+
+
+def test_finale_non_interactive_uses_demo_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """--no-interactive skips input prompt, uses hardcoded demo prompt."""
+    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
+
+    captured: list[str] = []
+
+    def fake_render(prompt: str) -> None:
+        captured.append(prompt)
+
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", fake_render)
+    _print_setup_finale(interactive=False)
+    assert captured == [_DEMO_PROMPT]
+
+
+def test_finale_interactive_empty_input_uses_demo_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Interactive + empty Enter → falls back to demo prompt."""
+    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
+    from turnzero.cli.base import console
+
+    captured: list[str] = []
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
+    monkeypatch.setattr(console, "input", lambda _prompt: "")
+    _print_setup_finale(interactive=True)
+    assert captured == [_DEMO_PROMPT]
+
+
+def test_finale_interactive_custom_prompt_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Interactive + typed prompt → that prompt is used for retrieval."""
+    from turnzero.cli.setup import _print_setup_finale
+    from turnzero.cli.base import console
+
+    captured: list[str] = []
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
+    monkeypatch.setattr(console, "input", lambda _prompt: "debugging a Python asyncio deadlock")
+    _print_setup_finale(interactive=True)
+    assert captured == ["debugging a Python asyncio deadlock"]
+
+
+def test_finale_interactive_eoferror_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """EOFError (non-TTY / piped input) → silent fallback to demo prompt."""
+    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
+    from turnzero.cli.base import console
+
+    captured: list[str] = []
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
+    monkeypatch.setattr(console, "input", lambda _prompt: (_ for _ in ()).throw(EOFError()))
+    _print_setup_finale(interactive=True)
+    assert captured == [_DEMO_PROMPT]
