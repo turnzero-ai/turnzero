@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 
 from turnzero.cli.base import _version_callback
-from turnzero.cli.discovery import inject, preview, query, show, stats
+from turnzero.cli.discovery import inject, list_blocks, preview, query, show, stats
 from turnzero.cli.index import index_app, threshold_test, validate
 from turnzero.cli.review import harvest, review
 from turnzero.cli.setup import feedback, setup, source_app
@@ -39,6 +39,7 @@ app.add_typer(source_app, name="source")
 
 # Register top-level commands
 app.command()(preview)
+app.command(name="list")(list_blocks)
 app.command()(setup)
 app.command()(query)
 app.command()(show)

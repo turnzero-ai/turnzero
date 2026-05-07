@@ -283,3 +283,95 @@ def test_query_no_match_hints_explain(
     result = runner.invoke(app, ["query", "xyzzy qwerty plonk frobnicate"])
     assert result.exit_code == 0
     assert "--explain" in result.output
+
+
+# ---------------------------------------------------------------------------
+# GRW-1: turnzero list
+# ---------------------------------------------------------------------------
+
+
+def _write_test_block(path: Path, slug: str, domain: str, stale: bool = False) -> None:
+    verified = "2020-01-01" if stale else "2026-05-01"
+    path.write_text(
+        f"slug: {slug}\nversion: 1.0.0\ndomain: {domain}\nintent: build\n"
+        f"last_verified: {verified}\ncontext_weight: 100\nconstraints: []\n"
+        f"anti_patterns: []\nconfidence: 0.9\narchived: false\n"
+    )
+
+
+def test_list_domain_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+    blocks_dir.mkdir(parents=True)
+    _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
+    _write_test_block(blocks_dir / "fastapi-cors-build.yaml", "fastapi-cors-build", "fastapi")
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0
+    assert "fastapi" in result.output
+    assert "2" in result.output  # block count
+
+
+def test_list_domain_filter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+    blocks_dir.mkdir(parents=True)
+    _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+
+    result = runner.invoke(app, ["list", "--domain", "fastapi"])
+    assert result.exit_code == 0
+    assert "fastapi-async-build" in result.output
+    assert "0.90" in result.output
+
+
+def test_list_candidates_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_data_dir", lambda: tmp_path)
+
+    result = runner.invoke(app, ["list", "--candidates"])
+    assert result.exit_code == 0
+    assert "No candidates" in result.output
+
+
+def test_list_candidates_shows_pending(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cand_dir = tmp_path / "candidates"
+    cand_dir.mkdir()
+    _write_test_block(cand_dir / "my-rule-build.yaml", "my-rule-build", "fastapi")
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_data_dir", lambda: tmp_path)
+
+    result = runner.invoke(app, ["list", "--candidates"])
+    assert result.exit_code == 0
+    assert "my-rule-build" in result.output
+
+
+def test_list_stale_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+    blocks_dir.mkdir(parents=True)
+    _write_test_block(blocks_dir / "fresh.yaml", "fresh", "fastapi", stale=False)
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+
+    result = runner.invoke(app, ["list", "--stale"])
+    assert result.exit_code == 0
+    assert "No stale" in result.output
+
+
+def test_list_stale_shows_old_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+    blocks_dir.mkdir(parents=True)
+    _write_test_block(blocks_dir / "old.yaml", "old-block-build", "fastapi", stale=True)
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+
+    result = runner.invoke(app, ["list", "--stale"])
+    assert result.exit_code == 0
+    assert "old-block-build" in result.output
