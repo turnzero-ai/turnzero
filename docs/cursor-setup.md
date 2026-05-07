@@ -12,8 +12,7 @@ Cursor begins its response with:
 
 ## Prerequisites
 
-- TurnZero installed: `pipx install turnzero`
-- Index built: `turnzero index build`
+- TurnZero installed and set up: `pipx install turnzero && turnzero setup`
 - Cursor 0.40+ (MCP support required)
 
 ## Step 1 — Register the MCP server

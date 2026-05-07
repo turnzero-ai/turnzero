@@ -52,7 +52,7 @@ The highest-signal source is mid-session corrections: when the AI gets something
 
 **What if there are no relevant priors for my domain?**
 
-TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`. To see all available blocks for a domain, run `turnzero query "<domain> task"`.
+TurnZero still works — it just injects nothing, which is the right answer when there's no signal. There's a three-layer gate: minimum prompt length, implementation-intent detection, and a 0.70 cosine similarity threshold. Marginal matches are filtered out. The library grows from your sessions, so the first time you use a new domain you start from zero; by the tenth session, you've built a useful prior set. To inspect what TurnZero would do, run `turnzero preview "<prompt>"`. To see all available blocks for a domain, run `turnzero list --domain <name>`.
 
 ---
 
@@ -73,4 +73,3 @@ Project Scoping allows TurnZero to distinguish between your **Universal Identity
 Yes. The 5,000-token limit is designed to optimize for the model's **latent instruction following** capabilities without triggering performance decay. We follow a **Mandate-Constraint-Rationale (MCR)** hierarchy: we don't just tell the model *what* to do; we provide a logical rationale (*why*), which has been shown to significantly improve LLM adherence and reduce hallucination.
 
 By including explicit **Anti-Patterns** (telling the model what *not* to do), we achieve **Instructional Anchoring**. This "negative constraint" prunes the model's search space more effectively than positive instructions alone, resulting in a model that is strictly more competent and follows your engineering standards more reliably.
-nce and reduce hallucination of constraints for tools not in use.
