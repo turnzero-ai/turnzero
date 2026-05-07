@@ -28,7 +28,7 @@ Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks
 
 **Do I need ollama? What if I don't want to install anything extra?**
 
-No. TurnZero has two embedding backends and falls back automatically: ollama (local, free, private) → OpenAI API (set `OPENAI_API_KEY`). If you already have an OpenAI key, there is nothing extra to install. If you want full local/private operation, `ollama pull nomic-embed-text` is a one-time step.
+No. `turnzero setup` installs the ONNX embedding backend automatically — in-process, no daemon, no API key required. Ollama and OpenAI are available as fallbacks if ONNX is unavailable on your platform. For most users, setup just works.
 
 ---
 
@@ -46,7 +46,7 @@ RAG retrieves documents to answer a question *mid-response*. TurnZero retrieves 
 
 **How does the library grow? Who writes the Expert Priors?**
 
-The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly, which enters your local library with a confidence score based on detail; you can verify or prune these via `turnzero review`. The 143 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
+The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly — you'll see a `💡 Correction captured` nudge pointing you to `turnzero review`. The 169 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
 
 ---
 
@@ -70,5 +70,7 @@ Project Scoping allows TurnZero to distinguish between your **Universal Identity
 
 **Is there scientific backing for the context size TurnZero uses?**
 
-Yes. The 5,000-token limit is designed to optimize for the model's **latent instruction following** capabilities without triggering performance decay. We follow a **Mandate-Constraint-Rationale** hierarchy: we don't just tell the model *what* to do; we provide a logical rationale (*why*), which has been shown to significantly improve LLM adherence and reduce hallucination of constraints for tools not in use.
+Yes. The 5,000-token limit is designed to optimize for the model's **latent instruction following** capabilities without triggering performance decay. We follow a **Mandate-Constraint-Rationale (MCR)** hierarchy: we don't just tell the model *what* to do; we provide a logical rationale (*why*), which has been shown to significantly improve LLM adherence and reduce hallucination.
+
+By including explicit **Anti-Patterns** (telling the model what *not* to do), we achieve **Instructional Anchoring**. This "negative constraint" prunes the model's search space more effectively than positive instructions alone, resulting in a model that is strictly more competent and follows your engineering standards more reliably.
 nce and reduce hallucination of constraints for tools not in use.

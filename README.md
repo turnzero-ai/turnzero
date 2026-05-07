@@ -147,10 +147,17 @@ turnzero setup                                             # register MCP, build
 turnzero verify                                            # full system diagnostic
 turnzero preview "build a Next.js 15 app with Supabase"   # preview what would inject
 turnzero query   "build a Next.js 15 app with Supabase"   # ranked block list
+turnzero list                                              # browse library by domain
+turnzero list    --domain fastapi                          # blocks in a specific domain
+turnzero list    --candidates                              # pending corrections awaiting review
 turnzero inject  nextjs15-approuter-build                  # formatted output for one or more block slugs
 turnzero show    nextjs15-approuter-build                  # full block content
-turnzero stats                                             # library + session stats
+turnzero stats                                             # library + session stats (7-day trajectory)
 turnzero review                                            # review pending candidates + low-confidence blocks
+turnzero domain  list                                      # show active vs available domains
+turnzero domain  add langchain                             # activate a domain
+turnzero domain  remove rails                              # deactivate a domain
+turnzero domain  reset                                     # revert to default set
 ```
 
 For non-MCP clients, manual fallback:
@@ -190,7 +197,9 @@ doc_anchors:
 
 ## Knowledge domains
 
-143 Expert Priors across 37 domains — web frameworks, databases, cloud infra, security, CI/CD, containerisation, and more. Coverage is deepest where corrections come from real sessions: FastAPI, Next.js, PostgreSQL, Docker, Kubernetes, Redis, Supabase, Django, Rails, and others. The library grows from your sessions via `submit_candidate`.
+169 Expert Priors across 40 domains — web frameworks, databases, cloud infra, security, CI/CD, containerisation, and more. Coverage is deepest where corrections come from real sessions: FastAPI, Next.js, PostgreSQL, Docker, Kubernetes, Redis, Supabase, Django, Rails, and others. The library grows from your sessions via `submit_candidate`.
+
+Fresh installs activate a curated default set (Python, TypeScript, Security, REST API, Docker, FastAPI, Next.js, PostgreSQL). Add more with `turnzero domain add <name>` or browse available domains with `turnzero domain list`.
 
 ---
 
@@ -232,7 +241,7 @@ See [ROADMAP.md](ROADMAP.md).
 
 TurnZero collects anonymous usage telemetry by default using [PostHog](https://posthog.com).
 
-**What is collected:** anonymous install ID (random UUID, generated once at setup), event names (`setup_completed`, `session_start`, `block_injected`, `candidate_submitted`), domain names (e.g. `fastapi`, `nextjs`), block counts, client version, OS type.
+**What is collected:** anonymous install ID (random UUID, generated once at setup), event names (`setup_completed`, `session_start`, `block_injected`, `candidate_submitted`, `stats_viewed`, `list_viewed`), domain names (e.g. `fastapi`, `nextjs`), block counts, client version, OS type.
 
 **What is never collected:** prompt text, prior content or constraints, file paths, API keys, environment variables, or any personally identifiable information.
 

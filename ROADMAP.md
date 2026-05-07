@@ -48,7 +48,7 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **`turnzero sync`** — Pull community blocks + index, no local model required.
 - [ ] **Community submission flow** — `submit_candidate` → registry PR → merged → synced.
 - [ ] **Correction prevention rate** — Instrument sessions to measure whether injected priors actually prevented mid-session corrections.
-- [ ] **Block discoverability** — `turnzero list --domain <domain>` to surface available blocks before a session starts.
+- [x] **Block discoverability** — `turnzero list`, `--domain`, `--candidates`, `--stale`; `turnzero domain add/remove/list/reset` (v0.12.0).
 - [ ] **Per-turn domain shift** — Optional lightweight re-call of `list_suggested_blocks` when domain context shifts mid-session.
 
 ---
@@ -63,6 +63,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.12.0 — Retention sprint: `turnzero list` (GRW-1), `turnzero domain` management (RET-8), correction nudge (ONB-3), stats trajectory (RET-6), setup interactive finale (RET-7), day-2 nudge (RET-9), async telemetry fix.
 - [x] v0.11.5 — Verify: prioritized ONNX backend in diagnostics; Docs: updated FAQ for ONNX priority.
 - [x] v0.11.4 — Docs: synchronized versions; README: restored Ollama documentation.
 - [x] v0.11.2 — Setup: merge blocks instead of overwrite (WF-4); Harvest: privacy disclosure and opt-in (SEC-4).
