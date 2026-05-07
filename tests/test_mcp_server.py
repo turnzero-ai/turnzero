@@ -229,7 +229,12 @@ def test_learn_from_session_returns_harvest_instruction(tmp_path: Path) -> None:
         del os.environ["TURNZERO_DATA_DIR"]
 
 
-def test_inject_block_all_seed_blocks() -> None:
+def test_inject_block_all_seed_blocks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Use empty data dir so active_domains=None (all domains active — backward compat).
+    # Without this, the user's real ~/.turnzero config may filter domains in this test.
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     seed_ids = [
         "nextjs15-approuter-build",
         "supabase-auth-pkce-build",

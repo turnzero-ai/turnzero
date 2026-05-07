@@ -237,6 +237,14 @@ def list_suggested_blocks(
     return formatted
 
 
+def _check_domain_active(block: Block, block_id: str) -> bool:
+    """Return True if block's domain is in the active whitelist (or no whitelist set)."""
+    active = get_active_domains(get_data_dir())
+    if active is None or block.tier == "personal":
+        return True
+    return block.domain in active
+
+
 def get_block(block_id: str) -> dict[str, Any]:
     """Return full block data as a serialisable dict."""
     blocks = _load_active_blocks()
@@ -246,6 +254,7 @@ def get_block(block_id: str) -> dict[str, Any]:
             f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
         )
     block: Block = blocks[block_id]
+    is_active = _check_domain_active(block, block_id)
     return {
         "id": block.slug,
         "slug": block.slug,
@@ -266,6 +275,7 @@ def get_block(block_id: str) -> dict[str, Any]:
         ],
         "conflicts_with": block.conflicts_with,
         "requires": block.requires,
+        "active": is_active,
     }
 
 
@@ -280,6 +290,12 @@ def inject_block(
         available = sorted(blocks.keys())
         raise ValueError(
             f"Block '{block_id}' not found. Available blocks: {', '.join(available)}"
+        )
+    block: Block = blocks[block_id]
+    if not _check_domain_active(block, block_id):
+        raise ValueError(
+            f"Block '{block_id}' domain '{block.domain}' is not in active domains. "
+            f"Run `turnzero domain add {block.domain}` to activate it."
         )
     if session_id:
         record_session_injection(session_id, block_id)
