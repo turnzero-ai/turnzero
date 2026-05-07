@@ -96,21 +96,28 @@ async def _post(event: str, props: dict[str, Any]) -> None:
 
 
 def track_event(event: str, props: dict[str, Any] | None = None) -> None:
-    """Fire-and-forget telemetry event. Silent on any error."""
+    """Fire-and-forget telemetry event. Silent on any error, never blocks caller."""
     if _POSTHOG_API_KEY == "phc_REPLACE_ME":
         return
     if not _is_enabled():
         return
-    import contextlib
-
-    with contextlib.suppress(Exception):
+    try:
         loop = asyncio.get_running_loop()
+        # Async context (MCP server): schedule as a task, truly non-blocking.
         task = loop.create_task(_post(event, props or {}))
         _pending_tasks.add(task)
         task.add_done_callback(_pending_tasks.discard)
-    if not _pending_tasks:  # If create_task failed (no loop)
-        with contextlib.suppress(Exception):
-            asyncio.run(_post(event, props or {}))
+    except RuntimeError:
+        # No running event loop (CLI context): daemon thread so caller never blocks.
+        # Daemon=True means thread is killed when the process exits — no cleanup needed.
+        import threading
+
+        threading.Thread(
+            target=lambda: asyncio.run(_post(event, props or {})),
+            daemon=True,
+        ).start()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 async def flush_telemetry(timeout: float = 2.0) -> None:
