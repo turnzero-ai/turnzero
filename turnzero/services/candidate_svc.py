@@ -196,6 +196,7 @@ def submit(
         candidates_dir = get_data_dir() / "candidates"
         candidates_dir.mkdir(parents=True, exist_ok=True)
         candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
+        is_new = not candidate_path.exists()
         with open(candidate_path, "w", encoding="utf-8") as f:
             yaml.dump(block, f, allow_unicode=True, sort_keys=False)
 
@@ -205,9 +206,16 @@ def submit(
                 f"was not found in the reason. Candidate '{block_id}' has been queued for "
                 f"review instead. Run `turnzero review` to approve it."
             )
+        elif is_new:
+            result = (
+                f"💡 Correction captured — '{block_id}' queued for review. "
+                f"Run `turnzero review` to approve and add to your library. "
+                f"It will prevent this mistake in future sessions."
+                + (f" Reason: {reason}" if reason else "")
+            )
         else:
             result = (
-                f"✓ Candidate '{block_id}' queued for review. "
+                f"✓ Candidate '{block_id}' updated in review queue. "
                 f"Run `turnzero review` to approve it into the library."
                 + (f" Reason: {reason}" if reason else "")
             )

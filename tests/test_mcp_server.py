@@ -329,6 +329,76 @@ def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None
 
 
 # ---------------------------------------------------------------------------
+# ONB-3: "First Correction" Nudge
+# ---------------------------------------------------------------------------
+
+
+def _make_candidate_svc_patcher(tmp_path: Path) -> tuple:
+    import turnzero.services.candidate_svc as cand_svc
+
+    data_dir = tmp_path / "data"
+    blocks_dir = tmp_path / "blocks"
+    index_file = data_dir / "index.jsonl"
+    data_dir.mkdir()
+    blocks_dir.mkdir()
+
+    orig = (cand_svc.get_data_dir, cand_svc.get_blocks_dir, cand_svc.get_index_path)
+    cand_svc.get_data_dir = lambda: data_dir
+    cand_svc.get_blocks_dir = lambda: blocks_dir
+    cand_svc.get_index_path = lambda: index_file
+    return cand_svc, orig
+
+
+def test_onb3_nudge_on_new_candidate(tmp_path: Path) -> None:
+    cand_svc, orig = _make_candidate_svc_patcher(tmp_path)
+    try:
+        from turnzero.mcp_server import submit_candidate
+
+        result = submit_candidate(
+            block_id="onb3-test-build",
+            domain="fastapi",
+            intent="build",
+            constraints=["Use async def"],
+            anti_patterns=["Do not use sync def in async context"],
+            reason="AI used sync def",
+            auto_approve=False,
+        )
+        assert "💡 Correction captured" in result
+        assert "turnzero review" in result
+    finally:
+        cand_svc.get_data_dir, cand_svc.get_blocks_dir, cand_svc.get_index_path = orig
+
+
+def test_onb3_no_nudge_on_duplicate_candidate(tmp_path: Path) -> None:
+    cand_svc, orig = _make_candidate_svc_patcher(tmp_path)
+    try:
+        from turnzero.mcp_server import submit_candidate
+
+        submit_candidate(
+            block_id="onb3-dupe-build",
+            domain="fastapi",
+            intent="build",
+            constraints=["Use async def"],
+            anti_patterns=["Do not use sync def in async context"],
+            reason="first submission",
+            auto_approve=False,
+        )
+        result = submit_candidate(
+            block_id="onb3-dupe-build",
+            domain="fastapi",
+            intent="build",
+            constraints=["Use async def"],
+            anti_patterns=["Do not use sync def in async context"],
+            reason="second submission",
+            auto_approve=False,
+        )
+        assert "💡 Correction captured" not in result
+        assert "updated in review queue" in result
+    finally:
+        cand_svc.get_data_dir, cand_svc.get_blocks_dir, cand_svc.get_index_path = orig
+
+
+# ---------------------------------------------------------------------------
 # _log_tool_call
 # ---------------------------------------------------------------------------
 
