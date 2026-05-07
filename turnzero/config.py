@@ -10,6 +10,18 @@ import yaml
 
 TIERS = ("local", "community", "team", "personal")
 
+# Domains written to config on fresh install. Users can extend with `turnzero domain add`.
+DEFAULT_ACTIVE_DOMAINS: list[str] = [
+    "python",
+    "typescript",
+    "security",
+    "rest-api",
+    "docker",
+    "fastapi",
+    "nextjs",
+    "postgresql",
+]
+
 _DEFAULTS: dict[str, Any] = {
     "sources": {
         "local": True,
@@ -18,6 +30,8 @@ _DEFAULTS: dict[str, Any] = {
         "personal": True,
     },
     "harvest_opt_in": False,
+    # None = all domains active (backward compat). List = only those domains score.
+    "active_domains": None,
 }
 
 
@@ -130,6 +144,14 @@ def save_telemetry_config(data_dir: Path, config: dict[str, object]) -> None:
     _telemetry_config_path(data_dir).write_text(
         yaml.dump(config, default_flow_style=False, sort_keys=True)
     )
+
+
+def get_active_domains(data_dir: Path) -> list[str] | None:
+    """Return active domain whitelist, or None if all domains are active."""
+    val = load_config(data_dir).get("active_domains")
+    if isinstance(val, list):
+        return val
+    return None
 
 
 def allow_mcp_auto_approve() -> bool:

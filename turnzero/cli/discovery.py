@@ -572,15 +572,8 @@ def list_blocks(
         b.domain for b in blocks.values() if b.is_stale()
     )
 
-    # Read disabled_domains from config (GRW-3 forward-compat)
-    disabled: set[str] = set()
-    with contextlib.suppress(Exception):
-        import yaml as _yaml
-
-        cfg_path = get_data_dir() / "config.yaml"
-        if cfg_path.exists():
-            cfg = _yaml.safe_load(cfg_path.read_text()) or {}
-            disabled = set(cfg.get("disabled_domains", []))
+    from turnzero.config import get_active_domains
+    active_domains = get_active_domains(get_data_dir())
 
     console.print(
         f"\n[bold]Expert Prior Library[/bold] [dim]({len(blocks)} blocks across {len(domain_counts)} domains)[/dim]\n"
@@ -594,7 +587,10 @@ def list_blocks(
     for d, count in sorted(domain_counts.items()):
         stale_n = stale_by_domain.get(d, 0)
         stale_cell = f"[red]{stale_n}[/red]" if stale_n else "[dim]0[/dim]"
-        status = "[dim]disabled[/dim]" if d in disabled else "[green]enabled[/green]"
+        if active_domains is None or d in active_domains:
+            status = "[green]active[/green]"
+        else:
+            status = "[dim]inactive[/dim]"
         tbl.add_row(d, str(count), stale_cell, status)
 
     console.print(tbl)

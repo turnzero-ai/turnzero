@@ -461,7 +461,7 @@ def test_stats_personal_prior_growth(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
 def test_finale_non_interactive_uses_demo_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     """--no-interactive skips input prompt, uses hardcoded demo prompt."""
-    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
+    from turnzero.cli.setup import _DEMO_PROMPT, _print_setup_finale
 
     captured: list[str] = []
 
@@ -475,11 +475,15 @@ def test_finale_non_interactive_uses_demo_prompt(monkeypatch: pytest.MonkeyPatch
 
 def test_finale_interactive_empty_input_uses_demo_prompt(monkeypatch: pytest.MonkeyPatch) -> None:
     """Interactive + empty Enter → falls back to demo prompt."""
-    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
     from turnzero.cli.base import console
+    from turnzero.cli.setup import _DEMO_PROMPT, _print_setup_finale
 
     captured: list[str] = []
-    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
+
+    def _capture(p: str) -> None:
+        captured.append(p)
+
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", _capture)
     monkeypatch.setattr(console, "input", lambda _prompt: "")
     _print_setup_finale(interactive=True)
     assert captured == [_DEMO_PROMPT]
@@ -487,11 +491,15 @@ def test_finale_interactive_empty_input_uses_demo_prompt(monkeypatch: pytest.Mon
 
 def test_finale_interactive_custom_prompt_used(monkeypatch: pytest.MonkeyPatch) -> None:
     """Interactive + typed prompt → that prompt is used for retrieval."""
-    from turnzero.cli.setup import _print_setup_finale
     from turnzero.cli.base import console
+    from turnzero.cli.setup import _print_setup_finale
 
     captured: list[str] = []
-    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
+
+    def _capture(p: str) -> None:
+        captured.append(p)
+
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", _capture)
     monkeypatch.setattr(console, "input", lambda _prompt: "debugging a Python asyncio deadlock")
     _print_setup_finale(interactive=True)
     assert captured == ["debugging a Python asyncio deadlock"]
@@ -499,11 +507,142 @@ def test_finale_interactive_custom_prompt_used(monkeypatch: pytest.MonkeyPatch) 
 
 def test_finale_interactive_eoferror_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
     """EOFError (non-TTY / piped input) → silent fallback to demo prompt."""
-    from turnzero.cli.setup import _print_setup_finale, _DEMO_PROMPT
     from turnzero.cli.base import console
+    from turnzero.cli.setup import _DEMO_PROMPT, _print_setup_finale
 
     captured: list[str] = []
-    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", lambda p: captured.append(p))
-    monkeypatch.setattr(console, "input", lambda _prompt: (_ for _ in ()).throw(EOFError()))
+
+    def _capture(p: str) -> None:
+        captured.append(p)
+
+    def _raise(_prompt: str) -> str:
+        raise EOFError
+
+    monkeypatch.setattr("turnzero.cli.setup._render_demo_results", _capture)
+    monkeypatch.setattr(console, "input", _raise)
     _print_setup_finale(interactive=True)
     assert captured == [_DEMO_PROMPT]
+
+
+# ---------------------------------------------------------------------------
+# RET-8: domain management
+# ---------------------------------------------------------------------------
+
+
+def test_get_active_domains_returns_none_when_absent(tmp_path: Path) -> None:
+    from turnzero.config import get_active_domains
+    assert get_active_domains(tmp_path) is None
+
+
+def test_get_active_domains_returns_list_when_set(tmp_path: Path) -> None:
+    import yaml
+
+    from turnzero.config import get_active_domains
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
+    assert get_active_domains(tmp_path) == ["python", "docker"]
+
+
+def test_domain_add_initialises_from_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from turnzero.config import DEFAULT_ACTIVE_DOMAINS, get_active_domains
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["domain", "add", "langchain"])
+    assert result.exit_code == 0
+    active = get_active_domains(tmp_path)
+    assert active is not None
+    assert "langchain" in active
+    # default set also present
+    assert "python" in active
+    assert len(active) == len(set(DEFAULT_ACTIVE_DOMAINS) | {"langchain"})
+
+
+def test_domain_add_existing_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+
+    from turnzero.config import get_active_domains
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["domain", "add", "fastapi"])
+    assert result.exit_code == 0
+    active = get_active_domains(tmp_path)
+    assert active is not None
+    assert set(active) == {"python", "docker", "fastapi"}
+
+
+def test_domain_add_duplicate_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+
+    from turnzero.config import get_active_domains
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    runner.invoke(app, ["domain", "add", "python"])
+    assert get_active_domains(tmp_path) == ["python"]
+
+
+def test_domain_remove(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+
+    from turnzero.config import get_active_domains
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["domain", "remove", "docker"])
+    assert result.exit_code == 0
+    assert get_active_domains(tmp_path) == ["python"]
+
+
+def test_domain_remove_last_domain_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["domain", "remove", "python"])
+    assert result.exit_code != 0
+
+
+def test_domain_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+
+    from turnzero.config import DEFAULT_ACTIVE_DOMAINS, get_active_domains
+    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["domain", "reset"])
+    assert result.exit_code == 0
+    assert get_active_domains(tmp_path) == list(DEFAULT_ACTIVE_DOMAINS)
+
+
+def test_retrieval_svc_no_filter_when_active_domains_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """active_domains=None → all blocks pass through (backward compat)."""
+    import turnzero.services.retrieval_svc as rsvc
+    from turnzero.blocks import Block
+
+    def _fake_blocks() -> dict[str, Block]:
+        return {
+            "py-block": Block(slug="py-block", hash="h", version="1", domain="python",
+                              intent="build", last_verified="2026-01-01", tags=[], context_weight=100,
+                              constraints=[], anti_patterns=[], doc_anchors=[], conflicts_with=[],
+                              conflicts_with_tags=[], provides=[], requires=[], confidence=1.0,
+                              verification_level="curated", rationale=None, archived=False, tier="community"),
+            "k8s-block": Block(slug="k8s-block", hash="h", version="1", domain="kubernetes",
+                               intent="build", last_verified="2026-01-01", tags=[], context_weight=100,
+                               constraints=[], anti_patterns=[], doc_anchors=[], conflicts_with=[],
+                               conflicts_with_tags=[], provides=[], requires=[], confidence=1.0,
+                               verification_level="curated", rationale=None, archived=False, tier="community"),
+        }
+
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(rsvc, "_load_active_blocks", _fake_blocks)
+    # No config.yaml → active_domains=None → both blocks should reach query()
+    captured_blocks: list = []
+    def _fake_query(prompt, index, blocks, **kw):  # type: ignore[no-untyped-def]
+        captured_blocks.extend(blocks.keys())
+        return []
+    monkeypatch.setattr(rsvc, "_query", _fake_query)
+    monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
+    monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
+    import turnzero.retrieval as ret
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    import turnzero.services.stats_svc as ssvc
+    monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
+    import turnzero.telemetry as tel
+    monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
+    rsvc.list_suggested_blocks("build something", session_id=None)
+    assert "py-block" in captured_blocks
+    assert "k8s-block" in captured_blocks

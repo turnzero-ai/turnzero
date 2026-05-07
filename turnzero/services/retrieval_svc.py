@@ -8,6 +8,7 @@ from typing import Any
 from turnzero.blocks import Block
 from turnzero.config import (
     enabled_sources,
+    get_active_domains,
     get_blocks_dir,
     get_bundled_blocks_dir,
     get_bundled_index_path,
@@ -114,6 +115,16 @@ def list_suggested_blocks(
     from turnzero.services import stats_svc
 
     blocks = _load_active_blocks()
+
+    # Apply domain whitelist: personal tier always passes, others filtered when set.
+    active_domains = get_active_domains(get_data_dir())
+    if active_domains is not None:
+        active_set = set(active_domains)
+        blocks = {
+            k: v for k, v in blocks.items()
+            if v.tier == "personal" or v.domain in active_set
+        }
+
     index = _load_active_index()
     exclude_ids = get_session_injections(session_id) if session_id else set()
 

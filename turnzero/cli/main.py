@@ -6,6 +6,7 @@ import typer
 
 from turnzero.cli.base import _version_callback
 from turnzero.cli.discovery import inject, list_blocks, preview, query, show, stats
+from turnzero.cli.domain import domain_app
 from turnzero.cli.index import index_app, threshold_test, validate
 from turnzero.cli.review import harvest, review
 from turnzero.cli.setup import feedback, setup, source_app
@@ -36,6 +37,7 @@ def _app_options(
 # Add sub-apps
 app.add_typer(index_app, name="index")
 app.add_typer(source_app, name="source")
+app.add_typer(domain_app, name="domain")
 
 # Register top-level commands
 app.command()(preview)

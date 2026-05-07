@@ -785,7 +785,13 @@ def setup(
     # ── 7. Telemetry disclosure + anonymous_id generation ─────────────────
     import uuid as _uuid
 
-    from turnzero.config import load_telemetry_config, save_telemetry_config
+    from turnzero.config import (
+        DEFAULT_ACTIVE_DOMAINS,
+        load_config,
+        load_telemetry_config,
+        save_config,
+        save_telemetry_config,
+    )
     from turnzero.telemetry import track_setup_completed
 
     tel_cfg = load_telemetry_config(resolved)
@@ -793,6 +799,11 @@ def setup(
     if first_run:
         tel_cfg["anonymous_id"] = str(_uuid.uuid4())
         save_telemetry_config(resolved, tel_cfg)
+        # Write default domain set so new users get curated expert prior coverage
+        app_cfg = load_config(resolved)
+        if app_cfg.get("active_domains") is None:
+            app_cfg["active_domains"] = list(DEFAULT_ACTIVE_DOMAINS)
+            save_config(resolved, app_cfg)
 
     # Show disclosure only on first setup — prominent, not hidden.
     if first_run:
@@ -841,6 +852,16 @@ def setup(
     console.print()
     if embedding_ok and index_ok:
         console.print("[bold green]✓ Setup complete![/bold green]\n")
+        # Show active domains so user knows what's loaded
+        from turnzero.config import get_active_domains
+        active = get_active_domains(resolved)
+        if active is not None:
+            domains_str = "  ·  ".join(f"[cyan]{d}[/cyan]" for d in active)
+            console.print(
+                f"  Active domains ({len(active)}):  {domains_str}\n"
+                f"  [dim]Add more: [/dim][cyan]turnzero domain add <name>[/cyan]"
+                f"  [dim]Browse: [/dim][cyan]turnzero domain list[/cyan]\n"
+            )
         _print_setup_finale(interactive)
         console.print(
             "\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
