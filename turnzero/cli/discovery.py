@@ -503,6 +503,9 @@ def list_blocks(
                 )
         console.print(tbl)
         console.print("[dim]Run `turnzero review` to approve or reject.[/dim]\n")
+        from turnzero.telemetry import track_list_viewed
+        cand_count = sum(1 for _ in cand_dir.glob("*.yaml"))
+        track_list_viewed(mode="candidates", blocks_shown=cand_count)
         return
 
     try:
@@ -529,6 +532,8 @@ def list_blocks(
         for b in sorted(stale_blocks.values(), key=lambda b: b.last_verified):
             tbl.add_row(b.slug, b.domain, b.last_verified, f"{b.confidence:.2f}")
         console.print(tbl)
+        from turnzero.telemetry import track_list_viewed
+        track_list_viewed(mode="stale", blocks_shown=len(stale_blocks))
         return
 
     if domain:
@@ -555,6 +560,8 @@ def list_blocks(
             stale_tag = "[red]STALE[/red]" if b.is_stale() else "[green]ok[/green]"
             tbl.add_row(b.slug, b.tier, f"{b.confidence:.2f}", b.last_verified, stale_tag)
         console.print(tbl)
+        from turnzero.telemetry import track_list_viewed
+        track_list_viewed(mode="domain", blocks_shown=len(domain_blocks), domain=domain)
         return
 
     # Default: domain summary
@@ -606,6 +613,8 @@ def list_blocks(
             "[dim]Use [/dim][cyan]turnzero list --domain <name>[/cyan]"
             "[dim] to see blocks in a specific domain.[/dim]\n"
         )
+    from turnzero.telemetry import track_list_viewed
+    track_list_viewed(mode="summary", blocks_shown=len(blocks))
 
 
 @discovery_app.command()

@@ -203,3 +203,14 @@ def track_stats_viewed(sessions_total: int, blocks_total: int) -> None:
             "blocks_total": blocks_total,
         },
     )
+
+
+def track_list_viewed(
+    mode: str,
+    blocks_shown: int,
+    domain: str | None = None,
+) -> None:
+    props: dict[str, Any] = {"mode": mode, "blocks_shown": blocks_shown}
+    if domain:
+        props["domain"] = domain
+    track_event("list_viewed", props)
