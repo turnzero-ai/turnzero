@@ -814,6 +814,19 @@ def stats() -> None:
 
     console.print(lib)
 
+    # RET-9: day-2 nudge — setup done but no sessions yet
+    if sessions_total == 0:
+        from turnzero.config import load_telemetry_config
+        setup_done = bool(load_telemetry_config(data_dir).get("anonymous_id"))
+        if setup_done:
+            console.print(
+                "[yellow]No sessions logged yet.[/yellow] "
+                "Open your AI client and start with your usual prompt — "
+                "priors inject automatically.\n"
+                "[dim]Browse your library: [/dim][cyan]turnzero list[/cyan]  "
+                "[dim]See what fires: [/dim][cyan]turnzero query \"<your prompt>\"[/cyan]\n"
+            )
+
     from turnzero.upgrade import check_for_upgrade
 
     latest, is_newer = check_for_upgrade(data_dir)

@@ -646,3 +646,41 @@ def test_retrieval_svc_no_filter_when_active_domains_none(tmp_path: Path, monkey
     rsvc.list_suggested_blocks("build something", session_id=None)
     assert "py-block" in captured_blocks
     assert "k8s-block" in captured_blocks
+
+
+# ---------------------------------------------------------------------------
+# RET-9: day-2 re-engagement nudge
+# ---------------------------------------------------------------------------
+
+
+def test_stats_nudge_shown_when_setup_done_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    # Simulate setup completed: telemetry.yaml has anonymous_id
+    (tmp_path / "telemetry.yaml").write_text(
+        yaml.dump({"enabled": True, "anonymous_id": "test-uuid-1234"})
+    )
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "No sessions logged yet" in result.output
+    assert "turnzero list" in result.output
+
+
+def test_stats_nudge_not_shown_when_setup_not_done(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    # No telemetry.yaml → setup not done
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "No sessions logged yet" not in result.output
+
+
+def test_stats_nudge_not_shown_when_sessions_exist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import yaml
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (tmp_path / "telemetry.yaml").write_text(
+        yaml.dump({"enabled": True, "anonymous_id": "test-uuid-5678"})
+    )
+    _write_hook_log(tmp_path, 3)
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "No sessions logged yet" not in result.output
