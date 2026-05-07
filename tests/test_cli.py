@@ -375,3 +375,80 @@ def test_list_stale_shows_old_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyP
     result = runner.invoke(app, ["list", "--stale"])
     assert result.exit_code == 0
     assert "old-block-build" in result.output
+
+
+# ---------------------------------------------------------------------------
+# RET-6: stats trajectory
+# ---------------------------------------------------------------------------
+
+
+def _write_tool_log(data_dir: Path, entries: list[dict]) -> None:
+    import json
+    import time
+
+    log = data_dir / "tool_call_log.jsonl"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    now = time.time()
+    with open(log, "w") as f:
+        for e in entries:
+            e.setdefault("ts", now)
+            f.write(json.dumps(e) + "\n")
+
+
+def _write_hook_log(data_dir: Path, n_sessions: int) -> None:
+    import json
+    import time
+
+    log = data_dir / "hook_log.jsonl"
+    now = time.time()
+    with open(log, "w") as f:
+        for _ in range(n_sessions):
+            f.write(json.dumps({"ts": now, "blocks": ["b1"], "domains": ["python"]}) + "\n")
+
+
+def test_stats_shows_7day_trajectory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    _write_hook_log(tmp_path, 3)
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "Last 7 days" in result.output
+    assert "sessions" in result.output
+    assert "injections" in result.output
+    assert "corrections" in result.output
+
+
+def test_stats_corrections_row_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "Corrections captured" in result.output
+    assert "none yet" in result.output
+
+
+def test_stats_corrections_counted_from_tool_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    _write_hook_log(tmp_path, 2)
+    _write_tool_log(tmp_path, [
+        {"tool": "submit_candidate", "meta": {"auto_approve": False}, "tokens_in": 10, "tokens_out": 5},
+        {"tool": "submit_candidate", "meta": {"auto_approve": False}, "tokens_in": 10, "tokens_out": 5},
+        {"tool": "submit_candidate", "meta": {"auto_approve": True}, "tokens_in": 10, "tokens_out": 5},
+    ])
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    # 2 corrections (auto_approve=False), not 3
+    assert "2  " in result.output or "+2" in result.output
+
+
+def test_stats_personal_prior_growth(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = tmp_path / "blocks" / "personal" / "global"
+    blocks_dir.mkdir(parents=True)
+    _write_test_block(blocks_dir / "my-pref.yaml", "my-pref-build", "global")
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+
+    result = runner.invoke(app, ["stats"])
+    assert result.exit_code == 0
+    assert "Personal Priors" in result.output
+    # Growth trajectory present (0 → N in Xw)
+    assert "0 →" in result.output

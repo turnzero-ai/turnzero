@@ -664,6 +664,21 @@ def stats() -> None:
         if e.get("tool") in _INJECTION_TOOLS and e.get("ts", 0) >= week_ago
     )
 
+    # Corrections: submit_candidate calls where auto_approve=False (sent for review)
+    corrections_total = sum(
+        1
+        for e in tool_entries_raw
+        if e.get("tool") == "submit_candidate"
+        and not e.get("meta", {}).get("auto_approve", True)
+    )
+    corrections_week = sum(
+        1
+        for e in tool_entries_raw
+        if e.get("tool") == "submit_candidate"
+        and not e.get("meta", {}).get("auto_approve", True)
+        and e.get("ts", 0) >= week_ago
+    )
+
     domain_counts: Counter[str] = Counter()
     for e in entries:
         for d in e.get("domains", []):
@@ -688,8 +703,19 @@ def stats() -> None:
     except FileNotFoundError:
         blocks = {}
 
+    import datetime
+
     stale = [b for b in blocks.values() if b.is_stale()]
-    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
+    personal_blocks = [b for b in blocks.values() if b.tier == "personal"]
+    personal_count = len(personal_blocks)
+
+    # Personal prior growth: weeks since earliest personal prior was created
+    personal_weeks: int | None = None
+    if personal_blocks:
+        with contextlib.suppress(ValueError):
+            earliest = min(b.last_verified for b in personal_blocks)
+            delta = datetime.date.today() - datetime.date.fromisoformat(earliest)
+            personal_weeks = max(1, delta.days // 7)
 
     from turnzero.telemetry import track_stats_viewed
 
@@ -699,12 +725,28 @@ def stats() -> None:
     console.print()
     console.print("[bold]📎 TurnZero — Stats[/bold]\n")
 
+    # 7-day trajectory summary
+    if sessions_total > 0:
+        trajectory_parts = [
+            f"[bold]{sessions_week}[/bold] sessions",
+            f"[bold]{priors_week}[/bold] injections",
+            f"[bold]{corrections_week}[/bold] corrections",
+        ]
+        console.print(
+            f"  Last 7 days  [dim]{'  ·  '.join(trajectory_parts)}[/dim]\n"
+        )
+
     usage = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
     usage.add_column("", style="dim", min_width=26)
     usage.add_column("", justify="right")
 
     if sessions_total == 0:
         usage.add_row("Sessions with injection", "[dim]none yet[/dim]")
+        if corrections_total == 0:
+            usage.add_row(
+                "Corrections captured",
+                "[dim]none yet — AI will learn from your corrections[/dim]",
+            )
     else:
         usage.add_row(
             "Sessions with injection",
@@ -713,6 +755,10 @@ def stats() -> None:
         usage.add_row(
             "Priors applied",
             f"[bold]{priors_total}[/bold]  [dim](+{priors_week} this week)[/dim]",
+        )
+        usage.add_row(
+            "Corrections captured",
+            f"[bold]{corrections_total}[/bold]  [dim](+{corrections_week} this week)[/dim]",
         )
         if tokens_injected_total > 0:
             usage.add_row(
@@ -743,7 +789,13 @@ def stats() -> None:
     lib.add_column("", justify="right")
     lib.add_row("Block library", f"{len(blocks)} blocks total")
     lib.add_row("  - Expert Priors", str(len(blocks) - personal_count))
-    lib.add_row("  - Personal Priors", f"[magenta]{personal_count}[/magenta]")
+    if personal_count > 0 and personal_weeks is not None:
+        lib.add_row(
+            "  - Personal Priors",
+            f"[magenta]{personal_count}[/magenta]  [dim](0 → {personal_count} in {personal_weeks}w)[/dim]",
+        )
+    else:
+        lib.add_row("  - Personal Priors", f"[magenta]{personal_count}[/magenta]")
     lib.add_row(
         "Stale blocks (>90d)",
         f"[red]{len(stale)}[/red]" if stale else "[green]0[/green]",
