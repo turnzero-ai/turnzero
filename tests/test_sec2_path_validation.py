@@ -81,9 +81,8 @@ def test_safe_path_traversal(tmp_path: Path) -> None:
 
 
 def test_submit_candidate_validates_identifiers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     with pytest.raises(ValueError, match="Invalid slug"):
         submit_candidate(
             block_id="sh",  # too short
@@ -103,8 +102,7 @@ def test_submit_candidate_validates_identifiers(
 
 
 def test_learn_from_session_validates_name(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     with pytest.raises(ValueError, match="Invalid session name"):
         learn_from_session(transcript="hello", session_name="../traversal")

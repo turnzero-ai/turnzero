@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -181,37 +180,29 @@ def test_list_suggested_blocks_no_duplicates() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_log_mcp_injection_writes_hook_log(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_mcp_injection(
-            block_ids=["nextjs15-approuter-build"],
-            domains=["nextjs"],
-            prompt_words=12,
-            tokens_injected=480,
-        )
-        log_path = tmp_path / "hook_log.jsonl"
-        assert log_path.exists()
-        entry = json.loads(log_path.read_text().strip())
-        assert entry["blocks"] == ["nextjs15-approuter-build"]
-        assert entry["domains"] == ["nextjs"]
-        assert entry["prompt_words"] == 12
-        assert entry["source"] == "mcp"
-        assert entry["tokens_injected"] == 480
-        assert "ts" in entry
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_mcp_injection_writes_hook_log(data_dir: Path) -> None:
+    _log_mcp_injection(
+        block_ids=["nextjs15-approuter-build"],
+        domains=["nextjs"],
+        prompt_words=12,
+        tokens_injected=480,
+    )
+    log_path = data_dir / "hook_log.jsonl"
+    assert log_path.exists()
+    entry = json.loads(log_path.read_text().strip())
+    assert entry["blocks"] == ["nextjs15-approuter-build"]
+    assert entry["domains"] == ["nextjs"]
+    assert entry["prompt_words"] == 12
+    assert entry["source"] == "mcp"
+    assert entry["tokens_injected"] == 480
+    assert "ts" in entry
 
 
-def test_log_mcp_injection_appends(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_mcp_injection(["block-a"], ["fastapi"], 5)
-        _log_mcp_injection(["block-b"], ["nextjs"], 8)
-        lines = (tmp_path / "hook_log.jsonl").read_text().strip().splitlines()
-        assert len(lines) == 2
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_mcp_injection_appends(data_dir: Path) -> None:
+    _log_mcp_injection(["block-a"], ["fastapi"], 5)
+    _log_mcp_injection(["block-b"], ["nextjs"], 8)
+    lines = (data_dir / "hook_log.jsonl").read_text().strip().splitlines()
+    assert len(lines) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -219,22 +210,17 @@ def test_log_mcp_injection_appends(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_learn_from_session_returns_harvest_instruction(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        result = learn_from_session(transcript="some session text", session_name="test")
-        assert "turnzero harvest" in result
-        assert "daemon" not in result.lower()
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_learn_from_session_returns_harvest_instruction(data_dir: Path) -> None:
+    result = learn_from_session(transcript="some session text", session_name="test")
+    assert "turnzero harvest" in result
+    assert "daemon" not in result.lower()
 
 
 def test_inject_block_all_seed_blocks(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Use empty data dir so active_domains=None (all domains active — backward compat).
     # Without this, the user's real ~/.turnzero config may filter domains in this test.
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     seed_ids = [
         "nextjs15-approuter-build",
         "supabase-auth-pkce-build",
@@ -291,15 +277,15 @@ def test_compute_confidence_reason_bonus() -> None:
     assert with_reason > without
 
 
-def test_submit_candidate_writes_confidence_and_archived(tmp_path: Path) -> None:
+def test_submit_candidate_writes_confidence_and_archived(data_dir: Path) -> None:
     import turnzero.services.candidate_svc as cand_svc
 
     orig_data = cand_svc.get_data_dir
     orig_blocks = cand_svc.get_blocks_dir
     orig_index = cand_svc.get_index_path
 
-    data_dir = tmp_path / "data"
-    blocks_dir = tmp_path / "blocks"
+    data_dir = data_dir / "data"
+    blocks_dir = data_dir / "blocks"
     index_file = data_dir / "index.jsonl"
     data_dir.mkdir()
     blocks_dir.mkdir()
@@ -342,7 +328,7 @@ def _make_candidate_svc_patcher(tmp_path: Path) -> tuple:
     import turnzero.services.candidate_svc as cand_svc
 
     data_dir = tmp_path / "data"
-    blocks_dir = tmp_path / "blocks"
+    blocks_dir = data_dir / "blocks"
     index_file = data_dir / "index.jsonl"
     data_dir.mkdir()
     blocks_dir.mkdir()
@@ -354,8 +340,8 @@ def _make_candidate_svc_patcher(tmp_path: Path) -> tuple:
     return cand_svc, orig
 
 
-def test_onb3_nudge_on_new_candidate(tmp_path: Path) -> None:
-    cand_svc, orig = _make_candidate_svc_patcher(tmp_path)
+def test_onb3_nudge_on_new_candidate(data_dir: Path) -> None:
+    cand_svc, orig = _make_candidate_svc_patcher(data_dir)
     try:
         from turnzero.mcp_server import submit_candidate
 
@@ -374,8 +360,8 @@ def test_onb3_nudge_on_new_candidate(tmp_path: Path) -> None:
         cand_svc.get_data_dir, cand_svc.get_blocks_dir, cand_svc.get_index_path = orig
 
 
-def test_onb3_no_nudge_on_duplicate_candidate(tmp_path: Path) -> None:
-    cand_svc, orig = _make_candidate_svc_patcher(tmp_path)
+def test_onb3_no_nudge_on_duplicate_candidate(data_dir: Path) -> None:
+    cand_svc, orig = _make_candidate_svc_patcher(data_dir)
     try:
         from turnzero.mcp_server import submit_candidate
 
@@ -408,84 +394,64 @@ def test_onb3_no_nudge_on_duplicate_candidate(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_log_tool_call_writes_tool_call_log(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_tool_call(
-            "inject_block", {"block_id": "fastapi-async-build"}, "some text output"
-        )
-        log_path = tmp_path / "tool_call_log.jsonl"
-        assert log_path.exists()
-        entry = json.loads(log_path.read_text().strip())
-        assert entry["tool"] == "inject_block"
-        assert entry["tokens_in"] > 0
-        assert entry["tokens_out"] > 0
-        assert "ts" in entry
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_tool_call_writes_tool_call_log(data_dir: Path) -> None:
+    _log_tool_call(
+        "inject_block", {"block_id": "fastapi-async-build"}, "some text output"
+    )
+    log_path = data_dir / "tool_call_log.jsonl"
+    assert log_path.exists()
+    entry = json.loads(log_path.read_text().strip())
+    assert entry["tool"] == "inject_block"
+    assert entry["tokens_in"] > 0
+    assert entry["tokens_out"] > 0
+    assert "ts" in entry
 
 
-def test_log_tool_call_appends_multiple_tools(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_tool_call("list_suggested_blocks", {"prompt": "build a fastapi app"}, [])
-        _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "text")
-        _log_tool_call(
-            "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
-        )
-        lines = (tmp_path / "tool_call_log.jsonl").read_text().strip().splitlines()
-        assert len(lines) == 3
-        tools = [json.loads(ln)["tool"] for ln in lines]
-        assert tools == ["list_suggested_blocks", "inject_block", "submit_candidate"]
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_tool_call_appends_multiple_tools(data_dir: Path) -> None:
+    _log_tool_call("list_suggested_blocks", {"prompt": "build a fastapi app"}, [])
+    _log_tool_call("inject_block", {"block_id": "fastapi-async-build"}, "text")
+    _log_tool_call(
+        "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
+    )
+    lines = (data_dir / "tool_call_log.jsonl").read_text().strip().splitlines()
+    assert len(lines) == 3
+    tools = [json.loads(ln)["tool"] for ln in lines]
+    assert tools == ["list_suggested_blocks", "inject_block", "submit_candidate"]
 
 
-def test_log_tool_call_meta_persisted(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_tool_call(
-            "submit_candidate",
-            {"block_id": "x"},
-            "ok",
-            meta={"auto_approve": True, "block_id": "x"},
-        )
-        entry = json.loads((tmp_path / "tool_call_log.jsonl").read_text().strip())
-        assert entry["auto_approve"] is True
-        assert entry["block_id"] == "x"
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_tool_call_meta_persisted(data_dir: Path) -> None:
+    _log_tool_call(
+        "submit_candidate",
+        {"block_id": "x"},
+        "ok",
+        meta={"auto_approve": True, "block_id": "x"},
+    )
+    entry = json.loads((data_dir / "tool_call_log.jsonl").read_text().strip())
+    assert entry["auto_approve"] is True
+    assert entry["block_id"] == "x"
 
 
-def test_log_tool_call_token_estimate_scales_with_payload(tmp_path: Path) -> None:
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        short_out = "short"
-        long_out = "x" * 4000
-        _log_tool_call("inject_block", {}, short_out)
-        _log_tool_call("inject_block", {}, long_out)
-        lines = (tmp_path / "tool_call_log.jsonl").read_text().strip().splitlines()
-        e_short = json.loads(lines[0])
-        e_long = json.loads(lines[1])
-        assert e_long["tokens_out"] > e_short["tokens_out"]
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+def test_log_tool_call_token_estimate_scales_with_payload(data_dir: Path) -> None:
+    short_out = "short"
+    long_out = "x" * 4000
+    _log_tool_call("inject_block", {}, short_out)
+    _log_tool_call("inject_block", {}, long_out)
+    lines = (data_dir / "tool_call_log.jsonl").read_text().strip().splitlines()
+    e_short = json.loads(lines[0])
+    e_long = json.loads(lines[1])
+    assert e_long["tokens_out"] > e_short["tokens_out"]
 
 
-def test_get_stats_includes_tool_call_counts(tmp_path: Path) -> None:
+def test_get_stats_includes_tool_call_counts(data_dir: Path) -> None:
     from turnzero.mcp_server import get_stats
 
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_tool_call("list_suggested_blocks", {"prompt": "test"}, [])
-        _log_tool_call("inject_block", {"block_id": "b"}, "text")
-        result = get_stats()
-        assert "tool_calls" in result
-        assert result["tool_calls"]["total"] >= 2
-        assert "list_suggested_blocks" in result["tool_calls"]["by_tool"]
-        assert "inject_block" in result["tool_calls"]["by_tool"]
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+    _log_tool_call("list_suggested_blocks", {"prompt": "test"}, [])
+    _log_tool_call("inject_block", {"block_id": "b"}, "text")
+    result = get_stats()
+    assert "tool_calls" in result
+    assert result["tool_calls"]["total"] >= 2
+    assert "list_suggested_blocks" in result["tool_calls"]["by_tool"]
+    assert "inject_block" in result["tool_calls"]["by_tool"]
 
 
 def test_inject_block_text_includes_token_metadata() -> None:
@@ -496,37 +462,29 @@ def test_inject_block_text_includes_token_metadata() -> None:
     assert "fastapi-async-build" in result
 
 
-def test_get_stats_includes_context_tokens_injected(tmp_path: Path) -> None:
+def test_get_stats_includes_context_tokens_injected(data_dir: Path) -> None:
     from turnzero.mcp_server import get_stats
 
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_mcp_injection(["block-a"], ["fastapi"], 10, tokens_injected=800)
-        _log_mcp_injection(["block-b"], ["nextjs"], 8, tokens_injected=480)
-        result = get_stats()
-        assert "context_tokens_injected" in result
-        assert result["context_tokens_injected"]["total"] == 1280
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+    _log_mcp_injection(["block-a"], ["fastapi"], 10, tokens_injected=800)
+    _log_mcp_injection(["block-b"], ["nextjs"], 8, tokens_injected=480)
+    result = get_stats()
+    assert "context_tokens_injected" in result
+    assert result["context_tokens_injected"]["total"] == 1280
 
 
-def test_get_stats_includes_token_cost(tmp_path: Path) -> None:
+def test_get_stats_includes_token_cost(data_dir: Path) -> None:
     from turnzero.mcp_server import get_stats
 
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        _log_tool_call("inject_block", {"block_id": "b"}, "some output text here")
-        _log_tool_call(
-            "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
-        )
-        result = get_stats()
-        assert "token_cost" in result
-        assert result["token_cost"]["total"] > 0
-        assert result["token_cost"]["submit_candidate_total"] > 0
-        assert result["token_cost"]["total_in"] >= 0
-        assert result["token_cost"]["total_out"] >= 0
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+    _log_tool_call("inject_block", {"block_id": "b"}, "some output text here")
+    _log_tool_call(
+        "submit_candidate", {"block_id": "x"}, "saved", meta={"auto_approve": True}
+    )
+    result = get_stats()
+    assert "token_cost" in result
+    assert result["token_cost"]["total"] > 0
+    assert result["token_cost"]["submit_candidate_total"] > 0
+    assert result["token_cost"]["total_in"] >= 0
+    assert result["token_cost"]["total_out"] >= 0
 
 
 # ---------------------------------------------------------------------------
@@ -576,30 +534,22 @@ def test_list_suggested_blocks_first_turn_without_session() -> None:
     assert all(r["turn"] == "first" for r in real)
 
 
-def test_list_suggested_blocks_subsequent_turn_skips_personal(tmp_path: Path) -> None:
+def test_list_suggested_blocks_subsequent_turn_skips_personal(data_dir: Path) -> None:
     """After inject_block records an injection, next list call is Turn N."""
-    import os
-
     from turnzero.state import record_session_injection
 
-    os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
-    try:
-        sid = "wf2-test-session"
-        # Seed a fake injection so exclude_ids is non-empty
-        record_session_injection(sid, "fake-prior-already-injected")
+    sid = "wf2-test-session"
+    record_session_injection(sid, "fake-prior-already-injected")
 
-        results = _list_suggested_blocks(
-            "build a fastapi app with postgres", session_id=sid
-        )
-        real = [
-            r for r in results if r.get("block_id") != "personal-priors-limit-warning"
-        ]
-        # All results should be Turn N; no personal priors in results
-        assert all(r["turn"] == "subsequent" for r in real)
-        personal = [r for r in real if r.get("preview", "").startswith("[personal")]
-        assert personal == []
-    finally:
-        del os.environ["TURNZERO_DATA_DIR"]
+    results = _list_suggested_blocks(
+        "build a fastapi app with postgres", session_id=sid
+    )
+    real = [
+        r for r in results if r.get("block_id") != "personal-priors-limit-warning"
+    ]
+    assert all(r["turn"] == "subsequent" for r in real)
+    personal = [r for r in real if r.get("preview", "").startswith("[personal")]
+    assert personal == []
 
 
 # ---------------------------------------------------------------------------

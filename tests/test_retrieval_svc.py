@@ -120,16 +120,15 @@ def _make_block(slug: str, domain: str, tier: str = "community") -> Block:
 
 
 def test_inject_block_raises_when_domain_inactive(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import yaml
 
     from turnzero.services import retrieval_svc
 
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True, "local": True}})
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
         "k8s-build": _make_block("k8s-build", "kubernetes"),
     })
@@ -139,16 +138,15 @@ def test_inject_block_raises_when_domain_inactive(
 
 
 def test_inject_block_personal_tier_always_passes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import yaml
 
     from turnzero.services import retrieval_svc
 
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"personal": True}})
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     personal_block = _make_block("my-pref", "global", tier="personal")
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {"my-pref": personal_block})
     monkeypatch.setattr(retrieval_svc, "record_session_injection", lambda *a: None)
@@ -161,16 +159,15 @@ def test_inject_block_personal_tier_always_passes(
 
 
 def test_get_block_reports_inactive_when_domain_not_in_active(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import yaml
 
     from turnzero.services import retrieval_svc
 
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
         "k8s-build": _make_block("k8s-build", "kubernetes"),
     })
@@ -181,16 +178,15 @@ def test_get_block_reports_inactive_when_domain_not_in_active(
 
 
 def test_get_block_active_true_when_domain_in_active(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import yaml
 
     from turnzero.services import retrieval_svc
 
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
         "py-build": _make_block("py-build", "python"),
     })
@@ -200,7 +196,7 @@ def test_get_block_active_true_when_domain_in_active(
 
 
 def test_list_suggested_blocks_filters_inactive_domain(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """active_domains set → blocks from inactive domain excluded before query."""
     import yaml
@@ -210,10 +206,9 @@ def test_list_suggested_blocks_filters_inactive_domain(
     import turnzero.services.stats_svc as ssvc
     import turnzero.telemetry as tel
 
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {
         "py-build": _make_block("py-build", "python"),
         "k8s-build": _make_block("k8s-build", "kubernetes"),

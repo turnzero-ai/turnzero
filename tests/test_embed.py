@@ -265,10 +265,9 @@ def test_is_onnx_available_false_when_deps_missing() -> None:
 
 
 def test_is_onnx_model_downloaded_false_when_files_missing(
-    tmp_path: Path,
+    data_dir: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     assert not _is_onnx_model_downloaded()
 
 

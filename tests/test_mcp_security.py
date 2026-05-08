@@ -287,10 +287,10 @@ class TestValidateCandidate:
         assert result.reason_code == "unsafe_url"
 
     def test_quarantine_written_to_disk(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, data_dir: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Malicious candidate must be written to quarantine/, not candidates/."""
-        data_dir = tmp_path / "data"
+        data_dir = data_dir / "data"
         data_dir.mkdir()
         monkeypatch.setenv("TURNZERO_DATA_DIR", str(data_dir))
 
@@ -312,10 +312,10 @@ class TestValidateCandidate:
         )
 
     def test_quarantine_blocks_auto_approve(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, data_dir: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """auto_approve=True must NOT bypass the safety validator."""
-        data_dir = tmp_path / "data"
+        data_dir = data_dir / "data"
         data_dir.mkdir()
         monkeypatch.setenv("TURNZERO_DATA_DIR", str(data_dir))
         monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "true")

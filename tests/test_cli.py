@@ -64,16 +64,15 @@ def test_setup_block_count_includes_subdirectories(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_setup_codex_mcp_creates_config(tmp_path: Path) -> None:
+def test_setup_codex_mcp_creates_config(tmp_path: Path, quiet_console: Console) -> None:
     codex_dir = tmp_path / ".codex"
     codex_dir.mkdir()
-    con = Console(quiet=True)
 
     _setup_codex_mcp(
         mcp_bin="/usr/local/bin/turnzero-mcp",
         data_dir=tmp_path / ".turnzero",
         force=False,
-        con=con,
+        con=quiet_console,
         codex_dir=codex_dir,
     )
 
@@ -85,34 +84,32 @@ def test_setup_codex_mcp_creates_config(tmp_path: Path) -> None:
     assert "TURNZERO_DATA_DIR" in text
 
 
-def test_setup_codex_mcp_skips_if_no_codex_dir(tmp_path: Path) -> None:
+def test_setup_codex_mcp_skips_if_no_codex_dir(tmp_path: Path, quiet_console: Console) -> None:
     """Should be silent and do nothing when ~/.codex doesn't exist."""
-    con = Console(quiet=True)
     absent_dir = tmp_path / ".codex-absent"
     _setup_codex_mcp(
         mcp_bin="/usr/local/bin/turnzero-mcp",
         data_dir=tmp_path / ".turnzero",
         force=False,
-        con=con,
+        con=quiet_console,
         codex_dir=absent_dir,
     )
     assert not (absent_dir / "config.toml").exists()
 
 
-def test_setup_codex_mcp_force_overwrites(tmp_path: Path) -> None:
+def test_setup_codex_mcp_force_overwrites(tmp_path: Path, quiet_console: Console) -> None:
     codex_dir = tmp_path / ".codex"
     codex_dir.mkdir()
     config = codex_dir / "config.toml"
     config.write_text(
         '[mcp_servers.turnzero]\ncommand = "/old/path"\nenv = { TURNZERO_DATA_DIR = "/old" }\n'
     )
-    con = Console(quiet=True)
 
     _setup_codex_mcp(
         mcp_bin="/new/path/turnzero-mcp",
         data_dir=tmp_path / ".turnzero",
         force=True,
-        con=con,
+        con=quiet_console,
         codex_dir=codex_dir,
     )
 
@@ -121,18 +118,17 @@ def test_setup_codex_mcp_force_overwrites(tmp_path: Path) -> None:
     assert "/old/path" not in text
 
 
-def test_setup_codex_mcp_preserves_existing_config(tmp_path: Path) -> None:
+def test_setup_codex_mcp_preserves_existing_config(tmp_path: Path, quiet_console: Console) -> None:
     codex_dir = tmp_path / ".codex"
     codex_dir.mkdir()
     config = codex_dir / "config.toml"
     config.write_text('[mcp_servers.other]\ncommand = "other-server"\n')
-    con = Console(quiet=True)
 
     _setup_codex_mcp(
         mcp_bin="/usr/local/bin/turnzero-mcp",
         data_dir=tmp_path / ".turnzero",
         force=False,
-        con=con,
+        con=quiet_console,
         codex_dir=codex_dir,
     )
 
@@ -146,12 +142,11 @@ def test_setup_codex_mcp_preserves_existing_config(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_setup_claude_md_creates_file(tmp_path: Path) -> None:
+def test_setup_claude_md_creates_file(tmp_path: Path, quiet_console: Console) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
-    con = Console(quiet=True)
 
-    _setup_claude_md(force=False, con=con, claude_dir=claude_dir)
+    _setup_claude_md(force=False, con=quiet_console, claude_dir=claude_dir)
 
     md = claude_dir / "CLAUDE.md"
     assert md.exists()
@@ -161,32 +156,29 @@ def test_setup_claude_md_creates_file(tmp_path: Path) -> None:
     assert "submit_candidate" in text
 
 
-def test_setup_claude_md_skips_if_no_claude_dir(tmp_path: Path) -> None:
-    con = Console(quiet=True)
-    _setup_claude_md(force=False, con=con, claude_dir=tmp_path / ".claude-absent")
+def test_setup_claude_md_skips_if_no_claude_dir(tmp_path: Path, quiet_console: Console) -> None:
+    _setup_claude_md(force=False, con=quiet_console, claude_dir=tmp_path / ".claude-absent")
     assert not (tmp_path / ".claude-absent" / "CLAUDE.md").exists()
 
 
-def test_setup_claude_md_skips_if_already_present(tmp_path: Path) -> None:
+def test_setup_claude_md_skips_if_already_present(tmp_path: Path, quiet_console: Console) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     md = claude_dir / "CLAUDE.md"
     md.write_text("## TurnZero — Expert & Personal Prior Injection\nexisting content\n")
-    con = Console(quiet=True)
 
-    _setup_claude_md(force=False, con=con, claude_dir=claude_dir)
+    _setup_claude_md(force=False, con=quiet_console, claude_dir=claude_dir)
 
     assert md.read_text().count("## TurnZero") == 1
 
 
-def test_setup_claude_md_force_overwrites(tmp_path: Path) -> None:
+def test_setup_claude_md_force_overwrites(tmp_path: Path, quiet_console: Console) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     md = claude_dir / "CLAUDE.md"
     md.write_text("## TurnZero — Expert & Personal Prior Injection\nold content\n")
-    con = Console(quiet=True)
 
-    _setup_claude_md(force=True, con=con, claude_dir=claude_dir)
+    _setup_claude_md(force=True, con=quiet_console, claude_dir=claude_dir)
 
     text = md.read_text()
     assert "old content" not in text
@@ -194,14 +186,13 @@ def test_setup_claude_md_force_overwrites(tmp_path: Path) -> None:
     assert text.count("## TurnZero") == 1
 
 
-def test_setup_claude_md_preserves_other_content(tmp_path: Path) -> None:
+def test_setup_claude_md_preserves_other_content(tmp_path: Path, quiet_console: Console) -> None:
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir()
     md = claude_dir / "CLAUDE.md"
     md.write_text("## Other Rules\nalways be concise\n")
-    con = Console(quiet=True)
 
-    _setup_claude_md(force=False, con=con, claude_dir=claude_dir)
+    _setup_claude_md(force=False, con=quiet_console, claude_dir=claude_dir)
 
     text = md.read_text()
     assert "## Other Rules" in text
@@ -209,12 +200,11 @@ def test_setup_claude_md_preserves_other_content(tmp_path: Path) -> None:
     assert "list_suggested_blocks" in text
 
 
-def test_setup_codex_agents_md_creates_file(tmp_path: Path) -> None:
+def test_setup_codex_agents_md_creates_file(tmp_path: Path, quiet_console: Console) -> None:
     codex_dir = tmp_path / ".codex"
     codex_dir.mkdir()
-    con = Console(quiet=True)
 
-    _setup_codex_agents_md(force=False, con=con, codex_dir=codex_dir)
+    _setup_codex_agents_md(force=False, con=quiet_console, codex_dir=codex_dir)
 
     md = codex_dir / "AGENTS.md"
     assert md.exists()
@@ -223,9 +213,8 @@ def test_setup_codex_agents_md_creates_file(tmp_path: Path) -> None:
     assert "submit_candidate" in text
 
 
-def test_setup_codex_agents_md_skips_if_no_codex_dir(tmp_path: Path) -> None:
-    con = Console(quiet=True)
-    _setup_codex_agents_md(force=False, con=con, codex_dir=tmp_path / ".codex-absent")
+def test_setup_codex_agents_md_skips_if_no_codex_dir(tmp_path: Path, quiet_console: Console) -> None:
+    _setup_codex_agents_md(force=False, con=quiet_console, codex_dir=tmp_path / ".codex-absent")
     assert not (tmp_path / ".codex-absent" / "AGENTS.md").exists()
 
 
@@ -235,10 +224,9 @@ def test_setup_codex_agents_md_skips_if_no_codex_dir(tmp_path: Path) -> None:
 
 
 def test_query_explain_chitchat_fails_gate(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Chitchat prompt must show impl gate failure, not inject blocks."""
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     result = runner.invoke(app, ["query", "thanks that looks great", "--explain"])
     assert result.exit_code == 0
     assert "Explain" in result.output
@@ -248,10 +236,9 @@ def test_query_explain_chitchat_fails_gate(
 
 
 def test_query_explain_impl_prompt_passes_gate(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Technical prompt must show gate passed and intent/domain detection."""
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     result = runner.invoke(app, ["query", "build a fastapi endpoint", "--explain"])
     assert result.exit_code == 0
     assert "Explain" in result.output
@@ -262,10 +249,9 @@ def test_query_explain_impl_prompt_passes_gate(
 
 
 def test_query_explain_shows_outcome_section(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Explain output shows either matched blocks or 'No Expert Priors' message."""
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     result = runner.invoke(app, ["query", "build a fastapi endpoint", "--explain"])
     assert result.exit_code == 0
     has_matched = "Matched" in result.output
@@ -274,10 +260,9 @@ def test_query_explain_shows_outcome_section(
 
 
 def test_query_no_match_hints_explain(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """When no blocks match without --explain, output hints to use --explain."""
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     # Nonsense prompt has zero lexical overlap with any block → all scores below threshold.
     # Empty data dir → no personal priors. Combined: results is empty.
     result = runner.invoke(app, ["query", "xyzzy qwerty plonk frobnicate"])
@@ -299,14 +284,13 @@ def _write_test_block(path: Path, slug: str, domain: str, stale: bool = False) -
     )
 
 
-def test_list_domain_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+def test_list_domain_summary(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
     _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
     _write_test_block(blocks_dir / "fastapi-cors-build.yaml", "fastapi-cors-build", "fastapi")
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
@@ -314,13 +298,12 @@ def test_list_domain_summary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert "2" in result.output  # block count
 
 
-def test_list_domain_filter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+def test_list_domain_filter(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
     _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
     result = runner.invoke(app, ["list", "--domain", "fastapi"])
     assert result.exit_code == 0
@@ -328,49 +311,45 @@ def test_list_domain_filter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert "0.90" in result.output
 
 
-def test_list_candidates_empty(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+def test_list_candidates_empty(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(disc, "get_data_dir", lambda: data_dir)
 
     result = runner.invoke(app, ["list", "--candidates"])
     assert result.exit_code == 0
     assert "No candidates" in result.output
 
 
-def test_list_candidates_shows_pending(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    cand_dir = tmp_path / "candidates"
+def test_list_candidates_shows_pending(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cand_dir = data_dir / "candidates"
     cand_dir.mkdir()
     _write_test_block(cand_dir / "my-rule-build.yaml", "my-rule-build", "fastapi")
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(disc, "get_data_dir", lambda: data_dir)
 
     result = runner.invoke(app, ["list", "--candidates"])
     assert result.exit_code == 0
     assert "my-rule-build" in result.output
 
 
-def test_list_stale_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+def test_list_stale_none(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
     _write_test_block(blocks_dir / "fresh.yaml", "fresh", "fastapi", stale=False)
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
     result = runner.invoke(app, ["list", "--stale"])
     assert result.exit_code == 0
     assert "No stale" in result.output
 
 
-def test_list_stale_shows_old_blocks(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    blocks_dir = tmp_path / "blocks" / "community" / "fastapi"
+def test_list_stale_shows_old_blocks(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
     _write_test_block(blocks_dir / "old.yaml", "old-block-build", "fastapi", stale=True)
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
     result = runner.invoke(app, ["list", "--stale"])
     assert result.exit_code == 0
@@ -406,9 +385,8 @@ def _write_hook_log(data_dir: Path, n_sessions: int) -> None:
             f.write(json.dumps({"ts": now, "blocks": ["b1"], "domains": ["python"]}) + "\n")
 
 
-def test_stats_shows_7day_trajectory(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    _write_hook_log(tmp_path, 3)
+def test_stats_shows_7day_trajectory(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _write_hook_log(data_dir, 3)
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
     assert "Last 7 days" in result.output
@@ -417,18 +395,16 @@ def test_stats_shows_7day_trajectory(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert "corrections" in result.output
 
 
-def test_stats_corrections_row_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+def test_stats_corrections_row_no_sessions(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
     assert "Corrections captured" in result.output
     assert "none yet" in result.output
 
 
-def test_stats_corrections_counted_from_tool_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    _write_hook_log(tmp_path, 2)
-    _write_tool_log(tmp_path, [
+def test_stats_corrections_counted_from_tool_log(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _write_hook_log(data_dir, 2)
+    _write_tool_log(data_dir, [
         {"tool": "submit_candidate", "meta": {"auto_approve": False}, "tokens_in": 10, "tokens_out": 5},
         {"tool": "submit_candidate", "meta": {"auto_approve": False}, "tokens_in": 10, "tokens_out": 5},
         {"tool": "submit_candidate", "meta": {"auto_approve": True}, "tokens_in": 10, "tokens_out": 5},
@@ -439,13 +415,12 @@ def test_stats_corrections_counted_from_tool_log(tmp_path: Path, monkeypatch: py
     assert "2  " in result.output or "+2" in result.output
 
 
-def test_stats_personal_prior_growth(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    blocks_dir = tmp_path / "blocks" / "personal" / "global"
+def test_stats_personal_prior_growth(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    blocks_dir = data_dir / "blocks" / "personal" / "global"
     blocks_dir.mkdir(parents=True)
     _write_test_block(blocks_dir / "my-pref.yaml", "my-pref-build", "global")
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
-    monkeypatch.setattr(disc, "get_blocks_dir", lambda: tmp_path / "blocks")
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
@@ -542,12 +517,11 @@ def test_get_active_domains_returns_list_when_set(tmp_path: Path) -> None:
     assert get_active_domains(tmp_path) == ["python", "docker"]
 
 
-def test_domain_add_initialises_from_defaults(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_add_initialises_from_defaults(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from turnzero.config import DEFAULT_ACTIVE_DOMAINS, get_active_domains
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     result = runner.invoke(app, ["domain", "add", "langchain"])
     assert result.exit_code == 0
-    active = get_active_domains(tmp_path)
+    active = get_active_domains(data_dir)
     assert active is not None
     assert "langchain" in active
     # default set also present
@@ -555,60 +529,55 @@ def test_domain_add_initialises_from_defaults(tmp_path: Path, monkeypatch: pytes
     assert len(active) == len(set(DEFAULT_ACTIVE_DOMAINS) | {"langchain"})
 
 
-def test_domain_add_existing_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_add_existing_set(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
 
     from turnzero.config import get_active_domains
-    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (data_dir / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
     result = runner.invoke(app, ["domain", "add", "fastapi"])
     assert result.exit_code == 0
-    active = get_active_domains(tmp_path)
+    active = get_active_domains(data_dir)
     assert active is not None
     assert set(active) == {"python", "docker", "fastapi"}
 
 
-def test_domain_add_duplicate_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_add_duplicate_is_idempotent(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
 
     from turnzero.config import get_active_domains
-    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (data_dir / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
     runner.invoke(app, ["domain", "add", "python"])
-    assert get_active_domains(tmp_path) == ["python"]
+    assert get_active_domains(data_dir) == ["python"]
 
 
-def test_domain_remove(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_remove(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
 
     from turnzero.config import get_active_domains
-    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (data_dir / "config.yaml").write_text(yaml.dump({"active_domains": ["python", "docker"]}))
     result = runner.invoke(app, ["domain", "remove", "docker"])
     assert result.exit_code == 0
-    assert get_active_domains(tmp_path) == ["python"]
+    assert get_active_domains(data_dir) == ["python"]
 
 
-def test_domain_remove_last_domain_errors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_remove_last_domain_errors(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
-    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (data_dir / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
     result = runner.invoke(app, ["domain", "remove", "python"])
     assert result.exit_code != 0
 
 
-def test_domain_reset(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_reset(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
 
     from turnzero.config import DEFAULT_ACTIVE_DOMAINS, get_active_domains
-    (tmp_path / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (data_dir / "config.yaml").write_text(yaml.dump({"active_domains": ["python"]}))
     result = runner.invoke(app, ["domain", "reset"])
     assert result.exit_code == 0
-    assert get_active_domains(tmp_path) == list(DEFAULT_ACTIVE_DOMAINS)
+    assert get_active_domains(data_dir) == list(DEFAULT_ACTIVE_DOMAINS)
 
 
-def test_retrieval_svc_no_filter_when_active_domains_none(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_retrieval_svc_no_filter_when_active_domains_none(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """active_domains=None → all blocks pass through (backward compat)."""
     import turnzero.services.retrieval_svc as rsvc
     from turnzero.blocks import Block
@@ -627,7 +596,6 @@ def test_retrieval_svc_no_filter_when_active_domains_none(tmp_path: Path, monkey
                                verification_level="curated", rationale=None, archived=False, tier="community"),
         }
 
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     monkeypatch.setattr(rsvc, "_load_active_blocks", _fake_blocks)
     # No config.yaml → active_domains=None → both blocks should reach query()
     captured_blocks: list = []
@@ -653,11 +621,10 @@ def test_retrieval_svc_no_filter_when_active_domains_none(tmp_path: Path, monkey
 # ---------------------------------------------------------------------------
 
 
-def test_stats_nudge_shown_when_setup_done_no_sessions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stats_nudge_shown_when_setup_done_no_sessions(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     # Simulate setup completed: telemetry.yaml has anonymous_id
-    (tmp_path / "telemetry.yaml").write_text(
+    (data_dir / "telemetry.yaml").write_text(
         yaml.dump({"enabled": True, "anonymous_id": "test-uuid-1234"})
     )
     result = runner.invoke(app, ["stats"])
@@ -666,21 +633,19 @@ def test_stats_nudge_shown_when_setup_done_no_sessions(tmp_path: Path, monkeypat
     assert "turnzero list" in result.output
 
 
-def test_stats_nudge_not_shown_when_setup_not_done(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+def test_stats_nudge_not_shown_when_setup_not_done(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # No telemetry.yaml → setup not done
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
     assert "No sessions logged yet" not in result.output
 
 
-def test_stats_nudge_not_shown_when_sessions_exist(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stats_nudge_not_shown_when_sessions_exist(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import yaml
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    (tmp_path / "telemetry.yaml").write_text(
+    (data_dir / "telemetry.yaml").write_text(
         yaml.dump({"enabled": True, "anonymous_id": "test-uuid-5678"})
     )
-    _write_hook_log(tmp_path, 3)
+    _write_hook_log(data_dir, 3)
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
     assert "No sessions logged yet" not in result.output
@@ -692,9 +657,9 @@ def test_stats_nudge_not_shown_when_sessions_exist(tmp_path: Path, monkeypatch: 
 
 
 def test_list_domain_summary_personal_shown_as_always_on(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    blocks_dir = tmp_path / "blocks"
+    blocks_dir = data_dir / "blocks"
     (blocks_dir / "community" / "fastapi").mkdir(parents=True)
     _write_test_block(
         blocks_dir / "community" / "fastapi" / "fastapi-build.yaml",
@@ -706,7 +671,6 @@ def test_list_domain_summary_personal_shown_as_always_on(
         personal_dir / "my-pref-build.yaml",
         "my-pref-build", "global",
     )
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: blocks_dir)
 
@@ -724,20 +688,18 @@ def test_list_domain_summary_personal_shown_as_always_on(
 
 
 def test_contribute_unknown_block_id_exits(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    (tmp_path / "candidates").mkdir()
+    (data_dir / "candidates").mkdir()
     result = runner.invoke(app, ["contribute", "nonexistent-block"])
     assert result.exit_code != 0
 
 
 def test_contribute_fallback_when_gh_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import turnzero.cli.contribute as contrib
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    cand_dir = tmp_path / "candidates"
+    cand_dir = data_dir / "candidates"
     cand_dir.mkdir()
     (cand_dir / "my-rule-build.yaml").write_text(
         "slug: my-rule-build\ndomain: python\n"
@@ -749,13 +711,12 @@ def test_contribute_fallback_when_gh_missing(
 
 
 def test_contribute_with_gh_opens_issue(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import subprocess
 
     import turnzero.cli.contribute as contrib
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    cand_dir = tmp_path / "candidates"
+    cand_dir = data_dir / "candidates"
     cand_dir.mkdir()
     (cand_dir / "my-rule-build.yaml").write_text(
         "slug: my-rule-build\ndomain: python\n"
@@ -777,51 +738,41 @@ def test_contribute_with_gh_opens_issue(
 
 
 def test_domain_add_fires_telemetry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, telemetry_spy: list
 ) -> None:
     import yaml
 
-    import turnzero.telemetry as tel
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {}})
     )
-    fired: list[dict] = []
-    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
+
     runner.invoke(app, ["domain", "add", "rust"])
-    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    domain_events = [e for e in telemetry_spy if e["event"] == "domain_changed"]
     assert domain_events
     assert domain_events[0]["action"] == "add"
     assert domain_events[0]["domain"] == "rust"
 
 
 def test_domain_remove_fires_telemetry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, telemetry_spy: list
 ) -> None:
     import yaml
 
-    import turnzero.telemetry as tel
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    (tmp_path / "config.yaml").write_text(
+    (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python", "rust"], "sources": {}})
     )
-    fired: list[dict] = []
-    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
+
     runner.invoke(app, ["domain", "remove", "rust"])
-    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    domain_events = [e for e in telemetry_spy if e["event"] == "domain_changed"]
     assert domain_events
     assert domain_events[0]["action"] == "remove"
     assert domain_events[0]["domain"] == "rust"
 
 
 def test_domain_reset_fires_telemetry(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, telemetry_spy: list
 ) -> None:
-    import turnzero.telemetry as tel
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
-    fired: list[dict] = []
-    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
     runner.invoke(app, ["domain", "reset"])
-    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    domain_events = [e for e in telemetry_spy if e["event"] == "domain_changed"]
     assert domain_events
     assert domain_events[0]["action"] == "reset"
