@@ -21,6 +21,7 @@ from turnzero.cli.base import (
     err_console,
     get_data_dir,
 )
+from turnzero.types import BLOCK_ID_PERSONAL_LIMIT_WARNING
 
 source_app = typer.Typer(
     help="Enable or disable Expert Prior sources (local/community/team).",
@@ -747,7 +748,7 @@ def _render_demo_results(prompt: str) -> None:
         all_results = [
             r
             for r in _list_suggested_blocks(prompt)
-            if r.get("block_id") != "personal-priors-limit-warning"
+            if r.get("block_id") != BLOCK_ID_PERSONAL_LIMIT_WARNING
         ]
         if not all_results:
             console.print(

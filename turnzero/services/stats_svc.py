@@ -9,6 +9,7 @@ from collections import Counter
 from typing import Any
 
 from turnzero.config import get_data_dir
+from turnzero.types import INJECTION_TOOLS, StatsData, Tier
 
 
 def log_injection(
@@ -70,7 +71,8 @@ def log_tool_call(
         pass
 
 
-_INJECTION_TOOLS = {"list_suggested_blocks", "inject_block"}
+# Use the canonical set from types — single source of truth
+_INJECTION_TOOLS = INJECTION_TOOLS
 
 
 def _aggregate_tool_tokens(
@@ -107,7 +109,7 @@ def _aggregate_tool_tokens(
     }
 
 
-def compute() -> dict[str, Any]:
+def compute() -> StatsData:
     """Return TurnZero usage and library statistics."""
     from turnzero.services.retrieval_svc import _load_active_blocks
 
@@ -151,7 +153,7 @@ def compute() -> dict[str, Any]:
         blocks = {}
 
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
-    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
+    personal_count = sum(1 for b in blocks.values() if b.tier == Tier.PERSONAL)
     candidates_dir = data_dir / "candidates"
     candidates = list(candidates_dir.glob("*.yaml")) if candidates_dir.exists() else []
 

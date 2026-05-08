@@ -15,6 +15,8 @@ import os
 import platform
 from typing import Any
 
+from turnzero.types import TelemetryEvent
+
 _POSTHOG_API_KEY = "phc_BWoXqMusHqiX6d3eqooSm4PVtEABkJnYFwurYmqj7oU3"
 _POSTHOG_HOST = "https://eu.i.posthog.com"
 
@@ -148,7 +150,7 @@ def track_session_start(
         return
     _session_start_fired.add(key)
     track_event(
-        "session_start",
+        TelemetryEvent.SESSION_START,
         {
             "blocks_suggested": blocks_suggested,
             "domains_suggested": domains,
@@ -160,12 +162,12 @@ def track_session_start(
 
 
 def track_block_injected(domain: str, tier: str) -> None:
-    track_event("block_injected", {"domain": domain, "tier": tier})
+    track_event(TelemetryEvent.BLOCK_INJECTED, {"domain": domain, "tier": tier})
 
 
 def track_candidate_submitted(domain: str, auto_approved: bool, result: str) -> None:
     track_event(
-        "candidate_submitted",
+        TelemetryEvent.CANDIDATE_SUBMITTED,
         {
             "domain": domain,
             "auto_approved": auto_approved,
@@ -176,7 +178,7 @@ def track_candidate_submitted(domain: str, auto_approved: bool, result: str) -> 
 
 def track_session_summary(session_id: str | None) -> None:
     """Signal session end. PostHog derives rates from individual events."""
-    track_event("session_summary", {})
+    track_event(TelemetryEvent.SESSION_SUMMARY, {})
     _session_start_fired.discard(session_id or "__no_session__")
 
 
@@ -184,7 +186,7 @@ def track_setup_completed(
     embedding_backend: str, clients_registered: list[str] | None = None
 ) -> None:
     track_event(
-        "setup_completed",
+        TelemetryEvent.SETUP_COMPLETED,
         {
             "embedding_backend": embedding_backend,
             "clients_registered": clients_registered or [],
@@ -194,7 +196,7 @@ def track_setup_completed(
 
 def track_review_opened(candidate_count: int, low_confidence_count: int) -> None:
     track_event(
-        "review_opened",
+        TelemetryEvent.REVIEW_OPENED,
         {
             "candidate_count": candidate_count,
             "low_confidence_count": low_confidence_count,
@@ -204,7 +206,7 @@ def track_review_opened(candidate_count: int, low_confidence_count: int) -> None
 
 def track_stats_viewed(sessions_total: int, blocks_total: int) -> None:
     track_event(
-        "stats_viewed",
+        TelemetryEvent.STATS_VIEWED,
         {
             "sessions_total": sessions_total,
             "blocks_total": blocks_total,
@@ -220,11 +222,11 @@ def track_list_viewed(
     props: dict[str, Any] = {"mode": mode, "blocks_shown": blocks_shown}
     if domain:
         props["domain"] = domain
-    track_event("list_viewed", props)
+    track_event(TelemetryEvent.LIST_VIEWED, props)
 
 
 def track_domain_changed(action: str, domain: str, total_active: int) -> None:
     track_event(
-        "domain_changed",
+        TelemetryEvent.DOMAIN_CHANGED,
         {"action": action, "domain": domain, "total_active": total_active},
     )

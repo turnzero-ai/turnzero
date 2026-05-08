@@ -23,6 +23,12 @@ from mcp.server.fastmcp import FastMCP
 
 from turnzero.config import get_data_dir
 from turnzero.services import candidate_svc, retrieval_svc, stats_svc
+from turnzero.types import (
+    BLOCK_ID_NO_MATCH_HINT,
+    BlockData,
+    StatsData,
+    SuggestionEntry,
+)
 from turnzero.validators import safe_path, validate_session_name
 
 # ---------------------------------------------------------------------------
@@ -107,7 +113,7 @@ def list_suggested_blocks(
     prompt: str,
     session_id: str | None = None,
     inject_all: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SuggestionEntry]:
     """Suggest Expert Priors relevant to an opening developer prompt.
 
     Returns Personal Priors (always-on identity) and relevant Expert Priors.
@@ -146,20 +152,20 @@ def list_suggested_blocks(
             from turnzero.retrieval import is_implementation_prompt
             if is_implementation_prompt(prompt, project_root=Path.cwd()):
                 suggestions = [
-                    {
-                        "block_id": "no-match-hint",
-                        "score": 0,
-                        "domain": "system",
-                        "intent": "review",
-                        "tags": ["hint"],
-                        "context_weight": 0,
-                        "stale": False,
-                        "turn": "subsequent",
-                        "preview": (
+                    SuggestionEntry(
+                        block_id=BLOCK_ID_NO_MATCH_HINT,
+                        score=0.0,
+                        domain="system",
+                        intent="review",
+                        tags=["hint"],
+                        context_weight=0,
+                        stale=False,
+                        turn="subsequent",
+                        preview=(
                             "No priors matched. Run "
                             '`turnzero query --explain "<your prompt>"` to diagnose.'
                         ),
-                    }
+                    )
                 ]
         stats_svc.log_tool_call(
             "list_suggested_blocks",
@@ -168,7 +174,8 @@ def list_suggested_blocks(
         )
         return suggestions
     except RuntimeError as e:
-        result = [
+        # Error dict uses non-SuggestionEntry keys so the client can detect the failure.
+        error_payload = [
             {
                 "error": "no_embedding_backend",
                 "message": str(e),
@@ -182,12 +189,12 @@ def list_suggested_blocks(
                 ),
             }
         ]
-        stats_svc.log_tool_call("list_suggested_blocks", {"prompt": prompt}, result)
-        return result
+        stats_svc.log_tool_call("list_suggested_blocks", {"prompt": prompt}, error_payload)
+        return error_payload  # type: ignore[return-value]
 
 
 @mcp.tool()
-def get_block(block_id: str) -> dict[str, Any]:
+def get_block(block_id: str) -> BlockData:
     """Return the full content of an Expert Prior by ID.
 
     Use this after list_suggested_blocks to inspect a specific Expert Prior
@@ -235,7 +242,7 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
 
 
 @mcp.tool()
-def get_stats() -> dict[str, Any]:
+def get_stats() -> StatsData:
     """Return TurnZero usage and library statistics.
 
     Call this when the user asks how TurnZero is doing, how many priors have

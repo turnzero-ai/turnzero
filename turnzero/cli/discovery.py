@@ -27,6 +27,7 @@ from turnzero.config import (
 )
 from turnzero.formatters import block_fmt
 from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
+from turnzero.types import Tier
 
 discovery_app = typer.Typer(no_args_is_help=True)
 
@@ -569,8 +570,8 @@ def list_blocks(
 
     # Exclude personal-tier blocks from domain table — they inject unconditionally
     # and are not subject to active_domains filtering. Show them as a separate row.
-    personal_blocks_list = [b for b in blocks.values() if b.tier == "personal"]
-    expert_blocks = {k: v for k, v in blocks.items() if v.tier != "personal"}
+    personal_blocks_list = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
+    expert_blocks = {k: v for k, v in blocks.items() if v.tier != Tier.PERSONAL}
 
     domain_counts: Counter[str] = Counter(b.domain for b in expert_blocks.values())
     stale_by_domain: Counter[str] = Counter(
@@ -727,7 +728,7 @@ def stats() -> None:
     import datetime
 
     stale = [b for b in blocks.values() if b.is_stale()]
-    personal_blocks = [b for b in blocks.values() if b.tier == "personal"]
+    personal_blocks = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
     personal_count = len(personal_blocks)
 
     # Personal prior growth: weeks since earliest personal prior was created

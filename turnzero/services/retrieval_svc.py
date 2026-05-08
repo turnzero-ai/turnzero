@@ -30,6 +30,13 @@ from turnzero.telemetry import (
     track_session_start,
     track_session_summary,
 )
+from turnzero.types import (
+    BLOCK_ID_PERSONAL_LIMIT_WARNING,
+    BlockData,
+    SuggestionEntry,
+    Tier,
+    TurnLabel,
+)
 
 # Per-source index cache: path → (mtime, entries)
 _INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
@@ -109,7 +116,7 @@ def list_suggested_blocks(
     project_root: Path | None = None,
     session_id: str | None = None,
     inject_all: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SuggestionEntry]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
     from turnzero.retrieval import get_identity_context
     from turnzero.services import stats_svc
@@ -122,7 +129,7 @@ def list_suggested_blocks(
         active_set = set(active_domains)
         blocks = {
             k: v for k, v in blocks.items()
-            if v.tier == "personal" or v.domain in active_set
+            if v.tier == Tier.PERSONAL or v.domain in active_set
         }
 
     index = _load_active_index()
@@ -152,7 +159,7 @@ def list_suggested_blocks(
         exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
     )
 
-    turn = "first" if is_turn_0 else "subsequent"
+    turn = TurnLabel.FIRST if is_turn_0 else TurnLabel.SUBSEQUENT
 
     _PREVIEW_WORDS = 6
 
@@ -163,8 +170,8 @@ def list_suggested_blocks(
             "…" if len(words) > _PREVIEW_WORDS else ""
         )
 
-    def _build_entry(block: Block, score: float, is_personal: bool) -> dict[str, Any]:
-        entry: dict[str, Any] = {
+    def _build_entry(block: Block, score: float, is_personal: bool) -> SuggestionEntry:
+        entry: SuggestionEntry = {
             "block_id": block.slug,
             "score": round(score, 3),
             "domain": block.domain,
@@ -189,7 +196,7 @@ def list_suggested_blocks(
             track_block_injected(domain=block.domain, tier=block.tier or "local")
         return entry
 
-    formatted: list[dict[str, Any]] = [
+    formatted: list[SuggestionEntry] = [
         _build_entry(block, score, is_personal=True)
         for block, score in personal_results
     ] + [
@@ -199,7 +206,7 @@ def list_suggested_blocks(
     if limit_exceeded:
         formatted.append(
             {
-                "block_id": "personal-priors-limit-warning",
+                "block_id": BLOCK_ID_PERSONAL_LIMIT_WARNING,
                 "score": 0.0,
                 "domain": "system",
                 "intent": "review",
@@ -213,7 +220,7 @@ def list_suggested_blocks(
 
     # Logging and telemetry
     real_blocks = [
-        s for s in formatted if s["block_id"] != "personal-priors-limit-warning"
+        s for s in formatted if s["block_id"] != BLOCK_ID_PERSONAL_LIMIT_WARNING
     ]
     if formatted:
         stats_svc.log_injection(
@@ -224,7 +231,7 @@ def list_suggested_blocks(
             tokens_injected=sum(s.get("context_weight", 0) for s in real_blocks),
         )
 
-    personal_count = sum(1 for b in blocks.values() if b.tier == "personal")
+    personal_count = sum(1 for b in blocks.values() if b.tier == Tier.PERSONAL)
     track_session_start(
         session_id=session_id,
         blocks_suggested=len(formatted),
@@ -240,12 +247,12 @@ def list_suggested_blocks(
 def _check_domain_active(block: Block, block_id: str) -> bool:
     """Return True if block's domain is in the active whitelist (or no whitelist set)."""
     active = get_active_domains(get_data_dir())
-    if active is None or block.tier == "personal":
+    if active is None or block.tier == Tier.PERSONAL:
         return True
     return block.domain in active
 
 
-def get_block(block_id: str) -> dict[str, Any]:
+def get_block(block_id: str) -> BlockData:
     """Return full block data as a serialisable dict."""
     blocks = _load_active_blocks()
     if block_id not in blocks:
