@@ -197,3 +197,41 @@ def test_get_block_active_true_when_domain_in_active(
 
     result = retrieval_svc.get_block("py-build")
     assert result["active"] is True
+
+
+def test_list_suggested_blocks_filters_inactive_domain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """active_domains set → blocks from inactive domain excluded before query."""
+    import yaml
+
+    import turnzero.retrieval as ret
+    import turnzero.services.retrieval_svc as rsvc
+    import turnzero.services.stats_svc as ssvc
+    import turnzero.telemetry as tel
+
+    (tmp_path / "config.yaml").write_text(
+        yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
+    )
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {
+        "py-build": _make_block("py-build", "python"),
+        "k8s-build": _make_block("k8s-build", "kubernetes"),
+    })
+    captured_blocks: list[str] = []
+
+    def _fake_query(prompt: str, index: list, blocks: dict, **kw: object) -> list:
+        captured_blocks.extend(blocks.keys())
+        return []
+
+    monkeypatch.setattr(rsvc, "_query", _fake_query)
+    monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
+    monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
+    monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
+
+    rsvc.list_suggested_blocks("build something in python", session_id=None)
+
+    assert "py-build" in captured_blocks
+    assert "k8s-build" not in captured_blocks
