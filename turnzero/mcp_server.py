@@ -80,6 +80,8 @@ mcp = FastMCP(
         "Do not wait — call it in parallel with preparing your response. "
         "This retrieves your Personal Priors (Identity) and relevant Expert Priors (Domain Knowledge). "
         "Use inject_block to retrieve the full text of each relevant prior before answering. "
+        "SKIP list_suggested_blocks only for pure chitchat — greetings, social acknowledgments "
+        "('thanks', 'looks good', 'got it'), or any message with no actionable content. "
         "\n\n"
         "RULE 2 — ALWAYS call submit_candidate when: "
         "(a) the user corrects you on any domain-specific fact, API, rule, pattern, or threshold; "
@@ -139,6 +141,26 @@ def list_suggested_blocks(
         suggestions = retrieval_svc.list_suggested_blocks(
             prompt, project_root=Path.cwd(), session_id=sid, inject_all=inject_all
         )
+        # UX-1: when gate passed but no priors matched, guide user to diagnose
+        if not suggestions:
+            from turnzero.retrieval import is_implementation_prompt
+            if is_implementation_prompt(prompt, project_root=Path.cwd()):
+                suggestions = [
+                    {
+                        "block_id": "no-match-hint",
+                        "score": 0,
+                        "domain": "system",
+                        "intent": "review",
+                        "tags": ["hint"],
+                        "context_weight": 0,
+                        "stale": False,
+                        "turn": "subsequent",
+                        "preview": (
+                            "No priors matched. Run "
+                            '`turnzero query --explain "<your prompt>"` to diagnose.'
+                        ),
+                    }
+                ]
         stats_svc.log_tool_call(
             "list_suggested_blocks",
             {"prompt": prompt, "session_id": sid, "inject_all": inject_all},

@@ -622,3 +622,58 @@ def test_list_suggested_blocks_inject_all_includes_full_text() -> None:
 def test_list_suggested_blocks_no_inject_all_has_no_full_text() -> None:
     results = _list_suggested_blocks("build a fastapi app with postgres")
     assert all("full_text" not in r for r in results)
+
+
+# ---------------------------------------------------------------------------
+# UX-1: "no priors matched" hint
+# ---------------------------------------------------------------------------
+
+
+def test_no_match_hint_fires_when_impl_prompt_returns_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Impl gate passes but no blocks match → hint entry returned."""
+    import turnzero.mcp_server as srv
+    import turnzero.retrieval as ret
+    import turnzero.services.retrieval_svc as rsvc
+
+    monkeypatch.setattr(rsvc, "list_suggested_blocks", lambda *a, **kw: [])
+    monkeypatch.setattr(ret, "is_implementation_prompt", lambda *a, **kw: True)
+
+    results = srv.list_suggested_blocks("write a kubernetes deployment manifest")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert hint, "hint entry missing when gate passes and results empty"
+    assert "turnzero query" in hint[0]["preview"]
+
+
+def test_no_match_hint_suppressed_for_chitchat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Chitchat → gate fails → no hint even when results empty."""
+    import turnzero.mcp_server as srv
+    import turnzero.retrieval as ret
+    import turnzero.services.retrieval_svc as rsvc
+
+    monkeypatch.setattr(rsvc, "list_suggested_blocks", lambda *a, **kw: [])
+    monkeypatch.setattr(ret, "is_implementation_prompt", lambda *a, **kw: False)
+
+    results = srv.list_suggested_blocks("thanks looks good")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert not hint, "hint must not fire for chitchat"
+
+
+def test_no_match_hint_not_added_when_results_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-empty results → no hint appended."""
+    import turnzero.mcp_server as srv
+    import turnzero.services.retrieval_svc as rsvc
+
+    fake = [{"block_id": "py-build", "score": 0.85, "domain": "python",
+             "intent": "build", "tags": [], "context_weight": 100,
+             "stale": False, "turn": "first", "preview": "…"}]
+    monkeypatch.setattr(rsvc, "list_suggested_blocks", lambda *a, **kw: fake)
+
+    results = srv.list_suggested_blocks("write a python script")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert not hint
