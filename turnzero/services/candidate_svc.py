@@ -28,21 +28,11 @@ _AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {
 
 
 def is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
-    """Return True if any keyword appears in text with simple typo tolerance (edit distance ≤ threshold)."""
-    _MIN_FUZZY_LEN = 4
+    """Return True if any keyword appears in text with typo tolerance."""
+    from difflib import SequenceMatcher
 
-    def _dist(s1: str, s2: str) -> int:
-        if len(s1) < len(s2):
-            return _dist(s2, s1)
-        if not s2:
-            return len(s1)
-        prev: list[int] = list(range(len(s2) + 1))
-        for i, c1 in enumerate(s1):
-            curr = [i + 1]
-            for j, c2 in enumerate(s2):
-                curr.append(min(prev[j + 1] + 1, curr[j] + 1, prev[j] + (c1 != c2)))
-            prev = curr
-        return prev[-1]
+    _MIN_FUZZY_LEN = 4
+    _FUZZY_RATIO = 0.75  # ~edit distance 2 for 4-8 char words
 
     text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
     for kw in keywords:
@@ -53,7 +43,7 @@ def is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool
             if (
                 len(kw_lower) >= _MIN_FUZZY_LEN
                 and abs(len(word) - len(kw_lower)) <= threshold
-                and _dist(word, kw_lower) <= threshold
+                and SequenceMatcher(None, word, kw_lower).ratio() >= _FUZZY_RATIO
             ):
                 return True
     return False
@@ -68,6 +58,103 @@ def check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, boo
     if not is_intent_present(reason, _AUTO_APPROVE_INTENT_KEYWORDS):
         return False, True
     return True, False
+
+
+def _build_block_dict(
+    block_id: str,
+    domain: str,
+    intent: str,
+    constraints: list[str],
+    anti_patterns: list[str],
+    tags: list[str],
+    doc_anchors: list[str],
+    rationale: str | None,
+    confidence: float,
+    today: str,
+    project_hash: str | None,
+) -> dict[str, Any]:
+    """Construct the canonical block dict. Pure data, no I/O."""
+    return {
+        "id": block_id,
+        "slug": block_id,
+        "version": "1.0.0",
+        "domain": domain,
+        "intent": intent,
+        "last_verified": today,
+        "tags": tags,
+        "context_weight": sum(len(c.split()) * 4 for c in constraints + anti_patterns),
+        "conflicts_with": [],
+        "requires": [],
+        "constraints": constraints,
+        "anti_patterns": anti_patterns,
+        "rationale": rationale,
+        "doc_anchors": [{"url": u, "verified": today} for u in doc_anchors],
+        "confidence": confidence,
+        "archived": False,
+        "project_hash": project_hash,
+    }
+
+
+def _persist_approved(
+    block: dict[str, Any],
+    block_id: str,
+    is_personal: bool,
+    domain: str,
+    reason: str,
+) -> str:
+    """Write approved block to the library, update index, return confirmation message."""
+    tier = "personal" if is_personal else "local"
+    dest_dir = safe_path(get_blocks_dir(), tier, domain)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    block_path = safe_path(dest_dir, f"{block_id}.yaml")
+    with open(block_path, "w", encoding="utf-8") as f:
+        yaml.dump(block, f, allow_unicode=True, sort_keys=False)
+
+    if not get_index_path().exists():
+        build(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
+    else:
+        append_block(block_path, tier, get_index_path(), get_data_dir())
+
+    return (
+        f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to "
+        f"{tier} library and index updated incrementally. "
+        f"It will be injected in future sessions matching this domain."
+        + (f" Reason: {reason}" if reason else "")
+    )
+
+
+def _persist_candidate(
+    block: dict[str, Any],
+    block_id: str,
+    guard_blocked: bool,
+    reason: str,
+) -> str:
+    """Write block to candidates queue, return status message with nudge if new."""
+    candidates_dir = get_data_dir() / "candidates"
+    candidates_dir.mkdir(parents=True, exist_ok=True)
+    candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
+    is_new = not candidate_path.exists()
+    with open(candidate_path, "w", encoding="utf-8") as f:
+        yaml.dump(block, f, allow_unicode=True, sort_keys=False)
+
+    if guard_blocked:
+        return (
+            f"⚠ Auto-approval blocked: explicit user intent (e.g., 'remember this') "
+            f"was not found in the reason. Candidate '{block_id}' has been queued for "
+            f"review instead. Run `turnzero review` to approve it."
+        )
+    if is_new:
+        return (
+            f"💡 Correction captured — '{block_id}' queued for review. "
+            f"Run `turnzero review` to approve and add to your library. "
+            f"It will prevent this mistake in future sessions."
+            + (f" Reason: {reason}" if reason else "")
+        )
+    return (
+        f"✓ Candidate '{block_id}' updated in review queue. "
+        f"Run `turnzero review` to approve it into the library."
+        + (f" Reason: {reason}" if reason else "")
+    )
 
 
 def submit(
@@ -85,44 +172,39 @@ def submit(
     project_root: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """Persist a candidate block and return (message, input_snapshot) for logging."""
+    import datetime
+
     validate_slug(block_id)
     validate_domain(domain)
 
     safety = validate_candidate(constraints, anti_patterns or [], rationale, reason)
     if not safety.safe:
-        import datetime
-
+        today = datetime.date.today().isoformat()
         quarantine_dir = get_data_dir() / "quarantine"
         quarantine_dir.mkdir(parents=True, exist_ok=True)
         quarantine_path = safe_path(quarantine_dir, f"{block_id}.yaml")
-        quarantine_block: dict[str, Any] = {
-            "slug": block_id,
-            "quarantine_reason": safety.reason_code,
-            "quarantine_detail": safety.detail,
-            "domain": domain,
-            "intent": intent,
-            "constraints": constraints,
-            "anti_patterns": anti_patterns or [],
-            "submitted_at": datetime.date.today().isoformat(),
-        }
         with open(quarantine_path, "w", encoding="utf-8") as f:
-            yaml.dump(quarantine_block, f, allow_unicode=True, sort_keys=False)
-        quarantine_snapshot: dict[str, Any] = {
-            "block_id": block_id,
-            "domain": domain,
-            "intent": intent,
-            "constraints": constraints,
-            "anti_patterns": anti_patterns or [],
-            "reason": reason,
-            "quarantine_reason": safety.reason_code,
-        }
+            yaml.dump(
+                {
+                    "slug": block_id,
+                    "quarantine_reason": safety.reason_code,
+                    "quarantine_detail": safety.detail,
+                    "domain": domain,
+                    "intent": intent,
+                    "constraints": constraints,
+                    "anti_patterns": anti_patterns or [],
+                    "submitted_at": today,
+                },
+                f, allow_unicode=True, sort_keys=False,
+            )
         return (
             f"⚠ Candidate '{block_id}' was quarantined (reason: {safety.reason_code}). "
-            f"{safety.detail} "
-            f"It will NOT be injected into any session."
-        ), quarantine_snapshot
-
-    import datetime
+            f"{safety.detail} It will NOT be injected into any session."
+        ), {
+            "block_id": block_id, "domain": domain, "intent": intent,
+            "constraints": constraints, "anti_patterns": anti_patterns or [],
+            "reason": reason, "quarantine_reason": safety.reason_code,
+        }
 
     today = datetime.date.today().isoformat()
     confidence = compute_confidence(
@@ -133,91 +215,24 @@ def submit(
     project_hash = None
     if is_personal and domain != "global" and project_root:
         from turnzero.state import _get_project_hash
-
         project_hash = _get_project_hash(Path(project_root))
 
-    block: dict[str, Any] = {
-        "id": block_id,
-        "slug": block_id,
-        "version": "1.0.0",
-        "domain": domain,
-        "intent": intent,
-        "last_verified": today,
-        "tags": tags or [],
-        "context_weight": sum(
-            len(c.split()) * 4 for c in constraints + (anti_patterns or [])
-        ),
-        "conflicts_with": [],
-        "requires": [],
-        "constraints": constraints,
-        "anti_patterns": anti_patterns or [],
-        "rationale": rationale,
-        "doc_anchors": [{"url": u, "verified": today} for u in (doc_anchors or [])],
-        "confidence": confidence,
-        "archived": False,
-        "project_hash": project_hash,
-    }
-
+    block = _build_block_dict(
+        block_id, domain, intent, constraints, anti_patterns or [],
+        tags or [], doc_anchors or [], rationale, confidence, today, project_hash,
+    )
     input_snapshot: dict[str, Any] = {
-        "block_id": block_id,
-        "domain": domain,
-        "intent": intent,
-        "constraints": constraints,
-        "anti_patterns": anti_patterns or [],
-        "tags": tags or [],
-        "doc_anchors": doc_anchors or [],
-        "rationale": rationale,
-        "reason": reason,
-        "auto_approve": auto_approve,
-        "is_personal": is_personal,
+        "block_id": block_id, "domain": domain, "intent": intent,
+        "constraints": constraints, "anti_patterns": anti_patterns or [],
+        "tags": tags or [], "doc_anchors": doc_anchors or [],
+        "rationale": rationale, "reason": reason,
+        "auto_approve": auto_approve, "is_personal": is_personal,
         "project_root": project_root,
     }
 
-    if auto_approve:
-        tier = "personal" if is_personal else "local"
-        dest_dir = safe_path(get_blocks_dir(), tier, domain)
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        block_path = safe_path(dest_dir, f"{block_id}.yaml")
-        with open(block_path, "w", encoding="utf-8") as f:
-            yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-
-        if not get_index_path().exists():
-            build(get_blocks_dir(), get_index_path(), data_dir=get_data_dir())
-        else:
-            append_block(block_path, tier, get_index_path(), get_data_dir())
-
-        result = (
-            f"✓ {'Personal' if is_personal else 'Expert'} Prior '{block_id}' added to "
-            f"{tier} library and index updated incrementally. "
-            f"It will be injected in future sessions matching this domain."
-            + (f" Reason: {reason}" if reason else "")
-        )
-    else:
-        candidates_dir = get_data_dir() / "candidates"
-        candidates_dir.mkdir(parents=True, exist_ok=True)
-        candidate_path = safe_path(candidates_dir, f"{block_id}.yaml")
-        is_new = not candidate_path.exists()
-        with open(candidate_path, "w", encoding="utf-8") as f:
-            yaml.dump(block, f, allow_unicode=True, sort_keys=False)
-
-        if guard_blocked:
-            result = (
-                f"⚠ Auto-approval blocked: explicit user intent (e.g., 'remember this') "
-                f"was not found in the reason. Candidate '{block_id}' has been queued for "
-                f"review instead. Run `turnzero review` to approve it."
-            )
-        elif is_new:
-            result = (
-                f"💡 Correction captured — '{block_id}' queued for review. "
-                f"Run `turnzero review` to approve and add to your library. "
-                f"It will prevent this mistake in future sessions."
-                + (f" Reason: {reason}" if reason else "")
-            )
-        else:
-            result = (
-                f"✓ Candidate '{block_id}' updated in review queue. "
-                f"Run `turnzero review` to approve it into the library."
-                + (f" Reason: {reason}" if reason else "")
-            )
-
+    result = (
+        _persist_approved(block, block_id, is_personal, domain, reason)
+        if auto_approve
+        else _persist_candidate(block, block_id, guard_blocked, reason)
+    )
     return result, input_snapshot
