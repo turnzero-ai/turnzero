@@ -567,9 +567,14 @@ def list_blocks(
     # Default: domain summary
     from collections import Counter
 
-    domain_counts: Counter[str] = Counter(b.domain for b in blocks.values())
+    # Exclude personal-tier blocks from domain table — they inject unconditionally
+    # and are not subject to active_domains filtering. Show them as a separate row.
+    personal_blocks_list = [b for b in blocks.values() if b.tier == "personal"]
+    expert_blocks = {k: v for k, v in blocks.items() if v.tier != "personal"}
+
+    domain_counts: Counter[str] = Counter(b.domain for b in expert_blocks.values())
     stale_by_domain: Counter[str] = Counter(
-        b.domain for b in blocks.values() if b.is_stale()
+        b.domain for b in expert_blocks.values() if b.is_stale()
     )
 
     from turnzero.config import get_active_domains
@@ -583,6 +588,17 @@ def list_blocks(
     tbl.add_column("blocks", justify="right", min_width=6)
     tbl.add_column("stale", justify="right", min_width=5)
     tbl.add_column("status", min_width=10)
+
+    # Personal-tier row always first, always-on regardless of active_domains
+    if personal_blocks_list:
+        personal_stale = sum(1 for b in personal_blocks_list if b.is_stale())
+        stale_cell = f"[red]{personal_stale}[/red]" if personal_stale else "[dim]0[/dim]"
+        tbl.add_row(
+            "[magenta]personal[/magenta]",
+            str(len(personal_blocks_list)),
+            stale_cell,
+            "[magenta]always-on[/magenta]",
+        )
 
     for d, count in sorted(domain_counts.items()):
         stale_n = stale_by_domain.get(d, 0)

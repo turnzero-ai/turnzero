@@ -684,3 +684,144 @@ def test_stats_nudge_not_shown_when_sessions_exist(tmp_path: Path, monkeypatch: 
     result = runner.invoke(app, ["stats"])
     assert result.exit_code == 0
     assert "No sessions logged yet" not in result.output
+
+
+# ---------------------------------------------------------------------------
+# UX-2: personal-tier blocks show as "personal / always-on" in domain table
+# ---------------------------------------------------------------------------
+
+
+def test_list_domain_summary_personal_shown_as_always_on(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    blocks_dir = tmp_path / "blocks"
+    (blocks_dir / "community" / "fastapi").mkdir(parents=True)
+    _write_test_block(
+        blocks_dir / "community" / "fastapi" / "fastapi-build.yaml",
+        "fastapi-build", "fastapi",
+    )
+    personal_dir = blocks_dir / "personal" / "global"
+    personal_dir.mkdir(parents=True)
+    _write_test_block(
+        personal_dir / "my-pref-build.yaml",
+        "my-pref-build", "global",
+    )
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    import turnzero.cli.discovery as disc
+    monkeypatch.setattr(disc, "get_blocks_dir", lambda: blocks_dir)
+
+    result = runner.invoke(app, ["list"])
+    assert result.exit_code == 0
+    assert "personal" in result.output
+    assert "always-on" in result.output
+    # "global" should NOT appear as an inactive domain
+    assert "inactive" not in result.output
+
+
+# ---------------------------------------------------------------------------
+# GRW-2: turnzero contribute
+# ---------------------------------------------------------------------------
+
+
+def test_contribute_unknown_block_id_exits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (tmp_path / "candidates").mkdir()
+    result = runner.invoke(app, ["contribute", "nonexistent-block"])
+    assert result.exit_code != 0
+
+
+def test_contribute_fallback_when_gh_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import turnzero.cli.contribute as contrib
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    cand_dir = tmp_path / "candidates"
+    cand_dir.mkdir()
+    (cand_dir / "my-rule-build.yaml").write_text(
+        "slug: my-rule-build\ndomain: python\n"
+    )
+    monkeypatch.setattr(contrib.shutil, "which", lambda _: None)
+    result = runner.invoke(app, ["contribute", "my-rule-build"])
+    assert result.exit_code == 0
+    assert "github.com/turnzero-ai/turnzero/issues/new" in result.output
+
+
+def test_contribute_with_gh_opens_issue(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import subprocess
+
+    import turnzero.cli.contribute as contrib
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    cand_dir = tmp_path / "candidates"
+    cand_dir.mkdir()
+    (cand_dir / "my-rule-build.yaml").write_text(
+        "slug: my-rule-build\ndomain: python\n"
+    )
+    monkeypatch.setattr(contrib.shutil, "which", lambda _: "/usr/bin/gh")
+    calls: list[list[str]] = []
+    def _fake_run(cmd: list[str], **kw: object) -> None:
+        calls.append(cmd)
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = runner.invoke(app, ["contribute", "my-rule-build"])
+    assert result.exit_code == 0
+    assert calls and "gh" in calls[0][0]
+    assert any("my-rule-build" in arg for arg in calls[0])
+
+
+# ---------------------------------------------------------------------------
+# TEL-2: domain_changed telemetry fires on add / remove / reset
+# ---------------------------------------------------------------------------
+
+
+def test_domain_add_fires_telemetry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import yaml
+
+    import turnzero.telemetry as tel
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (tmp_path / "config.yaml").write_text(
+        yaml.dump({"active_domains": ["python"], "sources": {}})
+    )
+    fired: list[dict] = []
+    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
+    runner.invoke(app, ["domain", "add", "rust"])
+    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    assert domain_events
+    assert domain_events[0]["action"] == "add"
+    assert domain_events[0]["domain"] == "rust"
+
+
+def test_domain_remove_fires_telemetry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import yaml
+
+    import turnzero.telemetry as tel
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    (tmp_path / "config.yaml").write_text(
+        yaml.dump({"active_domains": ["python", "rust"], "sources": {}})
+    )
+    fired: list[dict] = []
+    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
+    runner.invoke(app, ["domain", "remove", "rust"])
+    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    assert domain_events
+    assert domain_events[0]["action"] == "remove"
+    assert domain_events[0]["domain"] == "rust"
+
+
+def test_domain_reset_fires_telemetry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import turnzero.telemetry as tel
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path))
+    fired: list[dict] = []
+    monkeypatch.setattr(tel, "track_event", lambda event, props: fired.append({"event": event, **props}))
+    runner.invoke(app, ["domain", "reset"])
+    domain_events = [e for e in fired if e["event"] == "domain_changed"]
+    assert domain_events
+    assert domain_events[0]["action"] == "reset"
