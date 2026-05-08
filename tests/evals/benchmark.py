@@ -206,17 +206,36 @@ class RunStats:
         self.list_count = sum(
             1 for c in self.tool_calls if c.get("tool") == "list_suggested_blocks"
         )
-        self.called_inject = any(
-            c.get("tool") == "inject_block" for c in self.tool_calls
+
+        # inject_all=True is the WF-3 batch path: full block text returned inline
+        # from list_suggested_blocks, no separate inject_block calls needed.
+        # Detect via log meta (all agents) or stream input (Claude).
+        _used_inject_all = any(
+            c.get("tool") == "list_suggested_blocks"
+            and (c.get("inject_all") or c.get("input", {}).get("inject_all"))
+            for c in self.tool_calls
+        )
+        self.called_inject = (
+            any(c.get("tool") == "inject_block" for c in self.tool_calls)
+            or _used_inject_all
         )
         self.inject_count = sum(
             1 for c in self.tool_calls if c.get("tool") == "inject_block"
         )
+
+        # Collect block IDs from explicit inject_block calls.
         self.blocks_injected = [
             c.get("block_id", c.get("input", {}).get("block_id", ""))
             for c in self.tool_calls
             if c.get("tool") == "inject_block"
         ]
+        # Also collect from inject_all log entries (block_ids written to meta).
+        for c in self.tool_calls:
+            if c.get("tool") == "list_suggested_blocks" and (
+                c.get("inject_all") or c.get("input", {}).get("inject_all")
+            ):
+                self.blocks_injected.extend(c.get("block_ids", []))
+
         self.called_submit = any(
             c.get("tool") == "submit_candidate" for c in self.tool_calls
         )
@@ -592,7 +611,7 @@ def _run_codex(
 # ---------------------------------------------------------------------------
 
 
-def _run_once(
+def _run_once(  # noqa: PLR0912
     scenario: dict[str, Any],
     agent: str,
     run_index: int,
@@ -620,14 +639,23 @@ def _run_once(
             stats.error = err
             log_calls = _read_log_since(ts_before)
             # stream-json is authoritative for Claude; log covers submit_candidate
-            # (which goes through a different path and may not appear in stream)
+            # and provides inject_all metadata that the stream does not emit.
             merged = {id(c): c for c in stream_tools}
             for lc in log_calls:
-                if not any(
-                    c.get("tool") == lc.get("tool")
-                    and abs(c.get("ts", 0) - lc.get("ts", 0)) < 5
-                    for c in merged.values()
-                ):
+                match = next(
+                    (
+                        c for c in merged.values()
+                        if c.get("tool") == lc.get("tool")
+                        and abs(c.get("ts", 0) - lc.get("ts", 0)) < 5
+                    ),
+                    None,
+                )
+                if match is not None:
+                    # Augment the stream entry with log-only fields (inject_all, block_ids).
+                    for key in ("inject_all", "block_ids"):
+                        if key in lc:
+                            match[key] = lc[key]
+                else:
                     merged[id(lc)] = lc
             stats.tool_calls = list(merged.values())
 

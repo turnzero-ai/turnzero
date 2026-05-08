@@ -24,6 +24,7 @@ from turnzero.config import get_data_dir
 from turnzero.services import candidate_svc, retrieval_svc, stats_svc
 from turnzero.types import (
     BLOCK_ID_NO_MATCH_HINT,
+    BLOCK_ID_PERSONAL_LIMIT_WARNING,
     BlockData,
     StatsData,
     SuggestionEntry,
@@ -166,10 +167,18 @@ def list_suggested_blocks(
                         ),
                     )
                 ]
+        _sentinel_ids = {BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING}
         stats_svc.log_tool_call(
             "list_suggested_blocks",
             {"prompt": prompt, "session_id": sid, "inject_all": inject_all},
             suggestions,
+            meta={
+                "inject_all": inject_all,
+                "block_ids": [
+                    s["block_id"] for s in suggestions
+                    if s.get("block_id") and s["block_id"] not in _sentinel_ids
+                ],
+            } if inject_all else None,
         )
         return suggestions
     except RuntimeError as e:
