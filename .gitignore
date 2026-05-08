@@ -79,3 +79,7 @@ scripts/mempalace-mcp.sh
 # Internal docs (not for public repo)
 internal/
 data/.processed
+
+# Benchmark-generated agent output (real CLI agents write code to cwd during eval runs)
+fastapi_app/
+db_connection.py
