@@ -32,6 +32,245 @@ from turnzero.types import Tier
 discovery_app = typer.Typer(no_args_is_help=True)
 
 
+def _load_blocks_and_index() -> tuple[dict[str, Block], list[Any]]:
+    """Load blocks and index with bundled fallback. Raises typer.Exit(1) on failure."""
+    from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.repositories.index_repo import load_index
+
+    try:
+        blocks_dir = get_blocks_dir()
+        index_path = get_index_path()
+        if not index_path.exists():
+            blocks_dir = get_bundled_blocks_dir()
+            index_path = get_bundled_index_path()
+        if not index_path.exists():
+            raise FileNotFoundError("No index found. Run: turnzero setup")
+        return load_all_blocks(blocks_dir), load_index(index_path)
+    except FileNotFoundError as e:
+        console.print(f"[red]{e}[/red]")
+        raise typer.Exit(1)
+
+
+def _load_stats_data(data_dir: Path) -> dict[str, Any]:
+    """Load all stats from disk. Pure I/O + computation, no rendering or side effects."""
+    import contextlib
+    import datetime
+    import json
+    import time
+    from collections import Counter
+
+    from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.types import INJECTION_TOOLS
+
+    log_path = data_dir / "hook_log.jsonl"
+    entries: list[dict[str, Any]] = []
+    if log_path.exists():
+        for line in log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                entries.append(json.loads(line))
+
+    now = time.time()
+    week_ago = now - 7 * 86400
+
+    sessions_total = len(entries)
+    sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
+    priors_total = sum(len(e.get("blocks", [])) for e in entries)
+    priors_week = sum(
+        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
+    )
+    tokens_injected_total = sum(e.get("tokens_injected", 0) for e in entries)
+    tokens_injected_week = sum(
+        e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
+    )
+
+    tool_log_path = data_dir / "tool_call_log.jsonl"
+    tool_entries: list[dict[str, Any]] = []
+    if tool_log_path.exists():
+        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                tool_entries.append(json.loads(line))
+
+    overhead_total = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries if e.get("tool") in INJECTION_TOOLS
+    )
+    overhead_week = sum(
+        e.get("tokens_in", 0) + e.get("tokens_out", 0)
+        for e in tool_entries
+        if e.get("tool") in INJECTION_TOOLS and e.get("ts", 0) >= week_ago
+    )
+    corrections_total = sum(
+        1 for e in tool_entries
+        if e.get("tool") == "submit_candidate"
+        and not e.get("meta", {}).get("auto_approve", True)
+    )
+    corrections_week = sum(
+        1 for e in tool_entries
+        if e.get("tool") == "submit_candidate"
+        and not e.get("meta", {}).get("auto_approve", True)
+        and e.get("ts", 0) >= week_ago
+    )
+
+    domain_counts: Counter[str] = Counter()
+    for e in entries:
+        for d in e.get("domains", []):
+            domain_counts[d] += 1
+
+    top_domains = [d for d, _ in domain_counts.most_common(5)]
+    est_turns = round(priors_total * 0.5)
+    est_tokens = priors_total * 0.5 * 1500
+
+    try:
+        blocks = load_all_blocks(get_blocks_dir())
+    except FileNotFoundError:
+        blocks = {}
+
+    stale_count = sum(1 for b in blocks.values() if b.is_stale())
+    personal_blocks = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
+    personal_count = len(personal_blocks)
+
+    personal_weeks: int | None = None
+    if personal_blocks:
+        with contextlib.suppress(ValueError):
+            earliest = min(b.last_verified for b in personal_blocks)
+            delta = datetime.date.today() - datetime.date.fromisoformat(earliest)
+            personal_weeks = max(1, delta.days // 7)
+
+    index_count: int | None = None
+    with contextlib.suppress(FileNotFoundError):
+        from turnzero.repositories.index_repo import load_index
+        index_count = len(load_index(get_index_path()))
+
+    return {
+        "sessions_total": sessions_total,
+        "sessions_week": sessions_week,
+        "priors_total": priors_total,
+        "priors_week": priors_week,
+        "tokens_injected_total": tokens_injected_total,
+        "tokens_injected_week": tokens_injected_week,
+        "overhead_total": overhead_total,
+        "overhead_week": overhead_week,
+        "corrections_total": corrections_total,
+        "corrections_week": corrections_week,
+        "top_domains": top_domains,
+        "est_turns": est_turns,
+        "est_tokens": est_tokens,
+        "blocks_total": len(blocks),
+        "personal_count": personal_count,
+        "personal_weeks": personal_weeks,
+        "stale_count": stale_count,
+        "index_count": index_count,
+        "data_dir": data_dir,
+    }
+
+
+def _render_stats(data: dict[str, Any]) -> None:
+    """Render stats tables and nudges to the console."""
+    from turnzero.config import load_telemetry_config
+
+    sessions_total = data["sessions_total"]
+
+    console.print()
+    console.print("[bold]📎 TurnZero — Stats[/bold]\n")
+
+    if sessions_total > 0:
+        parts = [
+            f"[bold]{data['sessions_week']}[/bold] sessions",
+            f"[bold]{data['priors_week']}[/bold] injections",
+            f"[bold]{data['corrections_week']}[/bold] corrections",
+        ]
+        console.print(f"  Last 7 days  [dim]{'  ·  '.join(parts)}[/dim]\n")
+
+    usage = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    usage.add_column("", style="dim", min_width=26)
+    usage.add_column("", justify="right")
+
+    if sessions_total == 0:
+        usage.add_row("Sessions with injection", "[dim]none yet[/dim]")
+        if data["corrections_total"] == 0:
+            usage.add_row(
+                "Corrections captured",
+                "[dim]none yet — AI will learn from your corrections[/dim]",
+            )
+    else:
+        usage.add_row(
+            "Sessions with injection",
+            f"[bold]{sessions_total}[/bold]  [dim](+{data['sessions_week']} this week)[/dim]",
+        )
+        usage.add_row(
+            "Priors applied",
+            f"[bold]{data['priors_total']}[/bold]  [dim](+{data['priors_week']} this week)[/dim]",
+        )
+        usage.add_row(
+            "Corrections captured",
+            f"[bold]{data['corrections_total']}[/bold]  "
+            f"[dim](+{data['corrections_week']} this week)[/dim]",
+        )
+        if data["tokens_injected_total"] > 0:
+            usage.add_row(
+                "Prior content added (~est)",
+                f"[bold]{data['tokens_injected_total']:,}[/bold] tokens"
+                f"  [dim](+{data['tokens_injected_week']:,} this week)[/dim]",
+            )
+        if data["overhead_total"] > 0:
+            usage.add_row(
+                "MCP call overhead (~est)",
+                f"[bold]{data['overhead_total']:,}[/bold] tokens"
+                f"  [dim](+{data['overhead_week']:,} this week)[/dim]",
+            )
+        usage.add_row(
+            "Est. turns saved",
+            f"[bold green]~{data['est_turns']}[/bold green]"
+            f"  [dim](~{int(data['est_tokens'] / 1000)}k tokens est. saved)[/dim]",
+        )
+        if data["top_domains"]:
+            usage.add_row(
+                "Top domains",
+                "  ".join(f"[cyan]{d}[/cyan]" for d in data["top_domains"]),
+            )
+
+    console.print(usage)
+
+    console.print()
+    lib = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    lib.add_column("", style="dim", min_width=26)
+    lib.add_column("", justify="right")
+    blocks_total = data["blocks_total"]
+    personal_count = data["personal_count"]
+    lib.add_row("Block library", f"{blocks_total} blocks total")
+    lib.add_row("  - Expert Priors", str(blocks_total - personal_count))
+    if personal_count > 0 and data["personal_weeks"] is not None:
+        lib.add_row(
+            "  - Personal Priors",
+            f"[magenta]{personal_count}[/magenta]"
+            f"  [dim](0 → {personal_count} in {data['personal_weeks']}w)[/dim]",
+        )
+    else:
+        lib.add_row("  - Personal Priors", f"[magenta]{personal_count}[/magenta]")
+    stale_count = data["stale_count"]
+    lib.add_row(
+        "Stale blocks (>90d)",
+        f"[red]{stale_count}[/red]" if stale_count else "[green]0[/green]",
+    )
+    if data["index_count"] is not None:
+        lib.add_row("Index entries", str(data["index_count"]))
+    else:
+        lib.add_row("Index", "[yellow]not built[/yellow]")
+
+    console.print(lib)
+
+    if sessions_total == 0:
+        setup_done = bool(load_telemetry_config(data["data_dir"]).get("anonymous_id"))
+        if setup_done:
+            console.print(
+                "[yellow]No sessions logged yet.[/yellow] "
+                "Open your AI client and start with your usual prompt — "
+                "priors inject automatically.\n"
+                "[dim]Browse your library: [/dim][cyan]turnzero list[/cyan]  "
+                "[dim]See what fires: [/dim][cyan]turnzero query \"<your prompt>\"[/cyan]\n"
+            )
+
+
 def _display_preview(results: list[tuple[Block, float]], threshold: float) -> None:
     """Print a visual preview of suggested blocks."""
     total_weight = sum(b.context_weight for b, _ in results)
@@ -193,29 +432,10 @@ def query(
 ) -> None:
     """Suggest Expert Priors for an opening prompt."""
     from turnzero.analytics import SessionAnalytics
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
-    from turnzero.retrieval import (
-        get_identity_context,
-    )
+    from turnzero.retrieval import get_identity_context
     from turnzero.retrieval import query as _query
 
-    try:
-        blocks_dir = get_blocks_dir()
-        index_path = get_index_path()
-
-        if not index_path.exists():
-            blocks_dir = get_bundled_blocks_dir()
-            index_path = get_bundled_index_path()
-
-        if not index_path.exists():
-            raise FileNotFoundError("No index found. Run: turnzero setup")
-
-        blocks = load_all_blocks(blocks_dir)
-        index = load_index(index_path)
-    except FileNotFoundError as e:
-        console.print(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+    blocks, index = _load_blocks_and_index()
 
     # 1. Personal Identity context (unconditional)
     identity_blocks, limit_exceeded = get_identity_context(
@@ -276,20 +496,10 @@ def preview(
     ),
 ) -> None:
     """Full-content preview of what would be injected for a prompt."""
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
-    from turnzero.retrieval import (
-        IDENTITY_SCORE_THRESHOLD,
-        get_identity_context,
-    )
+    from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD, get_identity_context
     from turnzero.retrieval import query as _query
 
-    try:
-        blocks = load_all_blocks(get_blocks_dir())
-        index = load_index(get_index_path())
-    except FileNotFoundError as e:
-        console.print(f"[red]{e}[/red]")
-        raise typer.Exit(1)
+    blocks, index = _load_blocks_and_index()
 
     # Use the same dual-stream logic as query()
     identity_blocks, _ = get_identity_context(blocks, project_root=Path.cwd())
@@ -633,223 +843,17 @@ def list_blocks(
 @discovery_app.command()
 def stats() -> None:
     """Show injection history and block library statistics."""
-    import contextlib
-    import json
-    import time
-    from collections import Counter
-
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
+    from turnzero.telemetry import track_stats_viewed
+    from turnzero.upgrade import check_for_upgrade
 
     data_dir = get_data_dir()
+    data = _load_stats_data(data_dir)
 
-    # ── Live injection log ───────────────────────────────────────────────
-    log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict[str, Any]] = []
-    if log_path.exists():
-        for line in log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                entries.append(json.loads(line))
-
-    now = time.time()
-    week_ago = now - 7 * 86400
-
-    sessions_total = len(entries)
-    sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
-    priors_total = sum(len(e.get("blocks", [])) for e in entries)
-    priors_week = sum(
-        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
-    )
-    tokens_injected_total = sum(e.get("tokens_injected", 0) for e in entries)
-    tokens_injected_week = sum(
-        e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
-    )
-
-    # MCP call overhead: tokens_in + tokens_out for injection tools
-    _INJECTION_TOOLS = {"list_suggested_blocks", "inject_block"}
-    tool_log_path = data_dir / "tool_call_log.jsonl"
-    tool_entries_raw: list[dict[str, Any]] = []
-    if tool_log_path.exists():
-        import contextlib as _cl
-
-        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
-            with _cl.suppress(json.JSONDecodeError):
-                tool_entries_raw.append(json.loads(line))
-    overhead_total = sum(
-        e.get("tokens_in", 0) + e.get("tokens_out", 0)
-        for e in tool_entries_raw
-        if e.get("tool") in _INJECTION_TOOLS
-    )
-    overhead_week = sum(
-        e.get("tokens_in", 0) + e.get("tokens_out", 0)
-        for e in tool_entries_raw
-        if e.get("tool") in _INJECTION_TOOLS and e.get("ts", 0) >= week_ago
-    )
-
-    # Corrections: submit_candidate calls where auto_approve=False (sent for review)
-    corrections_total = sum(
-        1
-        for e in tool_entries_raw
-        if e.get("tool") == "submit_candidate"
-        and not e.get("meta", {}).get("auto_approve", True)
-    )
-    corrections_week = sum(
-        1
-        for e in tool_entries_raw
-        if e.get("tool") == "submit_candidate"
-        and not e.get("meta", {}).get("auto_approve", True)
-        and e.get("ts", 0) >= week_ago
-    )
-
-    domain_counts: Counter[str] = Counter()
-    for e in entries:
-        for d in e.get("domains", []):
-            domain_counts[d] += 1
-
-    top_domains = [d for d, _ in domain_counts.most_common(5)]
-
-    est_turns = round(priors_total * 0.5)
-    est_tokens = priors_total * 0.5 * 1500
-
-    # ── Tool call log ─────────────────────────────────────────────────────
-    tool_log_path = data_dir / "tool_call_log.jsonl"
-    tool_entries: list[dict[str, Any]] = []
-    if tool_log_path.exists():
-        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                tool_entries.append(json.loads(line))
-
-    # ── Library stats ─────────────────────────────────────────────────────
-    try:
-        blocks = load_all_blocks(get_blocks_dir())
-    except FileNotFoundError:
-        blocks = {}
-
-    import datetime
-
-    stale = [b for b in blocks.values() if b.is_stale()]
-    personal_blocks = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
-    personal_count = len(personal_blocks)
-
-    # Personal prior growth: weeks since earliest personal prior was created
-    personal_weeks: int | None = None
-    if personal_blocks:
-        with contextlib.suppress(ValueError):
-            earliest = min(b.last_verified for b in personal_blocks)
-            delta = datetime.date.today() - datetime.date.fromisoformat(earliest)
-            personal_weeks = max(1, delta.days // 7)
-
-    from turnzero.telemetry import track_stats_viewed
-
-    track_stats_viewed(sessions_total=sessions_total, blocks_total=len(blocks))
-
-    # ── Render ────────────────────────────────────────────────────────────
-    console.print()
-    console.print("[bold]📎 TurnZero — Stats[/bold]\n")
-
-    # 7-day trajectory summary
-    if sessions_total > 0:
-        trajectory_parts = [
-            f"[bold]{sessions_week}[/bold] sessions",
-            f"[bold]{priors_week}[/bold] injections",
-            f"[bold]{corrections_week}[/bold] corrections",
-        ]
-        console.print(
-            f"  Last 7 days  [dim]{'  ·  '.join(trajectory_parts)}[/dim]\n"
-        )
-
-    usage = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
-    usage.add_column("", style="dim", min_width=26)
-    usage.add_column("", justify="right")
-
-    if sessions_total == 0:
-        usage.add_row("Sessions with injection", "[dim]none yet[/dim]")
-        if corrections_total == 0:
-            usage.add_row(
-                "Corrections captured",
-                "[dim]none yet — AI will learn from your corrections[/dim]",
-            )
-    else:
-        usage.add_row(
-            "Sessions with injection",
-            f"[bold]{sessions_total}[/bold]  [dim](+{sessions_week} this week)[/dim]",
-        )
-        usage.add_row(
-            "Priors applied",
-            f"[bold]{priors_total}[/bold]  [dim](+{priors_week} this week)[/dim]",
-        )
-        usage.add_row(
-            "Corrections captured",
-            f"[bold]{corrections_total}[/bold]  [dim](+{corrections_week} this week)[/dim]",
-        )
-        if tokens_injected_total > 0:
-            usage.add_row(
-                "Prior content added (~est)",
-                f"[bold]{tokens_injected_total:,}[/bold] tokens"
-                f"  [dim](+{tokens_injected_week:,} this week)[/dim]",
-            )
-        if overhead_total > 0:
-            usage.add_row(
-                "MCP call overhead (~est)",
-                f"[bold]{overhead_total:,}[/bold] tokens"
-                f"  [dim](+{overhead_week:,} this week)[/dim]",
-            )
-        usage.add_row(
-            "Est. turns saved",
-            f"[bold green]~{est_turns}[/bold green]  [dim](~{int(est_tokens / 1000)}k tokens est. saved)[/dim]",
-        )
-        if top_domains:
-            usage.add_row(
-                "Top domains", "  ".join(f"[cyan]{d}[/cyan]" for d in top_domains)
-            )
-
-    console.print(usage)
-
-    console.print()
-    lib = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
-    lib.add_column("", style="dim", min_width=26)
-    lib.add_column("", justify="right")
-    lib.add_row("Block library", f"{len(blocks)} blocks total")
-    lib.add_row("  - Expert Priors", str(len(blocks) - personal_count))
-    if personal_count > 0 and personal_weeks is not None:
-        lib.add_row(
-            "  - Personal Priors",
-            f"[magenta]{personal_count}[/magenta]  [dim](0 → {personal_count} in {personal_weeks}w)[/dim]",
-        )
-    else:
-        lib.add_row("  - Personal Priors", f"[magenta]{personal_count}[/magenta]")
-    lib.add_row(
-        "Stale blocks (>90d)",
-        f"[red]{len(stale)}[/red]" if stale else "[green]0[/green]",
-    )
-
-    try:
-        index = load_index(get_index_path())
-        lib.add_row("Index entries", str(len(index)))
-    except FileNotFoundError:
-        lib.add_row("Index", "[yellow]not built[/yellow]")
-
-    console.print(lib)
-
-    # RET-9: day-2 nudge — setup done but no sessions yet
-    if sessions_total == 0:
-        from turnzero.config import load_telemetry_config
-        setup_done = bool(load_telemetry_config(data_dir).get("anonymous_id"))
-        if setup_done:
-            console.print(
-                "[yellow]No sessions logged yet.[/yellow] "
-                "Open your AI client and start with your usual prompt — "
-                "priors inject automatically.\n"
-                "[dim]Browse your library: [/dim][cyan]turnzero list[/cyan]  "
-                "[dim]See what fires: [/dim][cyan]turnzero query \"<your prompt>\"[/cyan]\n"
-            )
-
-    from turnzero.upgrade import check_for_upgrade
+    track_stats_viewed(sessions_total=data["sessions_total"], blocks_total=data["blocks_total"])
+    _render_stats(data)
 
     latest, is_newer = check_for_upgrade(data_dir)
     if is_newer:
-        console.print(
-            f"[dim]TurnZero {latest} available — pipx upgrade turnzero[/dim]\n"
-        )
+        console.print(f"[dim]TurnZero {latest} available — pipx upgrade turnzero[/dim]\n")
     else:
         console.print()
