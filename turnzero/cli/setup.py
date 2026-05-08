@@ -285,6 +285,103 @@ def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> N
     _write_md_file(target_dir / "GEMINI.md", _TURNZERO_MD_BLOCK, force, con)
 
 
+_DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
+
+
+def _render_demo_results(prompt: str) -> None:
+    """Run retrieval for prompt and print what TurnZero would inject."""
+    from turnzero.mcp_server import _list_suggested_blocks
+
+    try:
+        all_results = [
+            r
+            for r in _list_suggested_blocks(prompt)
+            if r.get("block_id") != BLOCK_ID_PERSONAL_LIMIT_WARNING
+        ]
+        if not all_results:
+            console.print(
+                "  [yellow]⚠ No blocks matched.[/yellow]\n"
+                "  Run [cyan]turnzero verify[/cyan] to diagnose."
+            )
+            return
+
+        personal = [r for r in all_results if "[personal" in r.get("preview", "")]
+        expert = [r for r in all_results if "[personal" not in r.get("preview", "")]
+
+        if personal:
+            p_tokens = sum(r.get("context_weight", 0) for r in personal)
+            console.print(
+                "  [bold]Personal Priors[/bold]  [dim](your identity — injected every session)[/dim]"
+            )
+            console.print(
+                f"  [dim]{len(personal)} rule{'s' if len(personal) != 1 else ''} · ~{p_tokens} tokens[/dim]\n"
+            )
+
+        if expert:
+            console.print(
+                "  [bold]Expert Priors[/bold]  [dim](domain knowledge — injected when relevant)[/dim]"
+            )
+            for r in expert:
+                slug = r["block_id"]
+                tokens = r.get("context_weight", 0)
+                domain = r.get("domain", "")
+                preview = r.get("preview", "")
+                console.print(
+                    f"  [green]✓[/green] [bold]{slug}[/bold]"
+                    f"  [dim]{domain} · ~{tokens} tokens[/dim]"
+                )
+                if preview:
+                    console.print(f"    [dim]{preview}[/dim]")
+
+        total_tokens = sum(r.get("context_weight", 0) for r in all_results)
+        console.print(
+            f"\n  [bold]Total: ~{total_tokens} tokens[/bold] injected on Turn 0 "
+            f"({len(personal)} personal + {len(expert)} expert)."
+        )
+        console.print(
+            "  This context is added automatically — no prompt changes needed."
+        )
+    except Exception as e:
+        console.print(
+            f"  [yellow]⚠ Live demo skipped ({e}).[/yellow]\n"
+            "  MCP server will inject priors normally when you start a session.\n"
+            "  Run [cyan]turnzero verify[/cyan] to confirm retrieval is working."
+        )
+
+
+def _print_setup_finale(interactive: bool) -> None:
+    """Show what TurnZero injects — user's own prompt if interactive, else demo."""
+    prompt = ""
+
+    if interactive:
+        console.print("[bold]See your priors in action[/bold]\n")
+        console.print(
+            "  [dim]Type your typical opening message and see exactly what"
+            " TurnZero will load into your AI session.[/dim]\n"
+        )
+        try:
+            user_input = console.input("  [bold]>[/bold] ").strip()
+            prompt = user_input
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+    if not prompt:
+        if interactive:
+            console.print(
+                f"\n  [dim]Using demo prompt: {_DEMO_PROMPT}[/dim]"
+            )
+        else:
+            console.print(
+                f"[bold]Live demo[/bold] — what TurnZero injects:\n\n"
+                f"  [dim]{_DEMO_PROMPT}[/dim]\n"
+            )
+        prompt = _DEMO_PROMPT
+    else:
+        console.print()
+
+    _render_demo_results(prompt)
+
+
 def setup(
     data_dir: Path = typer.Option(
         None,
@@ -735,103 +832,6 @@ def setup(
         console.print(
             "Resolve the issues above, then re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
         )
-
-
-_DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
-
-
-def _render_demo_results(prompt: str) -> None:
-    """Run retrieval for prompt and print what TurnZero would inject."""
-    from turnzero.mcp_server import _list_suggested_blocks
-
-    try:
-        all_results = [
-            r
-            for r in _list_suggested_blocks(prompt)
-            if r.get("block_id") != BLOCK_ID_PERSONAL_LIMIT_WARNING
-        ]
-        if not all_results:
-            console.print(
-                "  [yellow]⚠ No blocks matched.[/yellow]\n"
-                "  Run [cyan]turnzero verify[/cyan] to diagnose."
-            )
-            return
-
-        personal = [r for r in all_results if "[personal" in r.get("preview", "")]
-        expert = [r for r in all_results if "[personal" not in r.get("preview", "")]
-
-        if personal:
-            p_tokens = sum(r.get("context_weight", 0) for r in personal)
-            console.print(
-                "  [bold]Personal Priors[/bold]  [dim](your identity — injected every session)[/dim]"
-            )
-            console.print(
-                f"  [dim]{len(personal)} rule{'s' if len(personal) != 1 else ''} · ~{p_tokens} tokens[/dim]\n"
-            )
-
-        if expert:
-            console.print(
-                "  [bold]Expert Priors[/bold]  [dim](domain knowledge — injected when relevant)[/dim]"
-            )
-            for r in expert:
-                slug = r["block_id"]
-                tokens = r.get("context_weight", 0)
-                domain = r.get("domain", "")
-                preview = r.get("preview", "")
-                console.print(
-                    f"  [green]✓[/green] [bold]{slug}[/bold]"
-                    f"  [dim]{domain} · ~{tokens} tokens[/dim]"
-                )
-                if preview:
-                    console.print(f"    [dim]{preview}[/dim]")
-
-        total_tokens = sum(r.get("context_weight", 0) for r in all_results)
-        console.print(
-            f"\n  [bold]Total: ~{total_tokens} tokens[/bold] injected on Turn 0 "
-            f"({len(personal)} personal + {len(expert)} expert)."
-        )
-        console.print(
-            "  This context is added automatically — no prompt changes needed."
-        )
-    except Exception as e:
-        console.print(
-            f"  [yellow]⚠ Live demo skipped ({e}).[/yellow]\n"
-            "  MCP server will inject priors normally when you start a session.\n"
-            "  Run [cyan]turnzero verify[/cyan] to confirm retrieval is working."
-        )
-
-
-def _print_setup_finale(interactive: bool) -> None:
-    """Show what TurnZero injects — user's own prompt if interactive, else demo."""
-    prompt = ""
-
-    if interactive:
-        console.print("[bold]See your priors in action[/bold]\n")
-        console.print(
-            "  [dim]Type your typical opening message and see exactly what"
-            " TurnZero will load into your AI session.[/dim]\n"
-        )
-        try:
-            user_input = console.input("  [bold]>[/bold] ").strip()
-            prompt = user_input
-        except (EOFError, KeyboardInterrupt):
-            pass
-
-    if not prompt:
-        if interactive:
-            console.print(
-                f"\n  [dim]Using demo prompt: {_DEMO_PROMPT}[/dim]"
-            )
-        else:
-            console.print(
-                f"[bold]Live demo[/bold] — what TurnZero injects:\n\n"
-                f"  [dim]{_DEMO_PROMPT}[/dim]\n"
-            )
-        prompt = _DEMO_PROMPT
-    else:
-        console.print()
-
-    _render_demo_results(prompt)
 
 
 def feedback(

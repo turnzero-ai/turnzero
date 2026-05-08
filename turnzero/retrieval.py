@@ -371,6 +371,103 @@ def _select_results(
     return results
 
 
+def _resolve_conflicts(
+    results: list[tuple[Block, float]],
+    context_weight: int,
+) -> list[tuple[Block, float]]:
+    """Remove conflicting blocks and enforce context weight budget (highest score wins).
+
+    Handles both explicit slug-based conflicts and tag-based (provides) conflicts.
+    """
+    seen_slugs: set[str] = set()
+    blocked_slugs: set[str] = set()
+    active_provides: set[str] = set()
+    resolved: list[tuple[Block, float]] = []
+    total_weight = 0
+
+    for block, score in results:
+        # Deduplicate — same block can appear in multiple source indexes
+        if block.slug in seen_slugs:
+            continue
+        seen_slugs.add(block.slug)
+
+        # Check explicit slug conflicts
+        if block.slug in blocked_slugs:
+            continue
+
+        # Check tag-based (provides) conflicts
+        if any(tag in active_provides for tag in block.conflicts_with_tags):
+            continue
+
+        # Check if any currently provided tag is in this block's conflict list
+        # (Inverse check: does a previously accepted block conflict with this one's tags?)
+        # Since we iterate by score, higher score blocks set the "provides" state.
+
+        if total_weight + block.context_weight > context_weight:
+            continue
+
+        resolved.append((block, score))
+        blocked_slugs.update(block.conflicts_with)
+        active_provides.update(block.provides)
+        total_weight += block.context_weight
+    return resolved
+
+
+def rerank_with_llm(
+    prompt: str,
+    candidates: list[tuple[Block, float]],
+    model: str = "llama3.2",
+) -> list[tuple[Block, float]]:
+    """Use a local LLM to refine the ranking of top candidates.
+
+    The LLM assesses the prompt against each block's constraints/anti-patterns
+    and returns a relevance score [0.0 - 1.0].
+    """
+    if not candidates:
+        return []
+
+    try:
+        import ollama
+    except ImportError:
+        # Fall back to original ranking if ollama is missing
+        return candidates
+
+    reranked: list[tuple[Block, float]] = []
+
+    for block, vector_score in candidates:
+        verification_prompt = f"""\
+Task: Rate the relevance of an 'Expert Prior' to a developer's 'Opening Prompt'.
+An Expert Prior is relevant if its constraints or anti-patterns help the AI answer the \
+prompt correctly and avoid common mistakes for that specific domain.
+
+Opening Prompt: "{prompt}"
+
+Expert Prior: "{block.slug}"
+Constraints: {", ".join(block.constraints[:2])}
+Anti-patterns: {", ".join(block.anti_patterns[:2])}
+
+Rate relevance from 0.0 (irrelevant) to 1.0 (perfect match).
+Respond with ONLY the numeric score, no prose."""
+
+        try:
+            response = ollama.chat(
+                model=model,
+                messages=[{"role": "user", "content": verification_prompt}],
+                options={"temperature": 0.0},
+            )
+            content = response["message"]["content"].strip()
+            match = re.search(r"(\d+\.\d+|\d+)", content)
+            llm_score = float(match.group(1)) if match else 0.0
+            llm_score = max(0.0, min(1.0, llm_score))
+            # LLM score weighted at 80%, vector score as 20% prior
+            reranked.append((block, (llm_score * 0.8) + (vector_score * 0.2)))
+        except Exception:
+            reranked.append((block, vector_score))
+
+    reranked.sort(key=lambda x: x[1], reverse=True)
+    return reranked
+
+
 def query(
     prompt: str,
     index: list[IndexEntry],
@@ -420,109 +517,3 @@ def query(
         results = rerank_with_llm(prompt, results, model=rerank_model)
 
     return _resolve_conflicts(results, context_weight)
-
-
-def rerank_with_llm(
-    prompt: str,
-    candidates: list[tuple[Block, float]],
-    model: str = "llama3.2",
-) -> list[tuple[Block, float]]:
-    """Use a local LLM to refine the ranking of top candidates.
-
-    The LLM assesses the prompt against each block's constraints/anti-patterns
-    and returns a relevance score [0.0 - 1.0].
-    """
-    if not candidates:
-        return []
-
-    try:
-        import ollama
-    except ImportError:
-        # Fall back to original ranking if ollama is missing
-        return candidates
-
-    reranked: list[tuple[Block, float]] = []
-
-    for block, vector_score in candidates:
-        # Construct a small verification prompt
-        verification_prompt = f"""\
-Task: Rate the relevance of an 'Expert Prior' to a developer's 'Opening Prompt'.
-An Expert Prior is relevant if its constraints or anti-patterns help the AI answer the \
-prompt correctly and avoid common mistakes for that specific domain.
-
-Opening Prompt: "{prompt}"
-
-Expert Prior: "{block.slug}"
-Constraints: {", ".join(block.constraints[:2])}
-Anti-patterns: {", ".join(block.anti_patterns[:2])}
-
-Rate relevance from 0.0 (irrelevant) to 1.0 (perfect match).
-Respond with ONLY the numeric score, no prose."""
-
-        try:
-            response = ollama.chat(
-                model=model,
-                messages=[{"role": "user", "content": verification_prompt}],
-                options={"temperature": 0.0},
-            )
-            content = response["message"]["content"].strip()
-            # Extract the first float-like string
-            match = re.search(r"(\d+\.\d+|\d+)", content)
-            llm_score = float(match.group(1)) if match else 0.0
-
-            # Clip score to [0, 1]
-            llm_score = max(0.0, min(1.0, llm_score))
-
-            # Combine scores: LLM score is high-fidelity, vector score is a fallback
-            # We weight LLM score at 80% and vector search as a 20% prior
-            combined_score = (llm_score * 0.8) + (vector_score * 0.2)
-            reranked.append((block, combined_score))
-        except Exception:
-            # Fallback to vector score on LLM failure
-            reranked.append((block, vector_score))
-
-    reranked.sort(key=lambda x: x[1], reverse=True)
-    return reranked
-
-
-def _resolve_conflicts(
-    results: list[tuple[Block, float]],
-    context_weight: int,
-) -> list[tuple[Block, float]]:
-    """Remove conflicting blocks and enforce context weight budget (highest score wins).
-
-    Handles both explicit slug-based conflicts and tag-based (provides) conflicts.
-    """
-    seen_slugs: set[str] = set()
-    blocked_slugs: set[str] = set()
-    active_provides: set[str] = set()
-    resolved: list[tuple[Block, float]] = []
-    total_weight = 0
-
-    for block, score in results:
-        # Deduplicate — same block can appear in multiple source indexes
-        if block.slug in seen_slugs:
-            continue
-        seen_slugs.add(block.slug)
-
-        # Check explicit slug conflicts
-        if block.slug in blocked_slugs:
-            continue
-
-        # Check tag-based (provides) conflicts
-        if any(tag in active_provides for tag in block.conflicts_with_tags):
-            continue
-
-        # Check if any currently provided tag is in this block's conflict list
-        # (Inverse check: does a previously accepted block conflict with this one's tags?)
-        # Since we iterate by score, higher score blocks set the "provides" state.
-
-        if total_weight + block.context_weight > context_weight:
-            continue
-
-        resolved.append((block, score))
-        blocked_slugs.update(block.conflicts_with)
-        active_provides.update(block.provides)
-        total_weight += block.context_weight
-
-    return resolved
