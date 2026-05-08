@@ -9,71 +9,25 @@ from typing import Any
 from turnzero.blocks import Block
 from turnzero.embed import cosine_similarity
 from turnzero.repositories.index_repo import IndexEntry  # re-exported for callers
+from turnzero.signals import (
+    _ALL_SIGNALS,
+    _FUZZY_SIGNALS,
+    _QUESTION_PATTERNS,
+    _SHORT_QUESTION_STARTERS,
+    _SOCIAL_PATTERNS,
+    FUZZY_MAX_LENGTH_DELTA,
+    FUZZY_MIN_RATIO,
+    FUZZY_WORD_MIN_LEN,
+    INTENT_SIGNALS,
+    MIN_MULTI_WORD_PROMPT_WORDS,
+    MIN_SINGLE_WORD_QUESTION_LEN,
+    MIN_SUBSTANTIVE_WORD_LEN,
+)
+from turnzero.types import Tier
 
 # ---------------------------------------------------------------------------
 # Intent classifier
 # ---------------------------------------------------------------------------
-
-INTENT_SIGNALS: dict[str, list[str]] = {
-    "build": [
-        "build",
-        "create",
-        "scaffold",
-        "implement",
-        "add",
-        "make",
-        "set up",
-        "write",
-        "develop",
-        "integrate",
-    ],
-    "debug": [
-        "error",
-        "bug",
-        "fix",
-        "not working",
-        "failing",
-        "broken",
-        "why",
-        "problem",
-        "crash",
-        "exception",
-        "undefined",
-        "issue",
-        "persisting",
-        "help with",
-        "correct",
-        "leaked",
-        "exposed",
-        "compromised",
-        "breached",
-        "accidentally",
-    ],
-    "migrate": [
-        "upgrade",
-        "migrate",
-        "convert",
-        "move",
-        "port",
-        "refactor",
-        "replace",
-        "switch",
-        "from v",
-        "to v",
-    ],
-    "review": [
-        "review",
-        "check",
-        "is this",
-        "best practice",
-        "correct",
-        "improve",
-        "audit",
-        "better way",
-        "should i",
-        "performance",
-    ],
-}
 
 
 def classify_intent(prompt: str) -> str:
@@ -102,248 +56,6 @@ def classify_intent(prompt: str) -> str:
 #   - question pattern (domain-agnostic: "?", "how do I", "should I", ...)
 #   - domain detected in prompt or filesystem
 # Tier 3: similarity threshold (0.70) is the final quality gate
-
-_SOCIAL_PATTERNS: frozenset[str] = frozenset(
-    {
-        "how are you",
-        "good morning",
-        "good afternoon",
-        "good evening",
-        "good night",
-        "how's it going",
-        "how is it going",
-        "what's up",
-        "whats up",
-        "hey there",
-        "hi there",
-        "tell me a joke",
-        "thanks",
-        "thank you",
-        "you're welcome",
-        "youre welcome",
-        "sounds good",
-        "sounds great",
-        "got it",
-        "makes sense",
-        "ok",
-        "okay",
-        "sure",
-        "yes",
-        "no",
-        "great",
-        "awesome",
-        "nice",
-        "cool",
-        "interesting",
-        "noted",
-    }
-)
-
-_IMPL_ACTION_SIGNALS: frozenset[str] = frozenset(
-    {
-        "build",
-        "building",
-        "create",
-        "creating",
-        "scaffold",
-        "implement",
-        "implementing",
-        "set up",
-        "setting up",
-        "configure",
-        "configuring",
-        "deploy",
-        "deploying",
-        "write",
-        "writing",
-        "develop",
-        "developing",
-        "migrate",
-        "migrating",
-        "integrate",
-        "integrating",
-        "add",
-        "adding",
-        "start",
-        "starting",
-        "launch",
-        "launching",
-        "init",
-        "generate",
-        "connect",
-        "connecting",
-        "install",
-        "installing",
-        "run",
-        "running",
-        "refactor",
-        "refactoring",
-        "convert",
-        "converting",
-        "upgrade",
-        "upgrading",
-        "wire up",
-        "hook up",
-        "spin up",
-        "harden",
-        "hardening",
-        "scan",
-        "scanning",
-        "audit",
-        "auditing",
-        "pentest",
-        "pentesting",
-        "rotate",
-        "rotating",
-        "remediate",
-        "remediating",
-        "patch",
-        "patching",
-        "mitigate",
-        "mitigating",
-        "investigate",
-        "investigating",
-        "secure",
-        "securing",
-        "protect",
-        "protecting",
-        "analyze",
-        "analyzing",
-        "analyse",
-        "analysing",
-        "exploit",
-        "exploiting",
-        "assess",
-        "assessing",
-        # Auth / identity protocols — always professional context
-        "oauth",
-        "oidc",
-        "pkce",
-        "jwt",
-        "saml",
-        "authenticate",
-        "authenticating",
-        "authorize",
-        "authorizing",
-        "provision",
-        "provisioning",
-        # Infrastructure
-        "terraform",
-        "kubernetes",
-        "kubectl",
-        "helm",
-        "containerize",
-        "containerizing",
-        "orchestrate",
-        "orchestrating",
-    }
-)
-
-_IMPL_PROBLEM_SIGNALS: frozenset[str] = frozenset(
-    {
-        "keeps",
-        "throwing",
-        "throws",
-        "not working",
-        "failing",
-        "broken",
-        "returns",
-        "return",
-        "crashes",
-        "crashing",
-        "doesn't work",
-        "does not work",
-        "can't",
-        "cannot",
-        "stuck",
-        "blocked",
-        "error",
-        "exception",
-        "bug",
-        "not persisting",
-        "not rendering",
-        "not loading",
-        "not connecting",
-        "wrong",
-        "incorrect",
-        "unexpected",
-        "undefined",
-        "null pointer",
-        "fix",
-        "fixing",
-        "debug",
-        "debugging",
-        "issue",
-        "leaked",
-        "exposed",
-        "compromised",
-        "breached",
-        "accidentally",
-    }
-)
-
-# Question phrases that signal a real professional query (domain-agnostic)
-_QUESTION_PATTERNS: frozenset[str] = frozenset(
-    {
-        "?",
-        "how do i",
-        "how do we",
-        "how should i",
-        "how should we",
-        "how can i",
-        "how can we",
-        "how to",
-        "what is the",
-        "what are the",
-        "what should i",
-        "what should we",
-        "what's the",
-        "whats the",
-        "what would",
-        "which ",
-        "when should",
-        "when do i",
-        "when do we",
-        "should i ",
-        "should we ",
-        "can i ",
-        "can we ",
-        "help me",
-        "help us",
-        "i need to",
-        "we need to",
-        "i want to",
-        "we want to",
-        "i'm trying to",
-        "im trying to",
-        "i am trying to",
-        "we are trying to",
-        "best way to",
-        "best approach",
-        "best practice",
-        "recommend",
-        "recommendation",
-        "advice on",
-        "guidance on",
-        "difference between",
-        "when to use",
-        "pros and cons",
-    }
-)
-
-_ALL_SIGNALS: frozenset[str] = _IMPL_ACTION_SIGNALS | _IMPL_PROBLEM_SIGNALS
-FUZZY_SIGNAL_MIN_LEN = 5
-FUZZY_WORD_MIN_LEN = 4
-FUZZY_MAX_LENGTH_DELTA = 2
-FUZZY_MIN_RATIO = 0.82
-MIN_SUBSTANTIVE_WORD_LEN = 3
-MIN_MULTI_WORD_PROMPT_WORDS = 2
-MIN_SINGLE_WORD_QUESTION_LEN = 3
-
-# Single-word signals long enough for fuzzy matching.
-_FUZZY_SIGNALS: frozenset[str] = frozenset(
-    s for s in _ALL_SIGNALS if " " not in s and len(s) >= FUZZY_SIGNAL_MIN_LEN
-)
 
 
 def _fuzzy_signal_match(words: list[str]) -> bool:
@@ -377,7 +89,7 @@ def _has_substance(prompt: str, lower: str) -> bool:
         return "?" in lower and len(lower) > MIN_SINGLE_WORD_QUESTION_LEN
 
     # Professional question starters bypass length checks (e.g. "How to X")
-    if any(lower.startswith(q) for q in ["how to", "what is", "should i", "can i"]):
+    if any(lower.startswith(q) for q in _SHORT_QUESTION_STARTERS):
         return True
 
     # Require at least one substantial word.
@@ -559,11 +271,11 @@ def get_identity_context(
     if project_root:
         project_hash = _get_project_hash(project_root)
 
-    # Filter all blocks from the 'personal' tier
+    # Filter all blocks from the personal tier
     candidates = [
         b
         for b in blocks.values()
-        if b.tier == "personal"
+        if b.tier == Tier.PERSONAL
         and b.slug not in exclude_ids
         and (
             b.domain == "global"
@@ -586,7 +298,80 @@ def get_identity_context(
     return personal_results, limit_exceeded
 
 
-def query(  # noqa: PLR0915
+def _score_entry(
+    entry: IndexEntry,
+    prompt: str,
+    prompt_embedding: Any,
+    prompt_lower: str,
+    intent: str,
+    domain: str | None,
+    affinity: dict[str, Any],
+    use_override: bool,
+    blocks: dict[str, Block],
+) -> float | None:
+    """Score one index entry against the prompt. Returns None if the entry is filtered."""
+    if use_override:
+        block = blocks.get(entry.block_id)
+        if block is None:
+            return None
+        score = float(_similarity_override(prompt, block))
+    else:
+        score = cosine_similarity(prompt_embedding, entry.embedding)
+
+    boost = 1.0
+    if entry.intent == intent:
+        boost *= INTENT_BOOST
+    if domain and entry.domain == domain:
+        boost *= DOMAIN_BOOST
+    elif domain and entry.domain != domain:
+        boost *= 0.5
+    if entry.block_id in affinity:
+        boost *= PROJECT_AFFINITY_BOOST
+
+    score = min(score * boost, 1.0)
+
+    # Keyword overlap gate: when no domain detected, penalise blocks with
+    # no tag/domain overlap with the prompt — prevents off-topic injection.
+    if domain is None and entry.domain not in ("global",):
+        overlap_tokens = set(entry.tags) | {entry.domain}
+        if not any(tok in prompt_lower for tok in overlap_tokens):
+            score *= DOMAIN_OVERLAP_PENALTY
+
+    return score
+
+
+def _select_results(
+    scored: list[tuple[IndexEntry, float]],
+    effective_threshold: float,
+    top_k: int,
+    context_weight: int,
+    blocks: dict[str, Block],
+) -> list[tuple[Block, float]]:
+    """Apply saturation logic, budget, archival filter, and confidence weighting."""
+    scored.sort(key=lambda x: x[1], reverse=True)
+
+    high_conf = [(e, s) for e, s in scored if s >= HIGH_CONFIDENCE_THRESHOLD]
+    candidates = (
+        high_conf if len(high_conf) >= top_k
+        else [(e, s) for e, s in scored if s >= effective_threshold][:top_k]
+    )
+
+    results: list[tuple[Block, float]] = []
+    current_weight = 0
+    for e, s in candidates:
+        block = blocks.get(e.block_id)
+        if block is None or block.archived:
+            continue
+        if current_weight + block.context_weight > context_weight:
+            continue
+        results.append((block, s * block.confidence))
+        current_weight += block.context_weight
+
+    results.sort(key=lambda x: x[1], reverse=True)
+    return results
+
+
+def query(
     prompt: str,
     index: list[IndexEntry],
     blocks: dict[str, Block],
@@ -614,80 +399,22 @@ def query(  # noqa: PLR0915
     domain = detect_domain(prompt, project_root=project_root)
     use_override = _similarity_override is not None
     effective_threshold = min(threshold, 0.55) if use_override else threshold
-
-    # Load project affinity to apply boosts
-    affinity = {}
-    if project_root:
-        affinity = get_project_affinity(project_root)
+    affinity: dict[str, Any] = get_project_affinity(project_root) if project_root else {}
 
     scored: list[tuple[IndexEntry, float]] = []
     for entry in index:
         if entry.block_id in exclude_block_ids:
             continue
-
-        # Strict intent filtering
         if strict_intent and entry.intent != intent:
             continue
+        score = _score_entry(
+            entry, prompt, prompt_embedding, prompt_lower,
+            intent, domain, affinity, use_override, blocks,
+        )
+        if score is not None:
+            scored.append((entry, score))
 
-        if use_override:
-            block = blocks.get(entry.block_id)
-            if block is None:
-                continue
-            score = _similarity_override(prompt, block)
-        else:
-            score = cosine_similarity(prompt_embedding, entry.embedding)
-
-        # Apply boosts
-        boost = 1.0
-        if entry.intent == intent:
-            boost *= INTENT_BOOST
-
-        if domain and entry.domain == domain:
-            boost *= DOMAIN_BOOST
-        elif domain and entry.domain != domain:
-            boost *= 0.5
-
-        if entry.block_id in affinity:
-            boost *= PROJECT_AFFINITY_BOOST
-
-        score = min(score * boost, 1.0)
-
-        # Keyword overlap gate: when no domain is detected, penalise blocks whose
-        # tags and domain name share zero words with the prompt. Prevents e.g.
-        # nextjs-seo-review from injecting into a security session where
-        # detect_domain() returns None (no filesystem or keyword signal).
-        if domain is None and entry.domain not in ("global",):
-            overlap_tokens = set(entry.tags) | {entry.domain}
-            if not any(tok in prompt_lower for tok in overlap_tokens):
-                score *= DOMAIN_OVERLAP_PENALTY
-
-        scored.append((entry, score))
-
-    scored.sort(key=lambda x: x[1], reverse=True)
-
-    # Saturation Logic: Take ALL high-confidence matches, or fill up to top_k
-    high_conf = [(e, s) for e, s in scored if s >= HIGH_CONFIDENCE_THRESHOLD]
-    if len(high_conf) >= top_k:
-        candidates = high_conf
-    else:
-        candidates = [(e, s) for e, s in scored if s >= effective_threshold][:top_k]
-
-    results: list[tuple[Block, float]] = []
-    current_weight = 0
-    for e, s in candidates:
-        if e.block_id not in blocks:
-            continue
-        block = blocks[e.block_id]
-        if block.archived:
-            continue
-
-        if current_weight + block.context_weight > context_weight:
-            continue
-
-        results.append((block, s * block.confidence))
-        current_weight += block.context_weight
-
-    results.sort(key=lambda x: x[1], reverse=True)
+    results = _select_results(scored, effective_threshold, top_k, context_weight, blocks)
 
     if rerank_model:
         results = rerank_with_llm(prompt, results, model=rerank_model)
