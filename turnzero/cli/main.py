@@ -5,6 +5,7 @@ from __future__ import annotations
 import typer
 
 from turnzero.cli.base import _version_callback
+from turnzero.cli.contribute import contribute
 from turnzero.cli.discovery import inject, list_blocks, preview, query, show, stats
 from turnzero.cli.domain import domain_app
 from turnzero.cli.index import index_app, threshold_test, validate
@@ -46,6 +47,7 @@ app.command()(setup)
 app.command()(query)
 app.command()(show)
 app.command()(inject)
+app.command()(contribute)
 app.command()(feedback)
 app.command()(stats)
 app.command()(harvest)
