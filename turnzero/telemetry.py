@@ -221,3 +221,10 @@ def track_list_viewed(
     if domain:
         props["domain"] = domain
     track_event("list_viewed", props)
+
+
+def track_domain_changed(action: str, domain: str, total_active: int) -> None:
+    track_event(
+        "domain_changed",
+        {"action": action, "domain": domain, "total_active": total_active},
+    )

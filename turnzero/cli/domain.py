@@ -101,6 +101,8 @@ def add(
     current = sorted({*current, name})
     cfg["active_domains"] = current
     save_config(data_dir, cfg)
+    from turnzero.telemetry import track_domain_changed
+    track_domain_changed("add", name, len(current))
     console.print(f"[green]✓[/green] Domain '[bold]{name}[/bold]' added. "
                   f"{len(current)} domain(s) now active.")
 
@@ -132,6 +134,8 @@ def remove(
 
     cfg["active_domains"] = updated
     save_config(data_dir, cfg)
+    from turnzero.telemetry import track_domain_changed
+    track_domain_changed("remove", name, len(updated))
     console.print(f"[dim]✓ Domain '[bold]{name}[/bold]' removed. "
                   f"{len(updated)} domain(s) active.[/dim]")
 
@@ -143,6 +147,8 @@ def reset() -> None:
     cfg = load_config(data_dir)
     cfg["active_domains"] = list(DEFAULT_ACTIVE_DOMAINS)
     save_config(data_dir, cfg)
+    from turnzero.telemetry import track_domain_changed
+    track_domain_changed("reset", "", len(DEFAULT_ACTIVE_DOMAINS))
     console.print(
         f"[green]✓[/green] Active domains reset to defaults "
         f"({len(DEFAULT_ACTIVE_DOMAINS)}): "
