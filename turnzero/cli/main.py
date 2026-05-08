@@ -63,11 +63,25 @@ def cli_entry() -> None:
     """Entry point for the turnzero CLI."""
     import asyncio
     import contextlib
+    import os
 
+    from turnzero.cli.base import err_console
+    from turnzero.errors import TurnZeroError
     from turnzero.telemetry import flush_telemetry
 
     try:
         app()
+    except TurnZeroError as exc:
+        err_console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(exc.exit_code)
+    except SystemExit:
+        raise
+    except Exception as exc:
+        if os.environ.get("TURNZERO_DEBUG"):
+            raise
+        err_console.print(f"[red]Unexpected error: {exc}[/red]")
+        err_console.print("[dim]Set TURNZERO_DEBUG=1 for full traceback.[/dim]")
+        raise typer.Exit(1)
     finally:
         with contextlib.suppress(Exception):
             asyncio.run(flush_telemetry())
