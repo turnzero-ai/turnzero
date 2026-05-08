@@ -14,7 +14,7 @@ from turnzero.config import get_data_dir
 def contribute(
     block_id: str = typer.Argument(..., help="Candidate slug to contribute."),
 ) -> None:
-    """Open a pre-filled GitHub issue draft for a local candidate block."""
+    """Submit a local candidate block as a GitHub issue for community review."""
     data_dir = get_data_dir()
     cand_path = data_dir / "candidates" / f"{block_id}.yaml"
     if not cand_path.exists():
@@ -32,21 +32,26 @@ def contribute(
     )
 
     if shutil.which("gh"):
-        console.print(f"[dim]🌐 Opening contribution draft for '{block_id}'...[/dim]")
         try:
-            subprocess.run(
+            result = subprocess.run(
                 [
                     "gh", "issue", "create",
                     "--repo", "turnzero-ai/turnzero",
                     "--title", f"Expert Prior candidate: {block_id}",
                     "--body", issue_body,
                     "--label", "candidate",
-                    "--web",
                 ],
                 check=True,
+                capture_output=True,
+                text=True,
+            )
+            issue_url = result.stdout.strip()
+            console.print(
+                f"[green]✓[/green] Contributed '[bold]{block_id}[/bold]'\n"
+                f"  [dim]{issue_url}[/dim]"
             )
         except subprocess.CalledProcessError as exc:
-            err_console.print(f"[red]gh issue create failed: {exc}[/red]")
+            err_console.print(f"[red]gh issue create failed: {exc.stderr.strip()}[/red]")
             raise typer.Exit(1)
     else:
         console.print(f"\n[bold]Contribute '{block_id}' to the community:[/bold]\n")

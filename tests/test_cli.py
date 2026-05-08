@@ -723,13 +723,20 @@ def test_contribute_with_gh_opens_issue(
     )
     monkeypatch.setattr(contrib.shutil, "which", lambda _: "/usr/bin/gh")
     calls: list[list[str]] = []
-    def _fake_run(cmd: list[str], **kw: object) -> None:
+
+    class _FakeResult:
+        stdout = "https://github.com/turnzero-ai/turnzero/issues/99\n"
+
+    def _fake_run(cmd: list[str], **kw: object) -> _FakeResult:
         calls.append(cmd)
+        return _FakeResult()
+
     monkeypatch.setattr(subprocess, "run", _fake_run)
     result = runner.invoke(app, ["contribute", "my-rule-build"])
     assert result.exit_code == 0
     assert calls and "gh" in calls[0][0]
     assert any("my-rule-build" in arg for arg in calls[0])
+    assert "--web" not in calls[0]  # must submit via API, not open browser
 
 
 # ---------------------------------------------------------------------------
