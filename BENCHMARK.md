@@ -69,24 +69,29 @@ python -m tests.evals.benchmark --scenarios 3 6
 
 ## Results
 
-### Latest — 2026-05-08, v0.13.0 (Claude + Gemini, Ollama available)
+### Latest — 2026-05-08/09, v0.13.x (Claude + Gemini + Codex, Ollama available)
 
-| Scenario | Claude Code | Gemini CLI |
-|---|---|---|
-| S1: Tool Call Compliance | ✅ PASS (29.1s) | ✅ PASS (54.1s) |
-| S2: Block Retrieval Accuracy | ✅ PASS (25.0s) | ✅ PASS (24.7s) |
-| S3: Constraint Adherence | ✅ PASS — eval_conn keyword in code (28.6s) | ✅ PASS (32.1s) |
-| S4: Learning Sensitivity | ✅ PASS — candidate saved (24.6s) | ✅ PASS — candidate saved, timeout in cleanup (0.0s) |
-| S5: Negative — Chitchat | ✅ PASS — no tool calls (5.2s) | ✅ PASS — no tool calls (16.2s) |
-| S6: Realistic Prior Adherence | ✅ PASS — primary_db_conn in code (29.2s) | ✅ PASS (22.7s) |
-| S7: False-Positive Learning | ✅ PASS — no submit_candidate (24.9s) | ✅ PASS (24.2s) |
+_Claude Code and Gemini CLI run on v0.13.0 (2026-05-08). Codex CLI run on v0.13.1 (2026-05-09, Linux, by contributor)._
 
-**Claude Code 7/7 (100%) · Gemini CLI 7/7 (100%) · Codex CLI — not run this session**
+| Scenario | Claude Code | Gemini CLI | Codex CLI |
+|---|---|---|---|
+| S1: Tool Call Compliance | ✅ PASS (29.1s) | ✅ PASS (54.1s) | ✅ PASS (124.8s) |
+| S2: Block Retrieval Accuracy | ✅ PASS (25.0s) | ✅ PASS (24.7s) | ✅ PASS (47.4s) |
+| S3: Constraint Adherence | ✅ PASS — eval_conn in code (28.6s) | ✅ PASS (32.1s) | ✅ PASS — eval_conn in code (69.9s) |
+| S4: Learning Sensitivity | ✅ PASS — candidate saved (24.6s) | ✅ PASS — candidate saved (0.0s†) | ✅ PASS — submit_candidate called (137.0s) |
+| S5: Negative — Chitchat | ✅ PASS — no tool calls (5.2s) | ✅ PASS — no tool calls (16.2s) | ❌ FAIL — list+inject called (38.7s) |
+| S6: Realistic Prior Adherence | ✅ PASS — primary_db_conn in code (29.2s) | ✅ PASS (22.7s) | ✅ PASS — eval block applied (28.6s) |
+| S7: False-Positive Learning | ✅ PASS — no submit_candidate (24.9s) | ✅ PASS (24.2s) | ✅ PASS — no submit_candidate (41.4s) |
 
-**Notable delta from previous run (v0.10.1):**
-- ✅ **Gemini S5 now passes** — chitchat suppression fixed by moving the skip rule into FastMCP `instructions` (v0.13.0), which loads in non-interactive Gemini CLI mode unlike GEMINI.md.
-- ✅ **Claude S3 now passes** — benchmark previously recorded a false failure; Claude was applying constraints correctly via `inject_all=True` (WF-3 batch path) but the benchmark did not detect block IDs from that path. Fixed by logging `block_ids` in `tool_call_log` meta when `inject_all=True`.
-- ✅ **Benchmark detects `inject_all=True`** — both agents use the WF-3 batch injection path (`inject_all=True` in `list_suggested_blocks`) which returns full block text inline, eliminating separate `inject_block` calls. The benchmark now correctly recognises this as compliant injection.
+**Claude Code 7/7 (100%) · Gemini CLI 7/7 (100%) · Codex CLI 6/7 (86%)**
+
+† Gemini S4: timeout in cleanup phase only — candidate already saved before timeout, scenario passed.
+
+**Notable deltas from v0.10.1:**
+- ✅ **Gemini S5 fixed** — chitchat suppression fixed by moving skip rule into FastMCP `instructions` (v0.13.0); GEMINI.md doesn't load in non-interactive mode.
+- ✅ **Claude S3 fixed** — false failure in v0.10.1; Claude was applying constraints via `inject_all=True` but benchmark wasn't detecting that path. Fixed by logging `block_ids` in `tool_call_log` meta.
+- ✅ **Codex S6 fixed** — Codex now calls `inject_block` after `list_suggested_blocks` on realistic prior scenarios.
+- ❌ **Codex S5 regressed** — v0.13.x's stronger "ALWAYS call" instruction causes Codex to overweight it and ignore the chitchat-skip guard. Codex sent broad surrounding context (not just the literal chitchat message), TurnZero saw FastAPI signal, returned a block. Server-side guard won't fix it — benchmark requires zero tool calls. Codex compliance issue.
 
 <details>
 <summary>Previous run — 2026-05-04, v0.10.1 (Claude + Gemini + Codex, Ollama available)</summary>
@@ -125,6 +130,10 @@ Run conditions: macOS Darwin 25.3.0 (Claude + Gemini), Linux 6.8.0-106-generic (
 ---
 
 ## Key Findings
+
+### 7. Codex S5 chitchat regression (v0.13.1)
+
+Codex 6/7 on v0.13.1. S6 is now fixed (was failing on v0.10.1). S5 regressed: Codex called `list_suggested_blocks` + `inject_block fastapi-error-handling-debug` on `"Thanks, that looks great!"`. Codex sent broad surrounding context into the tool, not the literal chitchat message — TurnZero saw enough FastAPI signal to return a block. v0.13.x's stronger "ALWAYS call" instruction is the likely driver; Codex overweights it. A server-side guard would not satisfy S5 (benchmark requires zero tool calls). This is a Codex compliance issue, not a TurnZero retrieval bug. Overall Codex score unchanged at 6/7 vs v0.10.1 — different scenario failed.
 
 ### 1. Perfect compliance across all scenarios — both agents (v0.13.0)
 
@@ -213,5 +222,5 @@ TURNZERO_RUN_EVALS=1 pytest tests/evals/ -m evals -s
 - **inject_all=True detection** — fixed in v0.13.0 by logging `block_ids` in `tool_call_log` meta. The benchmark now correctly evaluates both the explicit `inject_block` path and the WF-3 `inject_all=True` batch path.
 - **Gemini chitchat suppression** — ✅ Fixed in v0.13.0 by moving the skip rule into FastMCP `instructions`. GEMINI.md was not loading in non-interactive mode; MCP protocol instructions always load.
 - **Claude synthetic-name skepticism (S3)** — Claude rejects UUID-flavored injected identifiers even when sourced from a legitimate Expert Prior. Model-level behavior, not a TurnZero bug. Use human-readable constraint names in real priors.
-- **Codex inject_block miss (S6)** — Codex called `list_suggested_blocks` but skipped `inject_block` on one scenario. Intermittent; may reflect Codex MCP approval friction in non-interactive mode.
+- **Codex S5 chitchat over-triggering (v0.13.1)** — Codex calls TurnZero tools on pure chitchat despite the skip guard. Root cause: v0.13.x "ALWAYS call" instruction overweights in Codex. Codex S6 now passes (was failing in v0.10.1).
 - **No multi-turn scenarios** — current tests are single-turn. Multi-turn scenarios (prior carries across messages) are planned for a future eval set.
