@@ -67,7 +67,7 @@ def cli_entry() -> None:
 
     from turnzero.cli.base import err_console
     from turnzero.errors import TurnZeroError
-    from turnzero.telemetry import flush_telemetry
+    from turnzero.telemetry import flush_pending_threads, flush_telemetry
 
     try:
         app()
@@ -84,7 +84,9 @@ def cli_entry() -> None:
         raise typer.Exit(1)
     finally:
         with contextlib.suppress(Exception):
-            asyncio.run(flush_telemetry())
+            flush_pending_threads()  # CLI threads (stats, list, domain, etc.)
+        with contextlib.suppress(Exception):
+            asyncio.run(flush_telemetry())  # MCP async tasks
 
 
 if __name__ == "__main__":

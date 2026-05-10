@@ -39,6 +39,8 @@ data/index_synthetic.jsonl
 
 # Runtime stats and session data (machine-specific)
 data/hook_stats.json
+data/telemetry.yaml
+data/config.yaml
 data/sessions/
 
 # Secrets

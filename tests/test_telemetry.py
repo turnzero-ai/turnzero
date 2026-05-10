@@ -213,8 +213,60 @@ def test_telemetry_not_suppressed_without_test_embeddings(tmp_path: Path) -> Non
     with (
         patch("os.environ", clean_env),
         patch("turnzero.config.load_telemetry_config", return_value={"enabled": True}),
-        patch("turnzero.config.get_data_dir", return_value=tmp_path),
+        patch("turnzero.config.get_telemetry_dir", return_value=tmp_path),
     ):
         from turnzero.telemetry import _is_enabled
 
         assert _is_enabled() is True
+
+
+def test_telemetry_dir_ignores_data_dir_override(tmp_path: Path) -> None:
+    """get_telemetry_dir() always returns ~/.turnzero even when TURNZERO_DATA_DIR is set.
+
+    Prevents dev data-dir overrides from splitting telemetry across multiple
+    anonymous_ids in PostHog.
+    """
+    import os
+
+    from turnzero.config import get_telemetry_dir
+
+    override = str(tmp_path / "dev_data")
+    with patch.dict(os.environ, {"TURNZERO_DATA_DIR": override}):
+        tel_dir = get_telemetry_dir()
+
+    from pathlib import Path
+
+    assert tel_dir == Path.home() / ".turnzero"
+    assert str(override) not in str(tel_dir)
+
+
+def test_post_debug_logging(capsys: object) -> None:
+    """TURNZERO_DEBUG=1 prints send/receive lines to stderr without leaking event content."""
+    import asyncio
+    import os
+    from unittest.mock import AsyncMock, MagicMock
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_client = AsyncMock()
+    mock_client.post = AsyncMock(return_value=mock_response)
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    with (
+        patch("turnzero.telemetry._anonymous_id", return_value="aaaa-bbbb-cccc-dddd-eeee"),
+        patch("turnzero.telemetry._base_props", return_value={}),
+        patch("httpx.AsyncClient", return_value=mock_ctx),
+        patch.dict(os.environ, {"TURNZERO_DEBUG": "1"}),
+    ):
+        from turnzero.telemetry import _post
+
+        asyncio.run(_post("test_event", {}))
+
+    captured = capsys.readouterr()
+    assert "[telemetry]" in captured.err
+    assert "test_event" in captured.err
+    assert "200" in captured.err
+    # Full UUID must not appear — only truncated prefix
+    assert "aaaa-bbbb-cccc-dddd-eeee" not in captured.err

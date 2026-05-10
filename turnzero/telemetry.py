@@ -23,8 +23,9 @@ _POSTHOG_HOST = "https://eu.i.posthog.com"
 # In-memory set of session_ids that already fired session_start this process.
 _session_start_fired: set[str] = set()
 
-# Track background tasks to allow flushing before exit.
+# Track background tasks (MCP/async context) and threads (CLI context) for flush on exit.
 _pending_tasks: set[asyncio.Task[None]] = set()
+_pending_threads: list[object] = []  # list[threading.Thread] — avoid import at module level
 
 
 def _is_enabled() -> bool:
@@ -32,25 +33,25 @@ def _is_enabled() -> bool:
         return False
     if os.environ.get("TURNZERO_TEST_EMBEDDINGS", "").strip() in ("1", "true"):
         return False
-    from turnzero.config import get_data_dir, load_telemetry_config
+    from turnzero.config import get_telemetry_dir, load_telemetry_config
 
-    return bool(load_telemetry_config(get_data_dir()).get("enabled", True))
+    return bool(load_telemetry_config(get_telemetry_dir()).get("enabled", True))
 
 
 def _anonymous_id() -> str:
     import uuid
 
     from turnzero.config import (
-        get_data_dir,
+        get_telemetry_dir,
         load_telemetry_config,
         save_telemetry_config,
     )
 
-    data_dir = get_data_dir()
-    cfg = load_telemetry_config(data_dir)
+    tel_dir = get_telemetry_dir()
+    cfg = load_telemetry_config(tel_dir)
     if not cfg.get("anonymous_id"):
         cfg["anonymous_id"] = str(uuid.uuid4())
-        save_telemetry_config(data_dir, cfg)
+        save_telemetry_config(tel_dir, cfg)
     return str(cfg["anonymous_id"])
 
 
@@ -77,24 +78,31 @@ def _base_props() -> dict[str, Any]:
 
 async def _post(event: str, props: dict[str, Any]) -> None:
     import contextlib
+    import sys
 
+    debug = os.environ.get("TURNZERO_DEBUG")
     with contextlib.suppress(Exception):
         import logging
 
         import httpx
 
         logging.getLogger("httpx").setLevel(logging.WARNING)
+        anon_id = _anonymous_id()
         payload = {
             "api_key": _POSTHOG_API_KEY,
             "event": event,
-            "distinct_id": _anonymous_id(),
+            "distinct_id": anon_id,
             "properties": {
                 **_base_props(),
                 **props,
             },
         }
+        if debug:
+            print(f"[telemetry] → {event} (id={anon_id[:8]}…)", file=sys.stderr)
         async with httpx.AsyncClient(timeout=3.0) as client:
-            await client.post(f"{_POSTHOG_HOST}/capture", json=payload)
+            r = await client.post(f"{_POSTHOG_HOST}/capture", json=payload)
+            if debug:
+                print(f"[telemetry] ← {r.status_code}", file=sys.stderr)
 
 
 def track_event(event: str, props: dict[str, Any] | None = None) -> None:
@@ -110,20 +118,22 @@ def track_event(event: str, props: dict[str, Any] | None = None) -> None:
         _pending_tasks.add(task)
         task.add_done_callback(_pending_tasks.discard)
     except RuntimeError:
-        # No running event loop (CLI context): daemon thread so caller never blocks.
-        # Daemon=True means thread is killed when the process exits — no cleanup needed.
+        # No running event loop (CLI context): background thread, joined at exit via
+        # flush_pending_threads(). Not daemon — must complete before process exits.
         import threading
 
-        threading.Thread(
+        t = threading.Thread(
             target=lambda: asyncio.run(_post(event, props or {})),
-            daemon=True,
-        ).start()
+            daemon=False,
+        )
+        _pending_threads.append(t)
+        t.start()
     except Exception:  # noqa: BLE001
         pass
 
 
 async def flush_telemetry(timeout: float = 2.0) -> None:
-    """Wait for all pending telemetry tasks to complete."""
+    """Wait for all pending MCP/async telemetry tasks to complete."""
     if not _pending_tasks:
         return
     import contextlib
@@ -134,6 +144,21 @@ async def flush_telemetry(timeout: float = 2.0) -> None:
             timeout=timeout,
         )
     _pending_tasks.clear()
+
+
+def flush_pending_threads(timeout: float = 3.0) -> None:
+    """Join all pending CLI telemetry threads. Called from cli_entry() finally block."""
+    import contextlib
+    import threading
+    import time
+
+    deadline = time.monotonic() + timeout
+    for t in list(_pending_threads):
+        if isinstance(t, threading.Thread):
+            remaining = max(0.0, deadline - time.monotonic())
+            with contextlib.suppress(Exception):
+                t.join(timeout=remaining)
+    _pending_threads.clear()
 
 
 def track_session_start(

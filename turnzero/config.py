@@ -44,6 +44,16 @@ def get_data_dir() -> Path:
     return Path("data")
 
 
+def get_telemetry_dir() -> Path:
+    """Always ~/.turnzero/ — never the TURNZERO_DATA_DIR override.
+
+    TURNZERO_DATA_DIR redirects block/index paths for dev workflows.
+    Telemetry anonymous_id must follow the user, not the data dir, so
+    dev and prod sessions appear under the same PostHog identity.
+    """
+    return Path.home() / ".turnzero"
+
+
 def get_blocks_dir() -> Path:
     return get_data_dir() / "blocks"
 
