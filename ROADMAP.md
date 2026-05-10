@@ -63,6 +63,9 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.13.2 — Hotfix: telemetry anonymous_id always from `~/.turnzero/` (ignores `TURNZERO_DATA_DIR` override); `TURNZERO_DEBUG=1` event logging; maintainer workflow split from public `CLAUDE.md`; hook template moved to `turnzero/templates/`. 382 tests.
+- [x] v0.13.1 — Community block: `python-db-query-return-type-annotations`; `contribute --web` flag restored as optional.
+- [x] v0.13.0 — Community flywheel: `turnzero contribute`; benchmark fix (`inject_all=True` detection); Gemini chitchat suppression via FastMCP instructions; full refactor/quality sprint (types.py, signals.py, errors.py). 380 tests.
 - [x] v0.12.0 — Retention sprint: `turnzero list` (GRW-1), `turnzero domain` management (RET-8), correction nudge (ONB-3), stats trajectory (RET-6), setup interactive finale (RET-7), day-2 nudge (RET-9), async telemetry fix.
 - [x] v0.11.5 — Verify: prioritized ONNX backend in diagnostics.
 - [x] v0.11.4 — Docs: synchronized versions; README: restored Ollama documentation.
