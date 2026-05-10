@@ -1,39 +1,67 @@
 #!/usr/bin/env python3
-"""SessionStart hook — inject full TurnZero project memory into context."""
+"""SessionStart hook — inject TurnZero project memory and maintainer workflow into context."""
+from __future__ import annotations
 
 import glob
 import json
 import os
+import subprocess
 from contextlib import suppress
+from pathlib import Path
 
-mem_dir = os.path.expanduser(
-    "~/.claude/projects/-Users-darijomilicevic-Development-TurnZero/memory/"
-)
 
-files = sorted(
-    f for f in glob.glob(os.path.join(mem_dir, "*.md")) if not f.endswith("MEMORY.md")
-)
+def get_project_root() -> str:
+    return subprocess.check_output(
+        ["git", "rev-parse", "--show-toplevel"], text=True
+    ).strip()
 
-parts = []
-for path in files:
-    with suppress(OSError), open(path) as file:
-        parts.append(file.read().strip())
 
-if not parts:
-    raise SystemExit(0)
+def get_mem_dir(project_root: str) -> str:
+    project_slug = project_root.replace("/", "-")
+    return os.path.expanduser(f"~/.claude/projects/{project_slug}/memory/")
 
-context = (
-    "## TurnZero project memory (auto-loaded at session start)\n\n"
-    + "\n\n---\n\n".join(parts)
-)
 
-print(
-    json.dumps(
-        {
-            "hookSpecificOutput": {
-                "hookEventName": "SessionStart",
-                "additionalContext": context,
-            }
-        }
+def main() -> None:
+    try:
+        project_root = get_project_root()
+    except subprocess.CalledProcessError:
+        raise SystemExit(0)
+
+    mem_dir = get_mem_dir(project_root)
+    parts: list[str] = []
+
+    # Load Claude project memory files
+    mem_files = sorted(
+        f for f in glob.glob(os.path.join(mem_dir, "*.md"))
+        if not f.endswith("MEMORY.md")
     )
-)
+    for path in mem_files:
+        with suppress(OSError), open(path) as fh:
+            parts.append(fh.read().strip())
+
+    # Load maintainer workflow (gitignored, only present for maintainers)
+    workflow_path = Path(project_root) / "internal" / "WORKFLOW.md"
+    with suppress(OSError), open(workflow_path) as fh:
+        parts.append(fh.read().strip())
+
+    if not parts:
+        raise SystemExit(0)
+
+    context = (
+        "## TurnZero project memory (auto-loaded at session start)\n\n"
+        + "\n\n---\n\n".join(parts)
+    )
+
+    print(
+        json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "SessionStart",
+                    "additionalContext": context,
+                }
+            }
+        )
+    )
+
+
+main()

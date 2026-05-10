@@ -17,7 +17,7 @@ TurnZero is at **v0.13.1** (PyPI live).
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, hook, MCP, retrieval)
 - Embedding: fallback chain — ONNX in-process (`pip install onnxruntime tokenizers`, ~520 MB model) → ollama → OpenAI
-- Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini, 7 scenarios
+- Agentic benchmark: `python -m tests.evals.benchmark` — Claude/Gemini/Codex, 7 scenarios
 
 ## What TurnZero Does
 
@@ -71,37 +71,6 @@ pytest
 - **Domain-agnostic.** Any field where the AI makes domain-specific mistakes — not just software.
 - **Descriptive block IDs.** Slugs like `nextjs15-approuter-build` — never mutate in place; create a new version.
 - **Minimal dependencies.** Prefer httpx (already bundled) over adding new packages. Less coupling = less breakage.
-
----
-
-## Session Workflow (Claude must follow these rules every session)
-
-### 1. Load full memory & SSOT at session start
-A `SessionStart` hook automatically injects all memory files into context. At the start of every session:
-- **Read `internal/PROJECT_STATE.md`** for the latest active tickets and technical debt.
-- **Read `internal/REALITY_MAP.md`** before making claims about what is implemented, partially implemented, or only planned.
-- **Read `internal/LAUNCH_RUBRIC.md`** when evaluating product viability, launch readiness, UX risk, token economics, or cross-client behavior.
-- **Read [ROADMAP.md](ROADMAP.md)** for the high-level project vision.
-- Treat loaded memory as ground truth for project state.
-
-### 2. Keep memory and SSOT in sync
-After any strategic decision, architectural change, or significant implementation:
-- **Update `internal/PROJECT_STATE.md`** when tickets are completed or new debt is found.
-- **Update `internal/ARCHITECTURE.md`** when any of the following change: module list, data flow, MCP tool surface, block schema, index structure, embedding backend, source tiers, scoring logic, observability files, or release pipeline. Keep ASCII diagrams accurate.
-- **Update [ROADMAP.md](ROADMAP.md)** if high-level phases or milestones changed.
-- Update the relevant memory file(s) in your Claude project memory directory
-- Update `CLAUDE.md` if project status, commands, or constraints changed.
-Do this during the session, not as an afterthought at the end.
-
-### 3. Maintain test coverage
-When adding or changing behaviour:
-- Check whether existing tests cover the changed code paths
-- If not, add targeted tests before closing out the task
-- Tests live in `tests/` — run with `pytest` via `source .venv/bin/activate && pytest`
-
-### 4. Always ask before pushing to GitHub or publishing to PyPI
-**Never run `git push` or `hatch publish` without explicit confirmation from the user first.**
-State what will be pushed and where, then wait for a yes. This applies even when the user says "deploy" or "ship it" — confirm the exact action first.
 
 ---
 
@@ -172,9 +141,11 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 ### Doc sync checklist (every release)
 - `SECURITY.md` — update supported version table to match new version
 - `CLAUDE.md` — update version and test count in Project Status header
-- `README.md` / `FAQ.md` — scan for client list; add any newly supported client
+- `README.md` / `FAQ.md` — scan for client list; add any newly supported client; verify install steps still work
 - `ROADMAP.md` Maintenance & Done — add completed milestone with version tag
 - `internal/PROJECT_STATE.md` — mark completed tickets, add new debt found
+- `internal/ARCHITECTURE.md` — update `Last verified` line to new version/commit; verify Module Map and MCP Tool Surface are accurate
+- `BENCHMARK.md` — add results row if benchmark was run this sprint; keep consolidated three-agent table current
 
 ### Block YAML schema
 - Slug: descriptive kebab-case, version-anchored where relevant (`nextjs15-approuter-build`)
@@ -187,7 +158,6 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 - `last_verified` = ISO date — update whenever the block is re-verified
 - `verification_level` = curated | observed | synthetic
 - `rationale` = required if `anti_patterns` are present; explains the "why" behind the rules.
-
 
 ### TurnZero MCP tools
 - Tool names: `snake_case` verbs

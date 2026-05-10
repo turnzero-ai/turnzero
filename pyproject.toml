@@ -58,9 +58,9 @@ packages = ["turnzero"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "data/blocks" = "turnzero/data/blocks"
-"data/hooks" = "turnzero/data/hooks"
 "data/index.jsonl" = "turnzero/data/index.jsonl"
 "data/templates" = "turnzero/data/templates"
+"turnzero/templates" = "turnzero/templates"
 
 [tool.ruff]
 target-version = "py312"

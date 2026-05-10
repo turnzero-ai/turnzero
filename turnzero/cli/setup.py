@@ -31,9 +31,7 @@ source_app = typer.Typer(
 
 def _generate_hook(data_dir: Path) -> str:
     """Load hook script template and substitute data directory path."""
-    pkg_path = Path(__file__).parent.parent / "data" / "hooks" / "turnzero_hook.py.template"
-    repo_path = Path(__file__).parent.parent.parent / "data" / "hooks" / "turnzero_hook.py.template"
-    template_path = pkg_path if pkg_path.exists() else repo_path
+    template_path = Path(__file__).parent.parent / "templates" / "hooks" / "turnzero_hook.py.template"
     return template_path.read_text(encoding="utf-8").replace("__DATA_DIR__", str(data_dir))
 
 
