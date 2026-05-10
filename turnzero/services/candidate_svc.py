@@ -197,6 +197,8 @@ def submit(
                 },
                 f, allow_unicode=True, sort_keys=False,
             )
+        from turnzero.telemetry import track_candidate_submitted
+        track_candidate_submitted(domain=domain, auto_approved=False, result="quarantine")
         return (
             f"⚠ Candidate '{block_id}' was quarantined (reason: {safety.reason_code}). "
             f"{safety.detail} It will NOT be injected into any session."
@@ -234,5 +236,11 @@ def submit(
         _persist_approved(block, block_id, is_personal, domain, reason)
         if auto_approve
         else _persist_candidate(block, block_id, guard_blocked, reason)
+    )
+    from turnzero.telemetry import track_candidate_submitted
+    track_candidate_submitted(
+        domain=domain,
+        auto_approved=auto_approve,
+        result="approved" if auto_approve else "candidate",
     )
     return result, input_snapshot
