@@ -70,6 +70,16 @@ Thumbs.db
 # Conversations and mining data (contains sensitive content)
 data/conversations/
 
+# Runtime artifacts — machine-specific, not bundled with the package
+data/candidates/
+data/hook_log.jsonl
+data/tool_call_log.jsonl
+data/sessions/
+data/affinity.json
+data/affinity.lock
+data/affinity.tmp
+data/quarantine/
+
 # Cursor MCP config (machine-specific paths — use .cursor/mcp.json.example instead)
 .cursor/mcp.json
 
