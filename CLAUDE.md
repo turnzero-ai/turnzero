@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.13.2** (PyPI live) — next: v0.14.0 (refactor/code-quality branch in progress).
+TurnZero is at **v0.14.0** (PyPI live).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
