@@ -11,47 +11,8 @@ from enum import StrEnum
 from typing import Any, TypedDict
 
 # ---------------------------------------------------------------------------
-# Enums
-# ---------------------------------------------------------------------------
-
-
-class Tier(StrEnum):
-    """Block source tier. Compares equal to the equivalent plain string."""
-    PERSONAL = "personal"
-    COMMUNITY = "community"
-    LOCAL = "local"
-    TEAM = "team"
-
-
-class Intent(StrEnum):
-    """Block intent category."""
-    BUILD = "build"
-    DEBUG = "debug"
-    MIGRATE = "migrate"
-    REVIEW = "review"
-
-
-class TurnLabel(StrEnum):
-    """Injection turn within a session."""
-    FIRST = "first"
-    SUBSEQUENT = "subsequent"
-
-
-class TelemetryEvent(StrEnum):
-    """PostHog event names — update here, propagates everywhere."""
-    SESSION_START = "session_start"
-    BLOCK_INJECTED = "block_injected"
-    CANDIDATE_SUBMITTED = "candidate_submitted"
-    SESSION_SUMMARY = "session_summary"
-    SETUP_COMPLETED = "setup_completed"
-    REVIEW_OPENED = "review_opened"
-    STATS_VIEWED = "stats_viewed"
-    LIST_VIEWED = "list_viewed"
-    DOMAIN_CHANGED = "domain_changed"
-
-
-# ---------------------------------------------------------------------------
-# MCP tool name constants
+# MCP tool name constants — defined before enums so INJECTION_TOOLS can
+# reference them without forward references.
 # ---------------------------------------------------------------------------
 
 TOOL_LIST_SUGGESTED = "list_suggested_blocks"
@@ -65,12 +26,53 @@ TOOL_LEARN_FROM_SESSION = "learn_from_session"
 # Set of tools whose token cost counts as "injection overhead"
 INJECTION_TOOLS: frozenset[str] = frozenset({TOOL_LIST_SUGGESTED, TOOL_INJECT_BLOCK})
 
-# ---------------------------------------------------------------------------
 # Special block ID sentinels
-# ---------------------------------------------------------------------------
-
 BLOCK_ID_NO_MATCH_HINT = "no-match-hint"
 BLOCK_ID_PERSONAL_LIMIT_WARNING = "personal-priors-limit-warning"
+
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
+
+
+class Tier(StrEnum):
+    """Block source tier. Compares equal to the equivalent plain string."""
+
+    PERSONAL = "personal"
+    COMMUNITY = "community"
+    LOCAL = "local"
+    TEAM = "team"
+
+
+class Intent(StrEnum):
+    """Block intent category."""
+
+    BUILD = "build"
+    DEBUG = "debug"
+    MIGRATE = "migrate"
+    REVIEW = "review"
+
+
+class TurnLabel(StrEnum):
+    """Injection turn within a session."""
+
+    FIRST = "first"
+    SUBSEQUENT = "subsequent"
+
+
+class TelemetryEvent(StrEnum):
+    """PostHog event names — update here, propagates everywhere."""
+
+    SESSION_START = "session_start"
+    BLOCK_INJECTED = "block_injected"
+    CANDIDATE_SUBMITTED = "candidate_submitted"
+    SESSION_SUMMARY = "session_summary"
+    SETUP_COMPLETED = "setup_completed"
+    REVIEW_OPENED = "review_opened"
+    STATS_VIEWED = "stats_viewed"
+    LIST_VIEWED = "list_viewed"
+    DOMAIN_CHANGED = "domain_changed"
 
 
 # ---------------------------------------------------------------------------
@@ -90,6 +92,7 @@ class SuggestionEntry(TypedDict, total=False):
     ``inject_all=True`` was passed. Sentinel entries (no-match-hint,
     personal-priors-limit-warning) share this shape with subset of fields.
     """
+
     # Required
     block_id: str
     score: float
@@ -106,6 +109,7 @@ class SuggestionEntry(TypedDict, total=False):
 
 class BlockData(TypedDict):
     """Full block data as returned by get_block."""
+
     id: str
     slug: str
     hash: str
@@ -149,6 +153,7 @@ class TokenCostStats(TypedDict):
 
 class StatsData(TypedDict):
     """Shape of stats_svc.compute() return value."""
+
     sessions: CountWithWeek
     priors_injected: CountWithWeek
     context_tokens_injected: dict[str, Any]

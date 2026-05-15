@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import Counter
+
 import typer
 from rich import box
 from rich.table import Table
@@ -10,10 +12,13 @@ from turnzero.cli.base import console, err_console
 from turnzero.config import (
     DEFAULT_ACTIVE_DOMAINS,
     get_active_domains,
+    get_blocks_dir,
+    get_bundled_blocks_dir,
     get_data_dir,
     load_config,
     save_config,
 )
+from turnzero.services import retrieval_svc
 
 domain_app = typer.Typer(
     help="Manage which Expert Prior domains are active.",
@@ -24,21 +29,15 @@ domain_app = typer.Typer(
 @domain_app.command(name="list")
 def domain_list() -> None:
     """Show active and available domains."""
-    from turnzero.config import get_blocks_dir, get_bundled_blocks_dir
-    from turnzero.repositories.block_repo import load_all_blocks
-
     data_dir = get_data_dir()
     active = get_active_domains(data_dir)
 
     try:
-        blocks_dir = get_blocks_dir()
-        if not blocks_dir.exists():
-            blocks_dir = get_bundled_blocks_dir()
-        blocks = load_all_blocks(blocks_dir)
+        blocks_dir = get_blocks_dir() if get_blocks_dir().exists() else get_bundled_blocks_dir()
+        blocks = retrieval_svc.get_all_blocks(blocks_dir)
     except FileNotFoundError:
         blocks = {}
 
-    from collections import Counter
     domain_counts: Counter[str] = Counter(
         b.domain for b in blocks.values() if b.tier != "personal"
     )

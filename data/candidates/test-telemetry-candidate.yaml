@@ -1,0 +1,19 @@
+id: test-telemetry-candidate
+slug: test-telemetry-candidate
+version: 1.0.0
+domain: python
+intent: use explicit return types
+last_verified: '2026-05-10'
+tags: []
+context_weight: 48
+conflicts_with: []
+requires: []
+constraints:
+- Always annotate public function return types
+anti_patterns:
+- Do not omit return type annotations
+rationale: null
+doc_anchors: []
+confidence: 0.5
+archived: false
+project_hash: null

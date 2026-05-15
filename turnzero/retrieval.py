@@ -27,6 +27,53 @@ from turnzero.signals import (
 from turnzero.types import Tier
 
 # ---------------------------------------------------------------------------
+# Constants — scoring weights tuned on tests/validation_set.json.
+# ---------------------------------------------------------------------------
+
+# DOMAIN_BOOST: heavy bias toward the detected domain prevents multi-domain noise
+# injection (e.g. nextjs block firing in a pure python session).
+DOMAIN_BOOST = 1.5
+# INTENT_BOOST: smaller nudge so intent match improves ranking without hard-blocking
+# near-misses where the intent label is ambiguous (build vs debug overlap frequently).
+INTENT_BOOST = 1.2
+# PROJECT_AFFINITY_BOOST: reward blocks the user has injected before in this project.
+# Kept below DOMAIN_BOOST so a stale affinity never overrides a clear domain miss.
+PROJECT_AFFINITY_BOOST = 1.25
+# DOMAIN_OVERLAP_PENALTY: applied when detect_domain returns None AND the block has
+# no tag/domain keyword overlap with the prompt. 0.6x makes it impossible to clear
+# the 0.70 threshold without raw score > 1.17 — effectively a hard filter.
+DOMAIN_OVERLAP_PENALTY = 0.6
+
+MAX_PERSONAL_WEIGHT = 2500    # Token budget for identity injection
+IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
+HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
+
+# Set by tests/conftest.py to tests/fixtures/similarity.test_similarity.
+# When set, query() calls this instead of cosine_similarity so tests run
+# without a live embedding backend and with stable lexical scores.
+_similarity_override: Any = None
+
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class QueryContext:
+    """Prepared context for a single query call — avoids re-computing shared values."""
+
+    prompt: str
+    prompt_embedding: Any
+    prompt_lower: str
+    intent: str
+    domain: str | None
+    affinity: dict[str, Any]
+    use_override: bool
+    effective_threshold: float
+
+
+# ---------------------------------------------------------------------------
 # Intent classifier
 # ---------------------------------------------------------------------------
 
@@ -144,7 +191,6 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
     """
     # 1. Try Filesystem Detection (Highest Confidence)
     if project_root and project_root.exists():
-        # Next.js / React
         pkg_json = project_root / "package.json"
         if pkg_json.exists():
             content = pkg_json.read_text(encoding="utf-8").lower()
@@ -155,7 +201,6 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
             if '"stripe"' in content:
                 return "stripe"
 
-        # FastAPI / Python
         pyproject = project_root / "pyproject.toml"
         reqs = project_root / "requirements.txt"
         for f in [pyproject, reqs]:
@@ -166,13 +211,11 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
                 if "langchain" in content:
                     return "langchain"
 
-        # Docker
         if (project_root / "docker-compose.yml").exists() or (
             project_root / "Dockerfile"
         ).exists():
             return "docker"
 
-        # Supabase (config file)
         if (project_root / "supabase").exists() or (
             project_root / "supabase.yaml"
         ).exists():
@@ -180,7 +223,6 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
 
     # 2. Fallback to Keyword Detection in Prompt
     prompt_lower = prompt.lower()
-    # Hardcoded mapping for MVP domains
     domains = {
         "fastapi": ["fastapi", "python api", "uvicorn"],
         "nextjs": ["nextjs", "next.js", "app router", "pages router"],
@@ -220,49 +262,8 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Test hook — injected by conftest; None in production
+# Identity context (personal priors)
 # ---------------------------------------------------------------------------
-
-# Set by tests/conftest.py to tests/fixtures/similarity.test_similarity.
-# When set, query() calls this instead of cosine_similarity so tests run
-# without a live embedding backend and with stable lexical scores.
-_similarity_override: Any = None
-
-# ---------------------------------------------------------------------------
-# Query
-# ---------------------------------------------------------------------------
-
-# Scoring constants — tuned on the validation set; see tests/validation_set.json.
-# DOMAIN_BOOST: heavy bias toward the detected domain prevents multi-domain noise
-# injection (e.g. nextjs block firing in a pure python session).
-DOMAIN_BOOST = 1.5
-# INTENT_BOOST: smaller nudge so intent match improves ranking without hard-blocking
-# near-misses where the intent label is ambiguous (build vs debug overlap frequently).
-INTENT_BOOST = 1.2
-# PROJECT_AFFINITY_BOOST: reward blocks the user has injected before in this project.
-# Kept below DOMAIN_BOOST so a stale affinity never overrides a clear domain miss.
-PROJECT_AFFINITY_BOOST = 1.25
-# DOMAIN_OVERLAP_PENALTY: applied when detect_domain returns None AND the block has
-# no tag/domain keyword overlap with the prompt. 0.6x makes it impossible to clear
-# the 0.70 threshold without raw score > 1.17 — effectively a hard filter.
-DOMAIN_OVERLAP_PENALTY = 0.6
-MAX_PERSONAL_WEIGHT = 2500  # Token budget for identity injection
-IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
-HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
-
-
-@dataclass(frozen=True)
-class QueryContext:
-    """Prepared context for a single query call — avoids re-computing shared values."""
-
-    prompt: str
-    prompt_embedding: Any
-    prompt_lower: str
-    intent: str
-    domain: str | None
-    affinity: dict[str, Any]
-    use_override: bool
-    effective_threshold: float
 
 
 def get_identity_context(
@@ -288,11 +289,8 @@ def get_identity_context(
     personal_results: list[tuple[Block, float]] = []
     personal_weight = 0
 
-    project_hash = None
-    if project_root:
-        project_hash = _get_project_hash(project_root)
+    project_hash = _get_project_hash(project_root) if project_root else None
 
-    # Filter all blocks from the personal tier
     candidates = [
         b
         for b in blocks.values()
@@ -304,19 +302,22 @@ def get_identity_context(
             or (project_hash and b.project_hash == project_hash)
         )
     ]
-    # Sort by verification date to keep newest preferences first
     candidates.sort(key=lambda b: b.last_verified, reverse=True)
 
     limit_exceeded = False
     for b in candidates:
         if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
-            # Score of 2.0 ensures they rank above all Expert Priors
             personal_results.append((b, IDENTITY_SCORE_THRESHOLD))
             personal_weight += b.context_weight
         else:
             limit_exceeded = True
 
     return personal_results, limit_exceeded
+
+
+# ---------------------------------------------------------------------------
+# Scoring and retrieval
+# ---------------------------------------------------------------------------
 
 
 def _score_entry(
@@ -407,22 +408,15 @@ def _resolve_conflicts(
     total_weight = 0
 
     for block, score in results:
-        # Deduplicate — same block can appear in multiple source indexes
         if block.slug in seen_slugs:
             continue
         seen_slugs.add(block.slug)
 
-        # Check explicit slug conflicts
         if block.slug in blocked_slugs:
             continue
 
-        # Check tag-based (provides) conflicts
         if any(tag in active_provides for tag in block.conflicts_with_tags):
             continue
-
-        # Check if any currently provided tag is in this block's conflict list
-        # (Inverse check: does a previously accepted block conflict with this one's tags?)
-        # Since we iterate by score, higher score blocks set the "provides" state.
 
         if total_weight + block.context_weight > context_weight:
             continue
@@ -439,18 +433,13 @@ def rerank_with_llm(
     candidates: list[tuple[Block, float]],
     model: str = "llama3.2",
 ) -> list[tuple[Block, float]]:
-    """Use a local LLM to refine the ranking of top candidates.
-
-    The LLM assesses the prompt against each block's constraints/anti-patterns
-    and returns a relevance score [0.0 - 1.0].
-    """
+    """Use a local LLM to refine the ranking of top candidates."""
     if not candidates:
         return []
 
     try:
         import ollama
     except ImportError:
-        # Fall back to original ranking if ollama is missing
         return candidates
 
     reranked: list[tuple[Block, float]] = []
@@ -480,7 +469,6 @@ Respond with ONLY the numeric score, no prose."""
             match = re.search(r"(\d+\.\d+|\d+)", content)
             llm_score = float(match.group(1)) if match else 0.0
             llm_score = max(0.0, min(1.0, llm_score))
-            # LLM score weighted at 80%, vector score as 20% prior
             reranked.append((block, (llm_score * 0.8) + (vector_score * 0.2)))
         except Exception:
             reranked.append((block, vector_score))

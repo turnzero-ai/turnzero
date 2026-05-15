@@ -8,6 +8,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# ---------------------------------------------------------------------------
+# ROI constants — single source of truth for both CLI stats and SessionAnalytics.
+# Changing these propagates to all display surfaces.
+# ---------------------------------------------------------------------------
+
+# Turns saved per injected block (conservative estimate for stats display).
+# Distinct from TURNS_SAVED_PER_PRIOR (2.5) which measures correction avoidance.
+TURNS_SAVED_PER_INJECTION: float = 0.5
+TOKENS_PER_TURN: int = 1500  # matches SessionAnalytics.TOKENS_PER_TURN
+
 
 @dataclass
 class SessionEvent:
@@ -29,8 +39,7 @@ class SessionAnalytics:
     MINUTES_PER_TURN: float = 4.0
 
     def log_injection(self, block_ids: list[str]) -> None:
-        from turnzero.session import record_project_affinity, record_session_injection
-
+        """Append injection event for ROI tracking. State recording is the caller's responsibility."""
         self.events.append(
             SessionEvent(
                 timestamp=time.time(),
@@ -38,11 +47,6 @@ class SessionAnalytics:
                 details={"block_ids": block_ids},
             )
         )
-
-        for bid in block_ids:
-            record_session_injection(self.session_id, bid)
-            if self.project_root:
-                record_project_affinity(self.project_root, bid)
 
     def log_miss(self, correction_text: str) -> None:
         """Log a moment where TurnZero failed to provide the right context."""
@@ -121,59 +125,8 @@ class SessionAnalytics:
         )
 
 
-# ---------------------------------------------------------------------------
-# Module-level ROI constants — single source of truth for both CLI stats and
-# SessionAnalytics. Changing these propagates to all display surfaces.
-# ---------------------------------------------------------------------------
-
-# Turns saved per injected block (conservative estimate for stats display).
-# Distinct from TURNS_SAVED_PER_PRIOR (2.5) which measures correction avoidance.
-TURNS_SAVED_PER_INJECTION: float = 0.5
-TOKENS_PER_TURN: int = 1500  # matches SessionAnalytics.TOKENS_PER_TURN
-
-
 def get_global_roi(data_dir: Path) -> dict[str, Any]:
-    """Aggregate ROI across all historical sessions."""
-    session_dir = data_dir / "sessions"
-    if not session_dir.exists():
-        return {"total_turns_saved": 0, "total_minutes_saved": 0, "total_sessions": 0}
+    """Aggregate ROI across all historical sessions. Kept for backwards compat — prefer stats_svc."""
+    from turnzero.services import stats_svc
 
-    total_turns = 0.0
-    total_minutes = 0.0
-    total_injections = 0
-    total_misses = 0
-    session_count = 0
-
-    for path in session_dir.glob("*.json"):
-        try:
-            # We can't use .load() easily here without session_id, so manual parse
-            data = json.loads(path.read_text(encoding="utf-8"))
-            analytics = SessionAnalytics(
-                session_id=data["session_id"], start_time=data["start_time"]
-            )
-            analytics.events = [
-                SessionEvent(
-                    timestamp=e["timestamp"], event_type=e["type"], details=e["details"]
-                )
-                for e in data["events"]
-            ]
-
-            roi = analytics.calculate_roi()
-            total_turns += roi["turns_saved"]
-            total_minutes += roi["minutes_saved"]
-            total_injections += roi["injection_count"]
-            total_misses += roi["miss_count"]
-            session_count += 1
-        except Exception:
-            continue
-
-    return {
-        "total_turns_saved": round(total_turns, 1),
-        "total_minutes_saved": round(total_minutes, 1),
-        "total_injections": total_injections,
-        "total_misses": total_misses,
-        "total_sessions": session_count,
-        "historical_precision": total_injections / (total_injections + total_misses)
-        if (total_injections + total_misses) > 0
-        else 1.0,
-    }
+    return stats_svc.get_global_roi(data_dir)

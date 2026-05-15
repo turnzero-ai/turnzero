@@ -18,46 +18,57 @@ from turnzero.repositories.index_repo import append_block, build
 from turnzero.safety import validate_candidate
 from turnzero.validators import safe_path, validate_domain, validate_slug
 
-_AUTO_APPROVE_INTENT_KEYWORDS: set[str] = {
-    "remember",
-    "save",
-    "note",
-    "user asked",
-    "explicit",
-}
 
+class AutoApprovePolicy:
+    """Owns the auto-approval guard logic — intent detection and env flag check."""
 
-def is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
-    """Return True if any keyword appears in text with typo tolerance."""
-    from difflib import SequenceMatcher
-
+    INTENT_KEYWORDS: frozenset[str] = frozenset({
+        "remember", "save", "note", "user asked", "explicit",
+    })
     _MIN_FUZZY_LEN = 4
-    _FUZZY_RATIO = 0.75  # ~edit distance 2 for 4-8 char words
+    _FUZZY_RATIO = 0.75
+    _FUZZY_THRESHOLD = 2
 
-    text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
-    for kw in keywords:
-        kw_lower = kw.lower()
-        for word in text_words:
-            if word == kw_lower:
-                return True
-            if (
-                len(kw_lower) >= _MIN_FUZZY_LEN
-                and abs(len(word) - len(kw_lower)) <= threshold
-                and SequenceMatcher(None, word, kw_lower).ratio() >= _FUZZY_RATIO
-            ):
-                return True
-    return False
+    @classmethod
+    def intent_present(cls, text: str) -> bool:
+        """Return True if any approval keyword appears in text with typo tolerance."""
+        from difflib import SequenceMatcher
+
+        text_words = [w.strip(".,!?;:\"'").lower() for w in text.split()]
+        for kw in cls.INTENT_KEYWORDS:
+            kw_lower = kw.lower()
+            for word in text_words:
+                if word == kw_lower:
+                    return True
+                if (
+                    len(kw_lower) >= cls._MIN_FUZZY_LEN
+                    and abs(len(word) - len(kw_lower)) <= cls._FUZZY_THRESHOLD
+                    and SequenceMatcher(None, word, kw_lower).ratio() >= cls._FUZZY_RATIO
+                ):
+                    return True
+        return False
+
+    @classmethod
+    def evaluate(cls, auto_approve: bool, reason: str) -> tuple[bool, bool]:
+        """Return (effective_auto_approve, was_blocked)."""
+        if not auto_approve:
+            return False, False
+        if not allow_mcp_auto_approve():
+            return False, True
+        if not cls.intent_present(reason):
+            return False, True
+        return True, False
+
+
+# Module-level shims for callers that use the old function API
+def is_intent_present(text: str, keywords: set[str], threshold: int = 2) -> bool:
+    """Thin wrapper around AutoApprovePolicy.intent_present for backwards compat."""
+    return AutoApprovePolicy.intent_present(text)
 
 
 def check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, bool]:
-    """Return (effective_auto_approve, was_blocked)."""
-    if not auto_approve:
-        return False, False
-    if not allow_mcp_auto_approve():
-        return False, True
-    if not is_intent_present(reason, _AUTO_APPROVE_INTENT_KEYWORDS):
-        return False, True
-    return True, False
+    """Thin wrapper around AutoApprovePolicy.evaluate for backwards compat."""
+    return AutoApprovePolicy.evaluate(auto_approve, reason)
 
 
 def _build_block_dict(
@@ -212,7 +223,7 @@ def submit(
     confidence = compute_confidence(
         block_id, constraints, anti_patterns or [], tags or [], reason
     )
-    auto_approve, guard_blocked = check_auto_approve_guard(auto_approve, reason)
+    auto_approve, guard_blocked = AutoApprovePolicy.evaluate(auto_approve, reason)
 
     project_hash = None
     if is_personal and domain != "global" and project_root:

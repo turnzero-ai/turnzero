@@ -14,6 +14,7 @@ from turnzero.cli.base import (
     get_data_dir,
     get_index_path,
 )
+from turnzero.services import retrieval_svc
 
 
 def harvest(
@@ -150,7 +151,7 @@ def review() -> None:
     2. Shows harvested candidates from data/candidates/ for approval.
     """
     from turnzero.index import build as _build
-    from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.telemetry import track_review_opened
 
     data_dir = get_data_dir()
     candidates_dir = data_dir / "candidates"
@@ -159,11 +160,10 @@ def review() -> None:
     candidate_count = (
         len(list(candidates_dir.glob("*.yaml"))) if candidates_dir.exists() else 0
     )
-    from turnzero.telemetry import track_review_opened
 
     # ── 1. Low-confidence library blocks ────────────────────────────────────────
     try:
-        all_blocks = load_all_blocks(blocks_dir)
+        all_blocks = retrieval_svc.get_all_blocks(blocks_dir)
         low_conf = [
             b
             for b in all_blocks.values()

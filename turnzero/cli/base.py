@@ -29,13 +29,6 @@ __all__ = [
 console = Console()
 err_console = Console(stderr=True)
 
-
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"turnzero {_pkg_version('turnzero')}")
-        raise typer.Exit()
-
-
 DEFAULT_THRESHOLD = 0.70
 MIN_HARVEST_WORDS = 100
 STALENESS_THRESHOLD = 0.70
@@ -46,3 +39,9 @@ HTTP_OK = 200
 LOW_CONFIDENCE_THRESHOLD = 0.70
 THRESHOLD_TEST_GOOD_RECALL = 0.80
 THRESHOLD_TEST_WARN_RECALL = 0.60
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"turnzero {_pkg_version('turnzero')}")
+        raise typer.Exit()

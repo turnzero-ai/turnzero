@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from turnzero.blocks import Block
 from turnzero.config import (
@@ -107,69 +106,40 @@ def _load_active_index() -> list[IndexEntry]:
     return result
 
 
-def list_suggested_blocks(
-    prompt: str,
-    top_k: int = 5,
-    threshold: float = 0.70,
-    context_weight: int = 5000,
-    strict_intent: bool = True,
-    project_root: Path | None = None,
-    session_id: str | None = None,
-    inject_all: bool = False,
-) -> list[SuggestionEntry]:
-    """Return ranked block suggestions for prompt as serialisable dicts."""
-    from turnzero.retrieval import get_identity_context
-    from turnzero.services import stats_svc
+_EXPERT_PREVIEW_WORDS = 6
 
-    blocks = _load_active_blocks()
 
-    # Apply domain whitelist: personal tier always passes, others filtered when set.
-    active_domains = get_active_domains(get_data_dir())
-    if active_domains is not None:
-        active_set = set(active_domains)
-        blocks = {
-            k: v for k, v in blocks.items()
-            if v.tier == Tier.PERSONAL or v.domain in active_set
-        }
-
-    index = _load_active_index()
-    exclude_ids = get_session_injections(session_id) if session_id else set()
-
-    # WF-2: skip personal priors on Turn N — they were already injected this session.
-    # Turn 0 = no injections recorded yet; Turn N = at least one injection exists.
-    is_turn_0 = not exclude_ids
-    if is_turn_0:
-        personal_results, limit_exceeded = get_identity_context(
-            blocks, project_root=project_root, exclude_ids=exclude_ids
-        )
-    else:
-        personal_results, limit_exceeded = [], False
-
-    personal_weight = sum(b.context_weight for b, _ in personal_results)
-
-    expert_results = _query(
-        prompt,
-        index,
-        blocks,
-        top_k=top_k,
-        threshold=threshold,
-        context_weight=context_weight - personal_weight,
-        strict_intent=strict_intent,
-        project_root=project_root,
-        exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
+def _expert_preview(block: Block) -> str:
+    """Return a short preview string from the first constraint."""
+    text = block.constraints[0] if block.constraints else ""
+    words = text.split()
+    return " ".join(words[:_EXPERT_PREVIEW_WORDS]) + (
+        "…" if len(words) > _EXPERT_PREVIEW_WORDS else ""
     )
 
-    turn = TurnLabel.FIRST if is_turn_0 else TurnLabel.SUBSEQUENT
 
-    _PREVIEW_WORDS = 6
+def _apply_domain_whitelist(blocks: dict[str, Block]) -> dict[str, Block]:
+    """Filter blocks by active domain whitelist; personal tier always passes."""
+    active_domains = get_active_domains(get_data_dir())
+    if active_domains is None:
+        return blocks
+    active_set = set(active_domains)
+    return {
+        k: v for k, v in blocks.items()
+        if v.tier == Tier.PERSONAL or v.domain in active_set
+    }
 
-    def _expert_preview(block: Any) -> str:
-        text = block.constraints[0] if block.constraints else ""
-        words = text.split()
-        return " ".join(words[:_PREVIEW_WORDS]) + (
-            "…" if len(words) > _PREVIEW_WORDS else ""
-        )
 
+def _assemble_suggestions(
+    personal_results: list[tuple[Block, float]],
+    expert_results: list[tuple[Block, float]],
+    limit_exceeded: bool,
+    turn: TurnLabel,
+    session_id: str | None,
+    project_root: Path | None,
+    inject_all: bool,
+) -> list[SuggestionEntry]:
+    """Build SuggestionEntry list and record injections when inject_all=True."""
     def _build_entry(block: Block, score: float, is_personal: bool) -> SuggestionEntry:
         entry: SuggestionEntry = {
             "block_id": block.slug,
@@ -186,8 +156,8 @@ def list_suggested_blocks(
                 else _expert_preview(block)
             ),
         }
-        # WF-3: inline full text and record injection when inject_all=True
         if inject_all:
+            # WF-3: inline full text and record injection in one round trip
             entry["full_text"] = block_fmt.to_injection_text(block)
             if session_id:
                 record_session_injection(session_id, block.slug)
@@ -200,7 +170,8 @@ def list_suggested_blocks(
         _build_entry(block, score, is_personal=True)
         for block, score in personal_results
     ] + [
-        _build_entry(block, score, is_personal=False) for block, score in expert_results
+        _build_entry(block, score, is_personal=False)
+        for block, score in expert_results
     ]
 
     if limit_exceeded:
@@ -217,11 +188,20 @@ def list_suggested_blocks(
                 "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
             }
         )
+    return formatted
 
-    # Logging and telemetry
-    real_blocks = [
-        s for s in formatted if s["block_id"] != BLOCK_ID_PERSONAL_LIMIT_WARNING
-    ]
+
+def _record_and_track(
+    formatted: list[SuggestionEntry],
+    blocks: dict[str, Block],
+    prompt: str,
+    session_id: str | None,
+    personal_results: list[tuple[Block, float]],
+) -> None:
+    """Log injection event and fire session_start telemetry."""
+    from turnzero.services import stats_svc
+
+    real_blocks = [s for s in formatted if s["block_id"] != BLOCK_ID_PERSONAL_LIMIT_WARNING]
     if formatted:
         stats_svc.log_injection(
             block_ids=[s["block_id"] for s in real_blocks],
@@ -241,6 +221,48 @@ def list_suggested_blocks(
         total_block_count=len(blocks),
     )
 
+
+def list_suggested_blocks(
+    prompt: str,
+    top_k: int = 5,
+    threshold: float = 0.70,
+    context_weight: int = 5000,
+    strict_intent: bool = True,
+    project_root: Path | None = None,
+    session_id: str | None = None,
+    inject_all: bool = False,
+) -> list[SuggestionEntry]:
+    """Return ranked block suggestions for prompt as serialisable dicts."""
+    from turnzero.retrieval import get_identity_context
+
+    blocks = _apply_domain_whitelist(_load_active_blocks())
+    index = _load_active_index()
+    exclude_ids = get_session_injections(session_id) if session_id else set()
+
+    # WF-2: skip personal priors on Turn N (already injected this session).
+    is_turn_0 = not exclude_ids
+    if is_turn_0:
+        personal_results, limit_exceeded = get_identity_context(
+            blocks, project_root=project_root, exclude_ids=exclude_ids
+        )
+    else:
+        personal_results, limit_exceeded = [], False
+
+    personal_weight = sum(b.context_weight for b, _ in personal_results)
+    expert_results = _query(
+        prompt, index, blocks,
+        top_k=top_k, threshold=threshold,
+        context_weight=context_weight - personal_weight,
+        strict_intent=strict_intent, project_root=project_root,
+        exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
+    )
+
+    turn = TurnLabel.FIRST if is_turn_0 else TurnLabel.SUBSEQUENT
+    formatted = _assemble_suggestions(
+        personal_results, expert_results, limit_exceeded, turn,
+        session_id, project_root, inject_all,
+    )
+    _record_and_track(formatted, blocks, prompt, session_id, personal_results)
     return formatted
 
 
@@ -320,3 +342,44 @@ def reset_session(session_id: str | None = None) -> str:
     if session_id:
         clear_session_injections(session_id)
     return "✓ TurnZero session memory cleared."
+
+
+def get_all_blocks(blocks_dir: Path | None = None) -> dict[str, Block]:
+    """Return all blocks from the given dir (or active data dir). CLI service boundary."""
+    from turnzero.repositories.block_repo import load_all_blocks as _load
+
+    target = blocks_dir or get_blocks_dir()
+    if not target.exists():
+        target = get_bundled_blocks_dir()
+    return _load(target)
+
+
+def load_index_entries(index_path: Path | None = None) -> list[IndexEntry]:
+    """Return index entries from the given path (or active index). CLI service boundary."""
+    path = index_path or get_index_path()
+    if not path.exists():
+        path = get_bundled_index_path()
+    return load_index(path)
+
+
+def query_blocks(
+    prompt: str,
+    top_k: int = 5,
+    threshold: float = 0.70,
+    strict_intent: bool = True,
+    project_root: Path | None = None,
+    exclude_block_ids: set[str] | None = None,
+) -> list[tuple[Block, float]]:
+    """Run retrieval query via service layer — no direct repo access from CLI needed."""
+    blocks = _load_active_blocks()
+    index = _load_active_index()
+    return _query(
+        prompt,
+        index,
+        blocks,
+        top_k=top_k,
+        threshold=threshold,
+        strict_intent=strict_intent,
+        project_root=project_root,
+        exclude_block_ids=exclude_block_ids,
+    )

@@ -32,12 +32,9 @@ from turnzero.types import (
 from turnzero.validators import safe_path, validate_session_name
 
 # ---------------------------------------------------------------------------
-# WF-1: Process-scoped session identity
+# WF-1: Process-scoped session identity constants
+# Rotated after _SESSION_TTL to prevent cross-conversation bleed.
 # ---------------------------------------------------------------------------
-# Generated once at server startup; used when the agent passes no session_id.
-# Rotated automatically after _SESSION_TTL to prevent cross-conversation bleed
-# when the MCP process spans multiple user conversations.
-# Explicitly rotated by reset_session() so agents that call it get a clean slate.
 
 _SESSION_TTL: float = 4 * 3600.0  # 4 hours
 
@@ -46,6 +43,17 @@ _proc_session: dict[str, float | str] = {
     "id": str(uuid.uuid4()),
     "started": time.time(),
 }
+
+# ---------------------------------------------------------------------------
+# Re-exports for test compat (tests import these names from mcp_server)
+# ---------------------------------------------------------------------------
+
+_INDEX_CACHE = retrieval_svc._INDEX_CACHE
+_list_suggested_blocks = retrieval_svc.list_suggested_blocks
+_get_block = retrieval_svc.get_block
+_inject_block = retrieval_svc.inject_block
+_log_mcp_injection = stats_svc.log_injection
+_log_tool_call = stats_svc.log_tool_call
 
 
 def _effective_session_id(caller_id: str | None) -> str:
@@ -60,17 +68,6 @@ def _effective_session_id(caller_id: str | None) -> str:
 def _rotate_proc_session() -> None:
     _proc_session["id"] = str(uuid.uuid4())
     _proc_session["started"] = time.time()
-
-
-# ---------------------------------------------------------------------------
-# Re-exports for test compat (tests import these names from mcp_server)
-# ---------------------------------------------------------------------------
-_INDEX_CACHE = retrieval_svc._INDEX_CACHE
-_list_suggested_blocks = retrieval_svc.list_suggested_blocks
-_get_block = retrieval_svc.get_block
-_inject_block = retrieval_svc.inject_block
-_log_mcp_injection = stats_svc.log_injection
-_log_tool_call = stats_svc.log_tool_call
 
 # ---------------------------------------------------------------------------
 # MCP server

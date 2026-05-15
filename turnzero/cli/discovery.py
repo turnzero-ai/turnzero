@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
 import typer
+import yaml
 from rich import box
 from rich.table import Table
 
+from turnzero.analytics import SessionAnalytics
 from turnzero.blocks import Block
 from turnzero.cli.base import (
     DEFAULT_THRESHOLD,
@@ -19,33 +22,43 @@ from turnzero.cli.base import (
     err_console,
 )
 from turnzero.config import (
+    get_active_domains,
     get_blocks_dir,
     get_bundled_blocks_dir,
     get_bundled_index_path,
     get_data_dir,
     get_index_path,
+    load_telemetry_config,
 )
 from turnzero.formatters import block_fmt
-from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
+from turnzero.retrieval import (
+    IDENTITY_SCORE_THRESHOLD,
+    classify_intent,
+    detect_domain,
+    get_identity_context,
+    is_implementation_prompt,
+)
+from turnzero.retrieval import (
+    query as _query,
+)
+from turnzero.services import retrieval_svc, stats_svc
+from turnzero.telemetry import track_list_viewed, track_stats_viewed
 from turnzero.types import Tier
+from turnzero.upgrade import check_for_upgrade
 
 discovery_app = typer.Typer(no_args_is_help=True)
 
 
 def _load_blocks_and_index() -> tuple[dict[str, Block], list[Any]]:
-    """Load blocks and index with bundled fallback. Raises typer.Exit(1) on failure."""
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
-
+    """Load blocks and index via service layer with bundled fallback."""
     try:
-        blocks_dir = get_blocks_dir()
         index_path = get_index_path()
         if not index_path.exists():
-            blocks_dir = get_bundled_blocks_dir()
             index_path = get_bundled_index_path()
         if not index_path.exists():
             raise FileNotFoundError("No index found. Run: turnzero setup")
-        return load_all_blocks(blocks_dir), load_index(index_path)
+        blocks_dir = get_blocks_dir() if get_index_path().exists() else get_bundled_blocks_dir()
+        return retrieval_svc.get_all_blocks(blocks_dir), retrieval_svc.load_index_entries(index_path)
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -53,14 +66,11 @@ def _load_blocks_and_index() -> tuple[dict[str, Block], list[Any]]:
 
 def _load_stats_data(data_dir: Path) -> dict[str, Any]:
     """Delegate to stats_svc for stats aggregation."""
-    from turnzero.services import stats_svc
-
     return stats_svc.compute_display_data(data_dir)
 
 
 def _render_stats(data: dict[str, Any]) -> None:
     """Render stats tables and nudges to the console."""
-    from turnzero.config import load_telemetry_config
 
     sessions_total = data["sessions_total"]
 
@@ -209,13 +219,6 @@ def _print_explain(
     context_weight: int,
     strict_intent: bool,
 ) -> None:
-    from turnzero.retrieval import (  # noqa: I001
-        classify_intent,
-        detect_domain,
-        is_implementation_prompt,
-        query as _query,
-    )
-
     intent = classify_intent(prompt)
     domain = detect_domain(prompt, project_root=Path.cwd())
     is_impl = is_implementation_prompt(prompt, project_root=Path.cwd())
@@ -325,9 +328,6 @@ def query(
     ),
 ) -> None:
     """Suggest Expert Priors for an opening prompt."""
-    from turnzero.analytics import SessionAnalytics
-    from turnzero.retrieval import get_identity_context
-    from turnzero.retrieval import query as _query
 
     blocks, index = _load_blocks_and_index()
 
@@ -390,8 +390,6 @@ def preview(
     ),
 ) -> None:
     """Full-content preview of what would be injected for a prompt."""
-    from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD, get_identity_context
-    from turnzero.retrieval import query as _query
 
     blocks, index = _load_blocks_and_index()
 
@@ -457,10 +455,9 @@ def show(
     slug: str = typer.Argument(..., help="Block slug to display."),
 ) -> None:
     """Display full content of a block."""
-    from turnzero.repositories.block_repo import load_all_blocks
 
     try:
-        blocks = load_all_blocks(get_blocks_dir())
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
     except FileNotFoundError as e:
         console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -515,12 +512,9 @@ def inject(
     If an input matches an exact block slug, it is injected directly.
     Otherwise, the input is treated as a query to find the best matching block.
     """
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
-    from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(get_blocks_dir())
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -534,7 +528,7 @@ def inject(
 
         # 2. Query retrieval fallback
         try:
-            index = load_index(get_index_path())
+            index = retrieval_svc.load_index_entries(get_index_path())
             results = _query(
                 val,
                 index,
@@ -573,9 +567,7 @@ def list_blocks(
     ),
 ) -> None:
     """Browse the Expert Prior library."""
-    import contextlib
 
-    from turnzero.repositories.block_repo import load_all_blocks
 
     if candidates:
         cand_dir = get_data_dir() / "candidates"
@@ -596,9 +588,7 @@ def list_blocks(
 
         for path in sorted(cand_dir.glob("*.yaml")):
             with contextlib.suppress(Exception):
-                import yaml as _yaml
-
-                raw = _yaml.safe_load(path.read_text())
+                raw = yaml.safe_load(path.read_text())
                 conf = f"{float(raw.get('confidence', 0.0)):.2f}"
                 tbl.add_row(
                     str(raw.get("slug", path.stem)),
@@ -608,17 +598,16 @@ def list_blocks(
                 )
         console.print(tbl)
         console.print("[dim]Run `turnzero review` to approve or reject.[/dim]\n")
-        from turnzero.telemetry import track_list_viewed
         cand_count = sum(1 for _ in cand_dir.glob("*.yaml"))
         track_list_viewed(mode="candidates", blocks_shown=cand_count)
         return
 
     try:
-        blocks = load_all_blocks(get_blocks_dir())
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
     except FileNotFoundError:
         # Fall back to bundled index
         try:
-            blocks = load_all_blocks(get_bundled_blocks_dir())
+            blocks = retrieval_svc.get_all_blocks(get_bundled_blocks_dir())
         except FileNotFoundError:
             console.print("[red]No block library found. Run: turnzero setup[/red]")
             raise typer.Exit(1)
@@ -637,7 +626,6 @@ def list_blocks(
         for b in sorted(stale_blocks.values(), key=lambda b: b.last_verified):
             tbl.add_row(b.slug, b.domain, b.last_verified, f"{b.confidence:.2f}")
         console.print(tbl)
-        from turnzero.telemetry import track_list_viewed
         track_list_viewed(mode="stale", blocks_shown=len(stale_blocks))
         return
 
@@ -665,7 +653,6 @@ def list_blocks(
             stale_tag = "[red]STALE[/red]" if b.is_stale() else "[green]ok[/green]"
             tbl.add_row(b.slug, b.tier, f"{b.confidence:.2f}", b.last_verified, stale_tag)
         console.print(tbl)
-        from turnzero.telemetry import track_list_viewed
         track_list_viewed(mode="domain", blocks_shown=len(domain_blocks), domain=domain)
         return
 
@@ -682,7 +669,6 @@ def list_blocks(
         b.domain for b in expert_blocks.values() if b.is_stale()
     )
 
-    from turnzero.config import get_active_domains
     active_domains = get_active_domains(get_data_dir())
 
     console.print(
@@ -730,15 +716,12 @@ def list_blocks(
             "[dim]Use [/dim][cyan]turnzero list --domain <name>[/cyan]"
             "[dim] to see blocks in a specific domain.[/dim]\n"
         )
-    from turnzero.telemetry import track_list_viewed
     track_list_viewed(mode="summary", blocks_shown=len(blocks))
 
 
 @discovery_app.command()
 def stats() -> None:
     """Show injection history and block library statistics."""
-    from turnzero.telemetry import track_stats_viewed
-    from turnzero.upgrade import check_for_upgrade
 
     data_dir = get_data_dir()
     data = _load_stats_data(data_dir)

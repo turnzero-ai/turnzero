@@ -17,6 +17,7 @@ from turnzero.cli.base import (
     get_data_dir,
     get_index_path,
 )
+from turnzero.services import retrieval_svc
 
 index_app = typer.Typer(help="Manage the embedding index.", no_args_is_help=True)
 
@@ -85,8 +86,6 @@ def validate(
     """
     import json
 
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
     from turnzero.retrieval import query as _query
 
     if not validation_file.exists():
@@ -101,8 +100,8 @@ def validate(
         raise typer.Exit(1)
 
     try:
-        blocks = load_all_blocks(get_blocks_dir())
-        index = load_index(get_index_path())
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
+        index = retrieval_svc.load_index_entries(get_index_path())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)
@@ -210,14 +209,12 @@ def threshold_test(
     """
     import json
 
-    from turnzero.repositories.block_repo import load_all_blocks
-    from turnzero.repositories.index_repo import load_index
     from turnzero.retrieval import is_implementation_prompt
     from turnzero.retrieval import query as _query
 
     try:
-        blocks = load_all_blocks(get_blocks_dir())
-        index = load_index(get_index_path())
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
+        index = retrieval_svc.load_index_entries(get_index_path())
     except FileNotFoundError as e:
         err_console.print(f"[red]{e}[/red]")
         raise typer.Exit(1)

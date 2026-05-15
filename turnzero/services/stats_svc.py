@@ -12,6 +12,9 @@ from typing import Any
 from turnzero.config import get_data_dir
 from turnzero.types import INJECTION_TOOLS, StatsData, Tier
 
+# Use the canonical set from types — single source of truth
+_INJECTION_TOOLS = INJECTION_TOOLS
+
 
 def log_injection(
     block_ids: list[str],
@@ -72,10 +75,6 @@ def log_tool_call(
         pass
 
 
-# Use the canonical set from types — single source of truth
-_INJECTION_TOOLS = INJECTION_TOOLS
-
-
 def _aggregate_tool_tokens(
     entries: list[dict[str, Any]], week_ago: float
 ) -> dict[str, Any]:
@@ -110,36 +109,48 @@ def _aggregate_tool_tokens(
     }
 
 
-def compute_display_data(data_dir: Path) -> dict[str, Any]:  # noqa: PLR0912, PLR0915
-    """Aggregate all stats for CLI display. Headless — no rendering or side effects."""
+def compute_display_data(data_dir: Path) -> dict[str, Any]:
+    """Aggregate all stats for CLI display, building on compute() for shared logic."""
     import datetime
-    from collections import Counter as _Counter
 
-    from turnzero.types import INJECTION_TOOLS as _INJECTION_TOOLS
+    # Reuse compute() for MCP-shape data; enrich with CLI-only fields.
+    # Use data_dir override so tests can isolate data directories.
+    import os as _os
 
-    log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict[str, Any]] = []
-    if log_path.exists():
-        for line in log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                entries.append(json.loads(line))
+    from turnzero.config import get_blocks_dir, get_index_path
+    from turnzero.repositories.block_repo import load_all_blocks
+    from turnzero.repositories.index_repo import load_index
+    orig = _os.environ.get("TURNZERO_DATA_DIR")
+    _os.environ["TURNZERO_DATA_DIR"] = str(data_dir)
+    try:
+        base = compute()
+    finally:
+        if orig is None:
+            _os.environ.pop("TURNZERO_DATA_DIR", None)
+        else:
+            _os.environ["TURNZERO_DATA_DIR"] = orig
 
-    import time as _time
+    # CLI-specific enrichment: personal prior growth window + index entry count
+    try:
+        blocks = load_all_blocks(get_blocks_dir())
+    except FileNotFoundError:
+        blocks = {}
 
-    now = _time.time()
-    week_ago = now - 7 * 86400
+    personal_blocks = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
+    personal_count = len(personal_blocks)
 
-    sessions_total = len(entries)
-    sessions_week = sum(1 for e in entries if e.get("ts", 0) >= week_ago)
-    priors_total = sum(len(e.get("blocks", [])) for e in entries)
-    priors_week = sum(
-        len(e.get("blocks", [])) for e in entries if e.get("ts", 0) >= week_ago
-    )
-    tokens_injected_total = sum(e.get("tokens_injected", 0) for e in entries)
-    tokens_injected_week = sum(
-        e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
-    )
+    personal_weeks: int | None = None
+    if personal_blocks:
+        with contextlib.suppress(ValueError):
+            earliest = min(b.last_verified for b in personal_blocks)
+            delta = datetime.date.today() - datetime.date.fromisoformat(earliest)
+            personal_weeks = max(1, delta.days // 7)
 
+    index_count: int | None = None
+    with contextlib.suppress(FileNotFoundError):
+        index_count = len(load_index(get_index_path()))
+
+    # Corrections count from tool_call_log (not in StatsData shape)
     tool_log_path = data_dir / "tool_call_log.jsonl"
     tool_entries: list[dict[str, Any]] = []
     if tool_log_path.exists():
@@ -147,16 +158,9 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:  # noqa: PLR0912, PL
             with contextlib.suppress(json.JSONDecodeError):
                 tool_entries.append(json.loads(line))
 
-    overhead_total = sum(
-        e.get("tokens_in", 0) + e.get("tokens_out", 0)
-        for e in tool_entries
-        if e.get("tool") in _INJECTION_TOOLS
-    )
-    overhead_week = sum(
-        e.get("tokens_in", 0) + e.get("tokens_out", 0)
-        for e in tool_entries
-        if e.get("tool") in _INJECTION_TOOLS and e.get("ts", 0) >= week_ago
-    )
+    now = time.time()
+    week_ago = now - 7 * 86400
+
     corrections_total = sum(
         1
         for e in tool_entries
@@ -171,63 +175,31 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:  # noqa: PLR0912, PL
         and e.get("ts", 0) >= week_ago
     )
 
-    domain_counts: _Counter[str] = _Counter()
-    for e in entries:
-        for d in e.get("domains", []):
-            domain_counts[d] += 1
-
-    top_domains = [d for d, _ in domain_counts.most_common(5)]
-
     from turnzero.analytics import TOKENS_PER_TURN, TURNS_SAVED_PER_INJECTION
 
-    est_turns = round(priors_total * TURNS_SAVED_PER_INJECTION)
-    est_tokens = priors_total * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN
-
-    from turnzero.repositories.block_repo import load_all_blocks
-
-    try:
-        from turnzero.config import get_blocks_dir
-
-        blocks = load_all_blocks(get_blocks_dir())
-    except FileNotFoundError:
-        blocks = {}
-
-    stale_count = sum(1 for b in blocks.values() if b.is_stale())
-    personal_blocks = [b for b in blocks.values() if b.tier == Tier.PERSONAL]
-    personal_count = len(personal_blocks)
-
-    personal_weeks: int | None = None
-    if personal_blocks:
-        with contextlib.suppress(ValueError):
-            earliest = min(b.last_verified for b in personal_blocks)
-            delta = datetime.date.today() - datetime.date.fromisoformat(earliest)
-            personal_weeks = max(1, delta.days // 7)
-
-    index_count: int | None = None
-    with contextlib.suppress(FileNotFoundError):
-        from turnzero.config import get_index_path
-        from turnzero.repositories.index_repo import load_index
-
-        index_count = len(load_index(get_index_path()))
+    sessions = base["sessions"]
+    priors = base["priors_injected"]
+    ctx_tokens = base["context_tokens_injected"]
+    overhead = base["injection_overhead"]
 
     return {
-        "sessions_total": sessions_total,
-        "sessions_week": sessions_week,
-        "priors_total": priors_total,
-        "priors_week": priors_week,
-        "tokens_injected_total": tokens_injected_total,
-        "tokens_injected_week": tokens_injected_week,
-        "overhead_total": overhead_total,
-        "overhead_week": overhead_week,
+        "sessions_total": sessions["total"],
+        "sessions_week": sessions["this_week"],
+        "priors_total": priors["total"],
+        "priors_week": priors["this_week"],
+        "tokens_injected_total": ctx_tokens["total"],
+        "tokens_injected_week": ctx_tokens["this_week"],
+        "overhead_total": overhead["total"],
+        "overhead_week": overhead["this_week"],
         "corrections_total": corrections_total,
         "corrections_week": corrections_week,
-        "top_domains": top_domains,
-        "est_turns": est_turns,
-        "est_tokens": est_tokens,
-        "blocks_total": len(blocks),
+        "top_domains": base["top_domains"],
+        "est_turns": round(priors["total"] * TURNS_SAVED_PER_INJECTION),
+        "est_tokens": priors["total"] * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN,
+        "blocks_total": base["library"]["total_blocks"],
         "personal_count": personal_count,
         "personal_weeks": personal_weeks,
-        "stale_count": stale_count,
+        "stale_count": base["library"]["stale_blocks"],
         "index_count": index_count,
         "data_dir": data_dir,
     }
@@ -333,4 +305,51 @@ def compute() -> StatsData:
             "this_week": tool_stats["tokens_in_week"] + tool_stats["tokens_out_week"],
             "submit_candidate_total": tool_stats["submit_tokens_total"],
         },
+    }
+
+
+def get_global_roi(data_dir: Path) -> dict[str, Any]:
+    """Aggregate session-level ROI across all historical SessionAnalytics files."""
+    from turnzero.analytics import SessionAnalytics, SessionEvent
+
+    session_dir = data_dir / "sessions"
+    if not session_dir.exists():
+        return {"total_turns_saved": 0, "total_minutes_saved": 0, "total_sessions": 0}
+
+    total_turns = 0.0
+    total_minutes = 0.0
+    total_injections = 0
+    total_misses = 0
+    session_count = 0
+
+    for path in session_dir.glob("*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            analytics = SessionAnalytics(
+                session_id=data["session_id"], start_time=data["start_time"]
+            )
+            analytics.events = [
+                SessionEvent(
+                    timestamp=e["timestamp"], event_type=e["type"], details=e["details"]
+                )
+                for e in data["events"]
+            ]
+            roi = analytics.calculate_roi()
+            total_turns += roi["turns_saved"]
+            total_minutes += roi["minutes_saved"]
+            total_injections += roi["injection_count"]
+            total_misses += roi["miss_count"]
+            session_count += 1
+        except Exception:
+            continue
+
+    return {
+        "total_turns_saved": round(total_turns, 1),
+        "total_minutes_saved": round(total_minutes, 1),
+        "total_injections": total_injections,
+        "total_misses": total_misses,
+        "total_sessions": session_count,
+        "historical_precision": total_injections / (total_injections + total_misses)
+        if (total_injections + total_misses) > 0
+        else 1.0,
     }

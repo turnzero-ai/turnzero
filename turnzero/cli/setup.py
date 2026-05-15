@@ -28,13 +28,6 @@ source_app = typer.Typer(
     no_args_is_help=True,
 )
 
-
-def _generate_hook(data_dir: Path) -> str:
-    """Load hook script template and substitute data directory path."""
-    template_path = Path(__file__).parent.parent / "templates" / "hooks" / "turnzero_hook.py.template"
-    return template_path.read_text(encoding="utf-8").replace("__DATA_DIR__", str(data_dir))
-
-
 _TURNZERO_MD_BLOCK = """\
 
 ## TurnZero — Expert & Personal Prior Injection
@@ -61,6 +54,16 @@ TurnZero MCP is installed. Follow these rules to establish a consistent **Portab
 
 _TURNZERO_MD_MARKER = "## TurnZero — Expert & Personal Prior Injection"
 _LEGACY_TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
+
+_DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
+
+
+def _generate_hook(data_dir: Path) -> str:
+    """Load hook script template and substitute data directory path."""
+    template_path = (
+        Path(__file__).parent.parent / "templates" / "hooks" / "turnzero_hook.py.template"
+    )
+    return template_path.read_text(encoding="utf-8").replace("__DATA_DIR__", str(data_dir))
 
 
 def _strip_turnzero_block(existing: str) -> str:
@@ -423,9 +426,6 @@ def _setup_hooks(claude_dir: Path, resolved: Path, with_hook: bool, force: bool)
         console.print("[dim]✓ Hook already registered in settings.json[/dim]")
 
 
-_DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
-
-
 def _render_demo_results(prompt: str) -> None:
     """Run retrieval for prompt and print what TurnZero would inject."""
     from turnzero.mcp_server import _list_suggested_blocks
@@ -485,6 +485,203 @@ def _render_demo_results(prompt: str) -> None:
             "  MCP server will inject priors normally when you start a session.\n"
             "  Run [cyan]turnzero verify[/cyan] to confirm retrieval is working."
         )
+
+
+def _sync_blocks(source_blocks: Path, dest_blocks: Path, force: bool) -> None:
+    """Copy/merge community blocks from wheel into data dir, then install personal prior."""
+    if source_blocks.exists():
+        if not dest_blocks.exists() or force:
+            dest_blocks.mkdir(parents=True, exist_ok=True)
+            for tier_dir in source_blocks.iterdir():
+                if not tier_dir.is_dir():
+                    continue
+                target_tier = dest_blocks / tier_dir.name
+                if (target_tier / ".registry-managed").exists():
+                    console.print(f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]")
+                    continue
+                target_tier.mkdir(parents=True, exist_ok=True)
+                for item in tier_dir.rglob("*"):
+                    if item.is_file():
+                        rel_path = item.relative_to(tier_dir)
+                        target_file = target_tier / rel_path
+                        target_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(item, target_file)
+            n = len(list(dest_blocks.rglob("*.yaml")))
+            console.print(f"[green]✓[/green] Synchronized {n} blocks → {dest_blocks}")
+        else:
+            n = len(list(dest_blocks.rglob("*.yaml")))
+            console.print(f"[dim]✓ {n} blocks already at {dest_blocks}[/dim]")
+    else:
+        console.print(
+            "[yellow]⚠[/yellow]  Source blocks not found — "
+            f"copy your blocks/ directory to [cyan]{dest_blocks}[/cyan] manually."
+        )
+    _install_personal_prior(dest_blocks)
+
+
+def _install_personal_prior(dest_blocks: Path) -> None:
+    """Copy turnzero-guide.yaml to personal/ if no personal priors exist yet."""
+    personal_dir = dest_blocks / "personal"
+    personal_dir.mkdir(parents=True, exist_ok=True)
+    if list(personal_dir.rglob("*.yaml")):
+        return
+    pkg_templates = Path(__file__).parent.parent / "data" / "templates"
+    repo_templates = Path(__file__).parent.parent.parent / "data" / "templates"
+    source_templates = pkg_templates if pkg_templates.exists() else repo_templates
+    template_src = source_templates / "personal" / "turnzero-guide.yaml"
+    template_dst = personal_dir / "turnzero-guide.yaml"
+    if template_src.exists() and not template_dst.exists():
+        shutil.copy2(template_src, template_dst)
+        console.print(
+            "[green]✓[/green] Installed starter personal prior [cyan]turnzero-guide[/cyan]\n"
+            "  Edit or replace it in [cyan]~/.turnzero/blocks/personal/[/cyan]"
+        )
+
+
+def _register_all_mcp_clients(mcp_bin: str, resolved: Path, force: bool) -> None:
+    """Register TurnZero MCP server in every detected AI client."""
+    claude_json = Path.home() / ".claude.json"
+    cfg: dict[str, Any] = {}
+    if claude_json.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            cfg = json.loads(claude_json.read_text(encoding="utf-8"))
+
+    mcp_entry: dict[str, Any] = {
+        "type": "stdio",
+        "command": mcp_bin,
+        "env": {"TURNZERO_DATA_DIR": str(resolved)},
+    }
+    servers = cfg.setdefault("mcpServers", {})
+    if "turnzero" not in servers or force:
+        servers["turnzero"] = mcp_entry
+        claude_json.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+        console.print(f"[green]✓[/green] MCP server registered in {claude_json}")
+    else:
+        console.print("[dim]✓ MCP server already registered in .claude.json[/dim]")
+
+    _setup_codex_mcp(mcp_bin, resolved, force, console)
+    _setup_cursor_mcp(mcp_bin, resolved, force, console)
+    _setup_claude_desktop_mcp(mcp_bin, resolved, force, console)
+    _setup_gemini_mcp(mcp_bin, resolved, force, console)
+
+
+def _write_all_md_files(force: bool) -> None:
+    """Write TurnZero instruction block to all AI client config files."""
+    _setup_claude_md(force, console)
+    _setup_codex_agents_md(force, console)
+    _setup_gemini_md(force, console)
+
+
+def _setup_telemetry_first_run(resolved: Path) -> None:
+    """Generate anonymous_id, set default domains, and show disclosure on first setup."""
+    import uuid as _uuid
+
+    from turnzero.config import (
+        DEFAULT_ACTIVE_DOMAINS,
+        load_config,
+        load_telemetry_config,
+        save_config,
+        save_telemetry_config,
+    )
+    from turnzero.embed import _is_onnx_available as _onnx_avail
+    from turnzero.telemetry import track_setup_completed
+
+    tel_cfg = load_telemetry_config(resolved)
+    first_run = not tel_cfg.get("anonymous_id")
+    if first_run:
+        tel_cfg["anonymous_id"] = str(_uuid.uuid4())
+        save_telemetry_config(resolved, tel_cfg)
+        app_cfg = load_config(resolved)
+        if app_cfg.get("active_domains") is None:
+            app_cfg["active_domains"] = list(DEFAULT_ACTIVE_DOMAINS)
+            save_config(resolved, app_cfg)
+
+    if first_run:
+        console.print()
+        console.print("[bold]Telemetry[/bold]")
+        console.print(
+            "TurnZero collects [bold]anonymous[/bold] usage data to understand how the tool is used.\n"
+            "\n"
+            "  Collected : event names, domain names, block counts, client version, OS type\n"
+            "  Never sent: prompts, prior content, file paths, API keys, personal data\n"
+            "\n"
+            "Telemetry is [bold]enabled by default[/bold]. To opt out now or any time:\n"
+            "\n"
+            "  [cyan]turnzero telemetry off[/cyan]\n"
+            "\n"
+            "Or set [cyan]TURNZERO_TELEMETRY=0[/cyan] in your environment.\n"
+            "Details: [cyan]https://github.com/turnzero-ai/turnzero#telemetry[/cyan]"
+        )
+
+    embedding_backend = "onnx" if _onnx_avail() else ("openai" if os.environ.get("OPENAI_API_KEY") else "none")
+    clients: list[str] = []
+    if (Path.home() / ".claude.json").exists():
+        with contextlib.suppress(Exception):
+            _cfg = json.loads((Path.home() / ".claude.json").read_text())
+            if "turnzero" in _cfg.get("mcpServers", {}):
+                clients.append("claude_code")
+    if (Path.home() / ".codex" / "config.toml").exists():
+        clients.append("codex")
+    if (Path.home() / ".gemini" / "settings.json").exists():
+        clients.append("gemini_cli")
+    track_setup_completed(embedding_backend=embedding_backend, clients_registered=clients)
+
+
+def _print_setup_summary(
+    embedding_ok: bool, index_ok: bool, resolved: Path, interactive: bool
+) -> None:
+    """Print final setup result with active domains and live demo."""
+    from turnzero.config import get_active_domains
+
+    console.print()
+    if embedding_ok and index_ok:
+        console.print("[bold green]✓ Setup complete![/bold green]\n")
+        active = get_active_domains(resolved)
+        if active is not None:
+            domains_str = "  ·  ".join(f"[cyan]{d}[/cyan]" for d in active)
+            console.print(
+                f"  Active domains ({len(active)}):  {domains_str}\n"
+                f"  [dim]Add more: [/dim][cyan]turnzero domain add <name>[/cyan]"
+                f"  [dim]Browse: [/dim][cyan]turnzero domain list[/cyan]\n"
+            )
+        _print_setup_finale(interactive)
+        console.print("\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code.")
+    else:
+        console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
+        console.print("Resolve the issues above, then re-run:\n\n  [cyan]turnzero setup --force[/cyan]")
+
+
+def _resolve_embedding_backend(resolved: Path, embedding_ok: bool) -> bool:
+    """Try Ollama and OpenAI fallbacks if ONNX failed. Returns updated embedding_ok."""
+    if embedding_ok:
+        return True
+
+    import httpx
+
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
+    try:
+        with httpx.Client(timeout=1.0) as client:
+            if client.get(f"{host}/api/tags").status_code == HTTP_OK:
+                result = subprocess.run(
+                    ["ollama", "list"], capture_output=True, text=True, timeout=5, check=False,
+                )
+                if "nomic-embed-text" in result.stdout:
+                    console.print("[green]✓[/green] Embedding backend: ollama (nomic-embed-text)")
+                    return True
+                console.print(
+                    "[yellow]⚠[/yellow] ollama running, but 'nomic-embed-text' model missing.\n"
+                    "  Run: [cyan]ollama pull nomic-embed-text[/cyan]"
+                )
+    except Exception:
+        pass
+
+    if os.environ.get("OPENAI_API_KEY"):
+        console.print("[green]✓[/green] Embedding backend: OpenAI API (fallback)")
+        return True
+
+    console.print("\n[red]✗ No embedding backend available.[/red]")
+    console.print("  Setup will continue, but querying will fail until resolved.")
+    return False
 
 
 def _print_setup_finale(interactive: bool) -> None:
@@ -564,7 +761,7 @@ def setup(
     console.print("\n[bold]TurnZero Setup[/bold]\n")
     console.print(f"Data directory: [cyan]{resolved}[/cyan]\n")
 
-    # Persist OpenAI key if provided
+    # ── 0. Persist OpenAI key ─────────────────────────────────────────────
     if openai_key:
         key_file = resolved / "openai_key"
         resolved.mkdir(parents=True, exist_ok=True)
@@ -576,239 +773,37 @@ def setup(
         os.environ["OPENAI_API_KEY"] = (resolved / "openai_key").read_text().strip()
         console.print("[dim]✓ OpenAI API key loaded from previous setup[/dim]\n")
 
-    # ── 1. Copy blocks ────────────────────────────────────────────────────
-    # In refactored structure, turnzero/cli/setup.py is .
-    # turnzero/ is .parent
-    # turnzero/data/blocks is .parent / data / blocks
-    pkg_blocks = Path(__file__).parent.parent / "data" / "blocks"
-    # Repo blocks is .parent.parent.parent / data / blocks
-    repo_blocks = Path(__file__).parent.parent.parent / "data" / "blocks"
-    source_blocks = pkg_blocks if pkg_blocks.exists() else repo_blocks
+    # ── 1. Copy blocks + personal prior ──────────────────────────────────
+    source_blocks = (
+        Path(__file__).parent.parent / "data" / "blocks"
+        if (Path(__file__).parent.parent / "data" / "blocks").exists()
+        else Path(__file__).parent.parent.parent / "data" / "blocks"
+    )
     dest_blocks = resolved / "blocks"
+    _sync_blocks(source_blocks, dest_blocks, force)
 
-    if source_blocks.exists():
-        if not dest_blocks.exists() or force:
-            dest_blocks.mkdir(parents=True, exist_ok=True)
-            # Only sync tiers that are present in the source (e.g. 'community')
-            # This preserves 'personal' and 'local' tiers created by the user.
-            # We use a merge strategy instead of shutil.rmtree to ensure
-            # user-added blocks in these tiers are not lost.
-            for tier_dir in source_blocks.iterdir():
-                if tier_dir.is_dir():
-                    target_tier = dest_blocks / tier_dir.name
-                    # Skip if the target directory is managed by a registry
-                    if (target_tier / ".registry-managed").exists():
-                        console.print(
-                            f"[dim]  Skipping registry-managed tier: {tier_dir.name}[/dim]"
-                        )
-                        continue
-
-                    target_tier.mkdir(parents=True, exist_ok=True)
-                    # Merge contents: copy new/updated files, leave others
-                    for item in tier_dir.rglob("*"):
-                        if item.is_file():
-                            rel_path = item.relative_to(tier_dir)
-                            target_file = target_tier / rel_path
-                            target_file.parent.mkdir(parents=True, exist_ok=True)
-                            shutil.copy2(item, target_file)
-
-            n = len(list(dest_blocks.rglob("*.yaml")))
-            console.print(f"[green]✓[/green] Synchronized {n} blocks → {dest_blocks}")
-        else:
-            n = len(list(dest_blocks.rglob("*.yaml")))
-            console.print(f"[dim]✓ {n} blocks already at {dest_blocks}[/dim]")
-    else:
-        console.print(
-            "[yellow]⚠[/yellow]  Source blocks not found — "
-            "copy your blocks/ directory to [cyan]{dest_blocks}[/cyan] manually."
-        )
-
-    # ── 1b. Install starter personal prior (first install only) ──────────
-    personal_dir = dest_blocks / "personal"
-    personal_dir.mkdir(parents=True, exist_ok=True)
-    # Check recursively for any YAML files to handle domain subdirectories
-    existing_personal = list(personal_dir.rglob("*.yaml"))
-    if not existing_personal:
-        pkg_templates = Path(__file__).parent.parent / "data" / "templates"
-        repo_templates = Path(__file__).parent.parent.parent / "data" / "templates"
-        source_templates = pkg_templates if pkg_templates.exists() else repo_templates
-        template_src = source_templates / "personal" / "turnzero-guide.yaml"
-        template_dst = personal_dir / "turnzero-guide.yaml"
-        if template_src.exists() and not template_dst.exists():
-            shutil.copy2(template_src, template_dst)
-            console.print(
-                "[green]✓[/green] Installed starter personal prior [cyan]turnzero-guide[/cyan]\n"
-                "  Edit or replace it in [cyan]~/.turnzero/blocks/personal/[/cyan]"
-            )
-
-    # ── 2. Install ONNX embedding backend ────────────────────────────────────
+    # ── 2. Embedding backend ──────────────────────────────────────────────
     console.print()
-    embedding_ok = _setup_embedding_backend(resolved)
+    embedding_ok = _resolve_embedding_backend(resolved, _setup_embedding_backend(resolved))
 
-    # Fallback 1: Ollama
-    if not embedding_ok:
-        import httpx
-
-        host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-        try:
-            with httpx.Client(timeout=1.0) as client:
-                if client.get(f"{host}/api/tags").status_code == HTTP_OK:
-                    result = subprocess.run(
-                        ["ollama", "list"],
-                        capture_output=True, text=True, timeout=5, check=False,
-                    )
-                    if "nomic-embed-text" in result.stdout:
-                        console.print("[green]✓[/green] Embedding backend: ollama (nomic-embed-text)")
-                        embedding_ok = True
-                    else:
-                        console.print(
-                            "[yellow]⚠[/yellow] ollama running, but 'nomic-embed-text' model missing.\n"
-                            "  Run: [cyan]ollama pull nomic-embed-text[/cyan]"
-                        )
-        except Exception:
-            pass
-
-    # Fallback 2: accept OpenAI if user already has it configured
-    if not embedding_ok and os.environ.get("OPENAI_API_KEY"):
-        console.print("[green]✓[/green] Embedding backend: OpenAI API (fallback)")
-        embedding_ok = True
-
-    if not embedding_ok:
-        console.print("\n[red]✗ No embedding backend available.[/red]")
-        console.print("  Setup will continue, but querying will fail until resolved.")
-
-    # ── 3. Build index (or copy pre-built) ────────────────────────────────
+    # ── 3. Index ──────────────────────────────────────────────────────────
     console.print()
     index_ok = _setup_index(resolved, dest_blocks, force, embedding_ok)
 
-    # ── 4. Write hook script (optional) ──────────────────────────────────
+    # ── 4. Hook (optional) ────────────────────────────────────────────────
     console.print()
     _setup_hooks(claude_dir, resolved, with_hook, force)
 
-    # ── 6. Register MCP in ~/.claude.json ────────────────────────────────
-    claude_json = Path.home() / ".claude.json"
-    cfg: dict[str, Any] = {}
-    if claude_json.exists():
-        with contextlib.suppress(json.JSONDecodeError):
-            cfg = json.loads(claude_json.read_text(encoding="utf-8"))
-
+    # ── 5. MCP registration + instruction files ──────────────────────────
     mcp_bin = str(Path(sys.executable).parent / "turnzero-mcp")
-    mcp_entry = {
-        "type": "stdio",
-        "command": mcp_bin,
-        "env": {"TURNZERO_DATA_DIR": str(resolved)},
-    }
-    servers = cfg.setdefault("mcpServers", {})
-    if "turnzero" not in servers or force:
-        servers["turnzero"] = mcp_entry
-        claude_json.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
-        console.print(f"[green]✓[/green] MCP server registered in {claude_json}")
-    else:
-        console.print("[dim]✓ MCP server already registered in .claude.json[/dim]")
+    _register_all_mcp_clients(mcp_bin, resolved, force)
+    _write_all_md_files(force)
 
-    # ── 6b. Register MCP in ~/.codex/config.toml (Codex CLI) ─────────────
-    _setup_codex_mcp(mcp_bin, resolved, force, console)
+    # ── 6. Telemetry ──────────────────────────────────────────────────────
+    _setup_telemetry_first_run(resolved)
 
-    # ── 6c. Register MCP in Cursor ──────────────────────────────────────
-    _setup_cursor_mcp(mcp_bin, resolved, force, console)
-
-    # ── 6d. Register MCP in Claude Desktop ──────────────────────────────
-    _setup_claude_desktop_mcp(mcp_bin, resolved, force, console)
-
-    # ── 6e. Register MCP in Gemini CLI ──────────────────────────────────
-    _setup_gemini_mcp(mcp_bin, resolved, force, console)
-
-    # ── 6f. Write global instruction rules (makes AI invoke tools reliably) ─
-    _setup_claude_md(force, console)
-    _setup_codex_agents_md(force, console)
-    _setup_gemini_md(force, console)
-
-    # ── 7. Telemetry disclosure + anonymous_id generation ─────────────────
-    import uuid as _uuid
-
-    from turnzero.config import (
-        DEFAULT_ACTIVE_DOMAINS,
-        load_config,
-        load_telemetry_config,
-        save_config,
-        save_telemetry_config,
-    )
-    from turnzero.telemetry import track_setup_completed
-
-    tel_cfg = load_telemetry_config(resolved)
-    first_run = not tel_cfg.get("anonymous_id")
-    if first_run:
-        tel_cfg["anonymous_id"] = str(_uuid.uuid4())
-        save_telemetry_config(resolved, tel_cfg)
-        # Write default domain set so new users get curated expert prior coverage
-        app_cfg = load_config(resolved)
-        if app_cfg.get("active_domains") is None:
-            app_cfg["active_domains"] = list(DEFAULT_ACTIVE_DOMAINS)
-            save_config(resolved, app_cfg)
-
-    # Show disclosure only on first setup — prominent, not hidden.
-    if first_run:
-        console.print()
-        console.print("[bold]Telemetry[/bold]")
-        console.print(
-            "TurnZero collects [bold]anonymous[/bold] usage data to understand how the tool is used.\n"
-            "\n"
-            "  Collected : event names, domain names, block counts, client version, OS type\n"
-            "  Never sent: prompts, prior content, file paths, API keys, personal data\n"
-            "\n"
-            "Telemetry is [bold]enabled by default[/bold]. To opt out now or any time:\n"
-            "\n"
-            "  [cyan]turnzero telemetry off[/cyan]\n"
-            "\n"
-            "Or set [cyan]TURNZERO_TELEMETRY=0[/cyan] in your environment.\n"
-            "Details: [cyan]https://github.com/turnzero-ai/turnzero#telemetry[/cyan]"
-        )
-
-    from turnzero.embed import _is_onnx_available as _onnx_avail
-
-    if _onnx_avail():
-        embedding_backend = "onnx"
-    elif os.environ.get("OPENAI_API_KEY"):
-        embedding_backend = "openai"
-    else:
-        embedding_backend = "none"
-    clients: list[str] = []
-    if (Path.home() / ".claude.json").exists():
-        with contextlib.suppress(Exception):
-            _cfg = json.loads((Path.home() / ".claude.json").read_text())
-            if "turnzero" in _cfg.get("mcpServers", {}):
-                clients.append("claude_code")
-    if (Path.home() / ".codex" / "config.toml").exists():
-        clients.append("codex")
-    if (Path.home() / ".gemini" / "settings.json").exists():
-        clients.append("gemini_cli")
-    track_setup_completed(
-        embedding_backend=embedding_backend, clients_registered=clients
-    )
-
-    # ── 8. Summary ────────────────────────────────────────────────────────
-    console.print()
-    if embedding_ok and index_ok:
-        console.print("[bold green]✓ Setup complete![/bold green]\n")
-        # Show active domains so user knows what's loaded
-        from turnzero.config import get_active_domains
-        active = get_active_domains(resolved)
-        if active is not None:
-            domains_str = "  ·  ".join(f"[cyan]{d}[/cyan]" for d in active)
-            console.print(
-                f"  Active domains ({len(active)}):  {domains_str}\n"
-                f"  [dim]Add more: [/dim][cyan]turnzero domain add <name>[/cyan]"
-                f"  [dim]Browse: [/dim][cyan]turnzero domain list[/cyan]\n"
-            )
-        _print_setup_finale(interactive)
-        console.print(
-            "\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code."
-        )
-    else:
-        console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
-        console.print(
-            "Resolve the issues above, then re-run:\n\n  [cyan]turnzero setup --force[/cyan]"
-        )
+    # ── 7. Summary ────────────────────────────────────────────────────────
+    _print_setup_summary(embedding_ok, index_ok, resolved, interactive)
 
 
 def feedback(

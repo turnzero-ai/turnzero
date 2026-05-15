@@ -12,13 +12,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True)
-class SafetyResult:
-    safe: bool
-    reason_code: str | None
-    detail: str | None
-
+# ---------------------------------------------------------------------------
+# Compiled regex patterns — module constants, defined before any function.
+# ---------------------------------------------------------------------------
 
 _HIJACK = re.compile(
     r"ignore\s+(?:previous|all|prior|above|earlier)\s+instructions"
@@ -76,13 +72,29 @@ _UNSAFE_URL = re.compile(
     re.IGNORECASE,
 )
 
+_NEGATIONS = frozenset({"not", "never", "don't", "dont", "avoid", "prevent"})
+
+
+# ---------------------------------------------------------------------------
+# Domain types
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SafetyResult:
+    safe: bool
+    reason_code: str | None
+    detail: str | None
+
+
+# ---------------------------------------------------------------------------
+# Functions
+# ---------------------------------------------------------------------------
+
 
 def _has_secret_exfil(text: str) -> bool:
     """Return True only when exfil verb is not negated in the same clause."""
-    _NEGATIONS = frozenset({"not", "never", "don't", "dont", "avoid", "prevent"})
-
     for m in _EXFIL_ACTION.finditer(text):
-        # Check up to 4 tokens before the match for negation
         prefix = text[max(0, m.start() - 25) : m.start()].lower().split()
         if not any(neg in prefix[-4:] for neg in _NEGATIONS):
             return True
