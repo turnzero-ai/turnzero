@@ -62,6 +62,25 @@ turnzero harvest
 pytest
 ```
 
+## Workflow
+
+### Plan before multi-step work
+Enter plan mode (`EnterPlanMode`) for any task spanning 3+ files, touching the MCP contract, or making architectural decisions. Write the plan, get alignment, then implement. Don't start coding first.
+
+### Use subagents for exploration
+Delegate to Explore or general-purpose agents for: codebase audits, finding all callers of a function, checking file structure violations, researching across many files. Keeps main context clean for implementation.
+
+### Capture corrections immediately
+Any mistake the user corrects → call `submit_candidate` immediately, before the next step. Don't defer to end of session. TurnZero is the lessons system — use it.
+
+### Stage commits explicitly
+Never `git add -A` or `git add .`. Always stage by filename. Run `git status --short` and verify every staged path before committing. `data/` contains both repo assets and runtime artifacts.
+
+### Index rebuild procedure
+Never `TURNZERO_DATA_DIR=data turnzero index build` — falls back to Ollama silently. Always use isolated `/tmp` build dir with Python 3.12. See `internal/PROJECT_STATE.md` → Known Build Constraints.
+
+---
+
 ## Key Design Constraints
 
 - **No raw prompts stored ever.** Only embeddings persist. Raw text is discarded immediately after embedding.
