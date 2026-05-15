@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -231,17 +232,37 @@ _similarity_override: Any = None
 # Query
 # ---------------------------------------------------------------------------
 
-DOMAIN_BOOST = 1.5  # Heavy boost for matching the detected domain
-INTENT_BOOST = 1.2  # Boost for matching intent
-PROJECT_AFFINITY_BOOST = 1.25  # Boost for blocks previously used in this project
-# Penalty when no domain is detected AND block has no keyword overlap with the prompt.
-# Prevents domain-specific blocks (e.g. nextjs-seo-review) from injecting into
-# unrelated sessions where detect_domain returns None (no filesystem or keyword signal).
-# 0.6x makes it impossible to clear the 0.70 threshold (would need raw score > 1.0).
+# Scoring constants — tuned on the validation set; see tests/validation_set.json.
+# DOMAIN_BOOST: heavy bias toward the detected domain prevents multi-domain noise
+# injection (e.g. nextjs block firing in a pure python session).
+DOMAIN_BOOST = 1.5
+# INTENT_BOOST: smaller nudge so intent match improves ranking without hard-blocking
+# near-misses where the intent label is ambiguous (build vs debug overlap frequently).
+INTENT_BOOST = 1.2
+# PROJECT_AFFINITY_BOOST: reward blocks the user has injected before in this project.
+# Kept below DOMAIN_BOOST so a stale affinity never overrides a clear domain miss.
+PROJECT_AFFINITY_BOOST = 1.25
+# DOMAIN_OVERLAP_PENALTY: applied when detect_domain returns None AND the block has
+# no tag/domain keyword overlap with the prompt. 0.6x makes it impossible to clear
+# the 0.70 threshold without raw score > 1.17 — effectively a hard filter.
 DOMAIN_OVERLAP_PENALTY = 0.6
 MAX_PERSONAL_WEIGHT = 2500  # Token budget for identity injection
 IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
 HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
+
+
+@dataclass(frozen=True)
+class QueryContext:
+    """Prepared context for a single query call — avoids re-computing shared values."""
+
+    prompt: str
+    prompt_embedding: Any
+    prompt_lower: str
+    intent: str
+    domain: str | None
+    affinity: dict[str, Any]
+    use_override: bool
+    effective_threshold: float
 
 
 def get_identity_context(
@@ -261,7 +282,7 @@ def get_identity_context(
 
     Returns (blocks, limit_exceeded).
     """
-    from turnzero.state import _get_project_hash
+    from turnzero.session import _get_project_hash
 
     exclude_ids = exclude_ids or set()
     personal_results: list[tuple[Block, float]] = []
@@ -468,6 +489,58 @@ Respond with ONLY the numeric score, no prose."""
     return reranked
 
 
+def _prepare_query_context(
+    prompt: str,
+    threshold: float,
+    project_root: Path | None,
+) -> QueryContext:
+    """Prepare all shared values for a query call in one place."""
+    from turnzero.embed import embed
+    from turnzero.session import get_project_affinity
+
+    use_override = _similarity_override is not None
+    return QueryContext(
+        prompt=prompt,
+        prompt_embedding=embed(prompt),
+        prompt_lower=prompt.lower(),
+        intent=classify_intent(prompt),
+        domain=detect_domain(prompt, project_root=project_root),
+        affinity=get_project_affinity(project_root) if project_root else {},
+        use_override=use_override,
+        effective_threshold=min(threshold, 0.55) if use_override else threshold,
+    )
+
+
+def _filter_and_score(
+    index: list[IndexEntry],
+    ctx: QueryContext,
+    blocks: dict[str, Block],
+    exclude_block_ids: set[str],
+    strict_intent: bool,
+) -> list[tuple[IndexEntry, float]]:
+    """Score every index entry against the query context, filtering exclusions."""
+    scored: list[tuple[IndexEntry, float]] = []
+    for entry in index:
+        if entry.block_id in exclude_block_ids:
+            continue
+        if strict_intent and entry.intent != ctx.intent:
+            continue
+        score = _score_entry(
+            entry,
+            ctx.prompt,
+            ctx.prompt_embedding,
+            ctx.prompt_lower,
+            ctx.intent,
+            ctx.domain,
+            ctx.affinity,
+            ctx.use_override,
+            blocks,
+        )
+        if score is not None:
+            scored.append((entry, score))
+    return scored
+
+
 def query(
     prompt: str,
     index: list[IndexEntry],
@@ -486,34 +559,11 @@ def query(
     1. Return ALL blocks with a final score >= 0.90 (High Confidence).
     2. If fewer than top_k blocks are found, fill up to top_k with next best (>= threshold).
     """
-    from turnzero.embed import embed
-    from turnzero.state import get_project_affinity
-
-    exclude_block_ids = exclude_block_ids or set()
-    prompt_embedding = embed(prompt)
-    prompt_lower = prompt.lower()
-    intent = classify_intent(prompt)
-    domain = detect_domain(prompt, project_root=project_root)
-    use_override = _similarity_override is not None
-    effective_threshold = min(threshold, 0.55) if use_override else threshold
-    affinity: dict[str, Any] = get_project_affinity(project_root) if project_root else {}
-
-    scored: list[tuple[IndexEntry, float]] = []
-    for entry in index:
-        if entry.block_id in exclude_block_ids:
-            continue
-        if strict_intent and entry.intent != intent:
-            continue
-        score = _score_entry(
-            entry, prompt, prompt_embedding, prompt_lower,
-            intent, domain, affinity, use_override, blocks,
-        )
-        if score is not None:
-            scored.append((entry, score))
-
-    results = _select_results(scored, effective_threshold, top_k, context_weight, blocks)
-
+    ctx = _prepare_query_context(prompt, threshold, project_root)
+    scored = _filter_and_score(
+        index, ctx, blocks, exclude_block_ids or set(), strict_intent
+    )
+    results = _select_results(scored, ctx.effective_threshold, top_k, context_weight, blocks)
     if rerank_model:
         results = rerank_with_llm(prompt, results, model=rerank_model)
-
     return _resolve_conflicts(results, context_weight)

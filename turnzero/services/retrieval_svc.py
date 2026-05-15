@@ -19,7 +19,7 @@ from turnzero.formatters import block_fmt
 from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.repositories.index_repo import IndexEntry, load_index
 from turnzero.retrieval import query as _query
-from turnzero.state import (
+from turnzero.session import (
     clear_session_injections,
     get_session_injections,
     record_project_affinity,

@@ -216,7 +216,7 @@ def submit(
 
     project_hash = None
     if is_personal and domain != "global" and project_root:
-        from turnzero.state import _get_project_hash
+        from turnzero.session import _get_project_hash
         project_hash = _get_project_hash(Path(project_root))
 
     block = _build_block_dict(

@@ -283,6 +283,146 @@ def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> N
     _write_md_file(target_dir / "GEMINI.md", _TURNZERO_MD_BLOCK, force, con)
 
 
+def _setup_embedding_backend(resolved: Path) -> bool:
+    """Install ONNX deps and download model if needed. Returns True when ready."""
+    import subprocess
+    import sys
+
+    from turnzero.embed import _is_onnx_available, download_onnx_model
+
+    onnx_model_dir = resolved / "models" / "nomic-embed-text-v1.5"
+    onnx_model_ready = (onnx_model_dir / "onnx" / "model.onnx").exists() and (
+        onnx_model_dir / "tokenizer.json"
+    ).exists()
+
+    if not _is_onnx_available():
+        console.print("Installing ONNX embedding backend…")
+        install_result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "onnxruntime>=1.18", "tokenizers>=0.19"],
+            capture_output=True, text=True, check=False,
+        )
+        if install_result.returncode == 0:
+            import importlib as _il
+            _il.invalidate_caches()
+            console.print("[green]✓[/green] onnxruntime + tokenizers installed")
+        else:
+            import platform
+            console.print("[red]✗ ONNX backend installation failed.[/red]")
+            is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
+            if is_intel_mac:
+                console.print(
+                    "  [yellow]Note:[/yellow] Intel Macs often lack ONNX wheels for the very latest Python versions.\n"
+                    "  [bold]Recommended fix:[/bold] Install TurnZero using [cyan]Python 3.13[/cyan] or [cyan]3.12[/cyan].\n"
+                    "  Or, use [bold]Ollama[/bold] as your local backend instead."
+                )
+            else:
+                console.print("  Run manually: [cyan]pip install onnxruntime tokenizers[/cyan]")
+            if install_result.stderr:
+                console.print(f"[dim]{install_result.stderr.strip()}[/dim]")
+
+    if _is_onnx_available():
+        if onnx_model_ready:
+            console.print("[dim]✓ ONNX model already downloaded[/dim]")
+            return True
+        console.print("Downloading nomic-embed-text-v1.5 ONNX model (~520 MB, one-time)…")
+        try:
+            download_onnx_model(onnx_model_dir)
+            console.print("[green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)")
+            return True
+        except Exception as exc:
+            console.print(f"[red]✗ Model download failed:[/red] {exc}")
+            console.print("  Check your internet connection and re-run [cyan]turnzero setup[/cyan].")
+    else:
+        console.print(
+            "[yellow]⚠[/yellow] ONNX deps unavailable after install attempt.\n"
+            "  Re-run [cyan]turnzero setup[/cyan] in a fresh shell."
+        )
+    return False
+
+
+def _setup_index(resolved: Path, dest_blocks: Path, force: bool, embedding_ok: bool) -> bool:
+    """Copy or build the block index. Returns True when index is ready."""
+    import subprocess
+    import sys
+
+    from turnzero.config import get_bundled_index_path
+
+    index_path = resolved / "index.jsonl"
+    bundled_index = get_bundled_index_path()
+
+    if bundled_index.exists() and bundled_index != index_path:
+        if not index_path.exists() or force:
+            console.print("Installing pre-built embedding index…")
+            shutil.copy2(bundled_index, index_path)
+            bundled_community = bundled_index.parent / "index_community.jsonl"
+            if bundled_community.exists():
+                shutil.copy2(bundled_community, resolved / "index_community.jsonl")
+            console.print("[green]✓[/green] Pre-built index installed")
+        else:
+            console.print("[dim]✓ Index already exists[/dim]")
+        return True
+
+    if embedding_ok and dest_blocks.exists():
+        if not index_path.exists() or force:
+            console.print("Building embedding index from scratch…")
+            env = os.environ.copy()
+            env["TURNZERO_DATA_DIR"] = str(resolved)
+            try:
+                subprocess.run(
+                    [sys.executable, "-m", "turnzero", "index", "build"],
+                    env=env, check=True,
+                )
+                console.print("[green]✓[/green] Index built")
+            except subprocess.CalledProcessError:
+                console.print("[red]✗ Index build failed — check embedding backend is ready[/red]")
+                return False
+        else:
+            console.print("[dim]✓ Index already exists[/dim]")
+        return True
+
+    console.print(
+        "[dim]Skipping index build. Once embedding backend is ready, run:[/dim]\n"
+        f"  [cyan]TURNZERO_DATA_DIR={resolved} turnzero index build[/cyan]"
+    )
+    return False
+
+
+def _setup_hooks(claude_dir: Path, resolved: Path, with_hook: bool, force: bool) -> None:
+    """Write hook script and register it in settings.json if --with-hook."""
+    if not with_hook:
+        console.print(
+            "[dim]Hook not installed (MCP server is enough for most clients — use --with-hook for Claude Code guarantee)[/dim]"
+        )
+        return
+
+    hook_path = claude_dir / "turnzero-hook.py"
+    if not hook_path.exists() or force:
+        hook_path.write_text(_generate_hook(resolved), encoding="utf-8")
+        hook_path.chmod(0o755)
+        console.print(f"[green]✓[/green] Hook written → {hook_path}")
+    else:
+        console.print(f"[dim]✓ Hook already exists ({hook_path}) — use --force to regenerate[/dim]")
+
+    settings_path = claude_dir / "settings.json"
+    settings: dict[str, Any] = {}
+    if settings_path.exists():
+        with contextlib.suppress(json.JSONDecodeError):
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+
+    hook_command = f"{sys.executable} {hook_path}"
+    hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
+    hooks = settings.setdefault("hooks", {})
+    submit_hooks = hooks.setdefault("UserPromptSubmit", [{"hooks": []}])
+    hook_list = submit_hooks[0].setdefault("hooks", [])
+    already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
+    if not already:
+        hook_list.append(hook_entry)
+        settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
+        console.print(f"[green]✓[/green] Hook registered in {settings_path}")
+    else:
+        console.print("[dim]✓ Hook already registered in settings.json[/dim]")
+
+
 _DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
 
 
@@ -503,83 +643,7 @@ def setup(
 
     # ── 2. Install ONNX embedding backend ────────────────────────────────────
     console.print()
-    from turnzero.embed import (
-        _is_onnx_available,
-        download_onnx_model,
-    )
-
-    onnx_model_dir = resolved / "models" / "nomic-embed-text-v1.5"
-    onnx_model_ready = (onnx_model_dir / "onnx" / "model.onnx").exists() and (
-        onnx_model_dir / "tokenizer.json"
-    ).exists()
-
-    embedding_ok = False
-
-    # 2a. Ensure onnxruntime + tokenizers are installed
-    if not _is_onnx_available():
-        console.print("Installing ONNX embedding backend…")
-        install_result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "onnxruntime>=1.18",
-                "tokenizers>=0.19",
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if install_result.returncode == 0:
-            import importlib as _importlib
-
-            _importlib.invalidate_caches()
-            console.print("[green]✓[/green] onnxruntime + tokenizers installed")
-        else:
-            console.print("[red]✗ ONNX backend installation failed.[/red]")
-
-            # Check for common platform mismatch (Intel Mac + New Python)
-            is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
-            if is_intel_mac:
-                console.print(
-                    "  [yellow]Note:[/yellow] Intel Macs often lack ONNX wheels for the very latest Python versions.\n"
-                    "  [bold]Recommended fix:[/bold] Install TurnZero using [cyan]Python 3.13[/cyan] or [cyan]3.12[/cyan].\n"
-                    "  Or, use [bold]Ollama[/bold] as your local backend instead."
-                )
-            else:
-                console.print(
-                    "  Run manually: [cyan]pip install onnxruntime tokenizers[/cyan]"
-                )
-
-            if install_result.stderr:
-                console.print(f"[dim]{install_result.stderr.strip()}[/dim]")
-
-    # 2b. Download model files if not present
-    if _is_onnx_available():
-        if onnx_model_ready:
-            console.print("[dim]✓ ONNX model already downloaded[/dim]")
-            embedding_ok = True
-        else:
-            console.print(
-                "Downloading nomic-embed-text-v1.5 ONNX model (~520 MB, one-time)…"
-            )
-            try:
-                download_onnx_model(onnx_model_dir)
-                console.print(
-                    "[green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)"
-                )
-                embedding_ok = True
-            except Exception as exc:
-                console.print(f"[red]✗ Model download failed:[/red] {exc}")
-                console.print(
-                    "  Check your internet connection and re-run [cyan]turnzero setup[/cyan]."
-                )
-    else:
-        console.print(
-            "[yellow]⚠[/yellow] ONNX deps unavailable after install attempt.\n"
-            "  Re-run [cyan]turnzero setup[/cyan] in a fresh shell."
-        )
+    embedding_ok = _setup_embedding_backend(resolved)
 
     # Fallback 1: Ollama
     if not embedding_ok:
@@ -589,18 +653,12 @@ def setup(
         try:
             with httpx.Client(timeout=1.0) as client:
                 if client.get(f"{host}/api/tags").status_code == HTTP_OK:
-                    # Check for model
                     result = subprocess.run(
                         ["ollama", "list"],
-                        capture_output=True,
-                        text=True,
-                        timeout=5,
-                        check=False,
+                        capture_output=True, text=True, timeout=5, check=False,
                     )
                     if "nomic-embed-text" in result.stdout:
-                        console.print(
-                            "[green]✓[/green] Embedding backend: ollama (nomic-embed-text)"
-                        )
+                        console.print("[green]✓[/green] Embedding backend: ollama (nomic-embed-text)")
                         embedding_ok = True
                     else:
                         console.print(
@@ -621,90 +679,11 @@ def setup(
 
     # ── 3. Build index (or copy pre-built) ────────────────────────────────
     console.print()
-    index_path = resolved / "index.jsonl"
-    index_ok = False
-
-    # Check for bundled index first to avoid 20-25min build
-    from turnzero.config import get_bundled_index_path
-
-    bundled_index = get_bundled_index_path()
-
-    if bundled_index.exists() and bundled_index != index_path:
-        if not index_path.exists() or force:
-            console.print("Installing pre-built embedding index…")
-            shutil.copy2(bundled_index, index_path)
-            # Also copy per-source index if it exists in bundle (usually index_community.jsonl)
-            bundled_community = bundled_index.parent / "index_community.jsonl"
-            if bundled_community.exists():
-                shutil.copy2(bundled_community, resolved / "index_community.jsonl")
-
-            console.print("[green]✓[/green] Pre-built index installed")
-            index_ok = True
-        else:
-            console.print("[dim]✓ Index already exists[/dim]")
-            index_ok = True
-    elif embedding_ok and dest_blocks.exists():
-        if not index_path.exists() or force:
-            console.print("Building embedding index from scratch…")
-            env = os.environ.copy()
-            env["TURNZERO_DATA_DIR"] = str(resolved)
-            try:
-                subprocess.run(
-                    [sys.executable, "-m", "turnzero", "index", "build"],
-                    env=env,
-                    check=True,
-                )
-                console.print("[green]✓[/green] Index built")
-                index_ok = True
-            except subprocess.CalledProcessError:
-                console.print(
-                    "[red]✗ Index build failed — check embedding backend is ready[/red]"
-                )
-        else:
-            console.print("[dim]✓ Index already exists[/dim]")
-            index_ok = True
-    else:
-        console.print(
-            "[dim]Skipping index build. Once embedding backend is ready, run:[/dim]\n"
-            f"  [cyan]TURNZERO_DATA_DIR={resolved} turnzero index build[/cyan]"
-        )
+    index_ok = _setup_index(resolved, dest_blocks, force, embedding_ok)
 
     # ── 4. Write hook script (optional) ──────────────────────────────────
     console.print()
-    if with_hook:
-        hook_path = claude_dir / "turnzero-hook.py"
-        if not hook_path.exists() or force:
-            hook_path.write_text(_generate_hook(resolved), encoding="utf-8")
-            hook_path.chmod(0o755)
-            console.print(f"[green]✓[/green] Hook written → {hook_path}")
-        else:
-            console.print(
-                f"[dim]✓ Hook already exists ({hook_path}) — use --force to regenerate[/dim]"
-            )
-
-        # ── 5. Register hook in ~/.claude/settings.json ───────────────────
-        settings_path = claude_dir / "settings.json"
-        settings: dict[str, Any] = {}
-        if settings_path.exists():
-            with contextlib.suppress(json.JSONDecodeError):
-                settings = json.loads(settings_path.read_text(encoding="utf-8"))
-
-        hook_command = f"{sys.executable} {hook_path}"
-        hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
-        hooks = settings.setdefault("hooks", {})
-        submit_hooks = hooks.setdefault("UserPromptSubmit", [{"hooks": []}])
-        hook_list = submit_hooks[0].setdefault("hooks", [])
-        already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
-        if not already:
-            hook_list.append(hook_entry)
-            settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-            console.print(f"[green]✓[/green] Hook registered in {settings_path}")
-        else:
-            console.print("[dim]✓ Hook already registered in settings.json[/dim]")
-    else:
-        console.print(
-            "[dim]Hook not installed (MCP server is enough for most clients — use --with-hook for Claude Code guarantee)[/dim]"
-        )
+    _setup_hooks(claude_dir, resolved, with_hook, force)
 
     # ── 6. Register MCP in ~/.claude.json ────────────────────────────────
     claude_json = Path.home() / ".claude.json"

@@ -6,7 +6,7 @@ import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 import numpy as np
 
@@ -21,9 +21,96 @@ _ONNX_MODEL_FILES: list[tuple[str, str]] = [
     ("tokenizer.json", "tokenizer.json"),
 ]
 
-# Mutable cache dict avoids module-level global reassignment (PLW0603).
-# Values are Any because onnxruntime/tokenizers are optional deps.
-_onnx_cache: dict[str, Any] = {}  # keys: "session", "tokenizer"
+
+@runtime_checkable
+class EmbeddingBackend(Protocol):
+    """Protocol satisfied by any embedding backend."""
+
+    def embed(self, text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+        ...
+
+    def is_available(self) -> bool:
+        ...
+
+
+class OnnxBackend:
+    """ONNX nomic-embed-text-v1.5 backend.
+
+    Keeps model and tokenizer as instance attributes so tests can reset the
+    cache between runs (unlike a module-level dict that persists across tests).
+    """
+
+    def __init__(self) -> None:
+        # Keys: "session", "tokenizer" — populated on first call
+        self._cache: dict[str, Any] = {}
+
+    def is_available(self) -> bool:
+        try:
+            import onnxruntime  # noqa: F401
+            from tokenizers import Tokenizer  # noqa: F401
+
+            return True
+        except ImportError:
+            return False
+
+    def embed(self, text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+        try:
+            import onnxruntime as ort
+            from tokenizers import Tokenizer
+        except ImportError as exc:
+            raise RuntimeError(
+                f"ONNX deps not installed: {exc}. Run: pip install 'turnzero[local]'"
+            ) from exc
+
+        model_dir = _get_onnx_model_dir()
+
+        if "tokenizer" not in self._cache:
+            tok: Any = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
+            tok.enable_padding(length=512)
+            tok.enable_truncation(max_length=512)
+            self._cache["tokenizer"] = tok
+
+        if "session" not in self._cache:
+            self._cache["session"] = ort.InferenceSession(
+                str(model_dir / "onnx" / "model.onnx"),
+                providers=["CPUExecutionProvider"],
+            )
+
+        tokenizer = self._cache["tokenizer"]
+        session = self._cache["session"]
+
+        encoding = tokenizer.encode(text)
+        input_ids = np.array([encoding.ids], dtype=np.int64)
+        attention_mask = np.array([encoding.attention_mask], dtype=np.int64)
+
+        input_names = {inp.name for inp in session.get_inputs()}
+        feeds: dict[str, np.ndarray[Any, Any]] = {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        }
+        if "token_type_ids" in input_names:
+            feeds["token_type_ids"] = np.zeros_like(input_ids)
+
+        try:
+            outputs = session.run(None, feeds)
+        except Exception as exc:
+            raise RuntimeError(f"ONNX inference failed: {exc}") from exc
+
+        token_embeddings = outputs[0].astype(np.float32)
+        mask = attention_mask[..., np.newaxis].astype(np.float32)
+        pooled = (token_embeddings * mask).sum(axis=1) / mask.sum(axis=1)
+        vec: np.ndarray[Any, np.dtype[np.float32]] = pooled[0]
+        norm = float(np.linalg.norm(vec))
+        if norm > 0.0:
+            vec = vec / norm
+        return vec
+
+
+# Module-level singleton — tests may reset _onnx_backend._cache between runs
+_onnx_backend = OnnxBackend()
+
+# Backwards-compat shim: existing code references _onnx_cache directly in tests
+_onnx_cache: dict[str, Any] = _onnx_backend._cache
 
 
 def get_model_id() -> str:
@@ -39,13 +126,7 @@ def get_model_id() -> str:
 
 def _is_onnx_available() -> bool:
     """Return True if onnxruntime and tokenizers are importable."""
-    try:
-        import onnxruntime  # noqa: F401
-        from tokenizers import Tokenizer  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
+    return _onnx_backend.is_available()
 
 
 def _get_onnx_model_dir() -> Path:
@@ -158,58 +239,8 @@ def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
 
 
 def _embed_onnx(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
-    try:
-        import onnxruntime as ort
-        from tokenizers import Tokenizer
-    except ImportError as exc:
-        raise RuntimeError(
-            f"ONNX deps not installed: {exc}. Run: pip install 'turnzero[local]'"
-        ) from exc
-
-    model_dir = _get_onnx_model_dir()
-
-    if "tokenizer" not in _onnx_cache:
-        tok: Any = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
-        tok.enable_padding(length=512)
-        tok.enable_truncation(max_length=512)
-        _onnx_cache["tokenizer"] = tok
-
-    if "session" not in _onnx_cache:
-        _onnx_cache["session"] = ort.InferenceSession(
-            str(model_dir / "onnx" / "model.onnx"),
-            providers=["CPUExecutionProvider"],
-        )
-
-    tokenizer = _onnx_cache["tokenizer"]
-    session = _onnx_cache["session"]
-
-    encoding = tokenizer.encode(text)
-    input_ids = np.array([encoding.ids], dtype=np.int64)
-    attention_mask = np.array([encoding.attention_mask], dtype=np.int64)
-
-    # Some ONNX exports omit token_type_ids; check dynamically.
-    input_names = {inp.name for inp in session.get_inputs()}
-    feeds: dict[str, np.ndarray[Any, Any]] = {
-        "input_ids": input_ids,
-        "attention_mask": attention_mask,
-    }
-    if "token_type_ids" in input_names:
-        feeds["token_type_ids"] = np.zeros_like(input_ids)
-
-    try:
-        outputs = session.run(None, feeds)
-    except Exception as exc:
-        raise RuntimeError(f"ONNX inference failed: {exc}") from exc
-
-    # Mean-pool last hidden state over sequence dimension, weighted by attention mask.
-    token_embeddings = outputs[0].astype(np.float32)  # (1, seq_len, 768)
-    mask = attention_mask[..., np.newaxis].astype(np.float32)  # (1, seq_len, 1)
-    pooled = (token_embeddings * mask).sum(axis=1) / mask.sum(axis=1)
-    vec: np.ndarray[Any, np.dtype[np.float32]] = pooled[0]
-    norm = float(np.linalg.norm(vec))
-    if norm > 0.0:
-        vec = vec / norm
-    return vec
+    """Delegate to the OnnxBackend singleton. Kept for backwards compat with tests."""
+    return _onnx_backend.embed(text)
 
 
 def _ollama_timeout() -> float:

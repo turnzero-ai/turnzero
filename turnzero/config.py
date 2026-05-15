@@ -96,15 +96,10 @@ def get_bundled_blocks_dir() -> Path:
     return get_blocks_dir()
 
 
-def load_config(data_dir: Path) -> dict[str, Any]:
-    path = data_dir / "config.yaml"
-    if not path.exists():
-        return {
-            k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAULTS.items()
-        }
-    raw = yaml.safe_load(path.read_text()) or {}
-    result = {k: (dict(v) if isinstance(v, dict) else v) for k, v in _DEFAULTS.items()}
-    for k, v in raw.items():
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Merge override into a copy of base, recursively for nested dicts."""
+    result = {k: (dict(v) if isinstance(v, dict) else v) for k, v in base.items()}
+    for k, v in override.items():
         if k in result:
             if isinstance(result[k], dict) and isinstance(v, dict):
                 result[k].update(v)
@@ -113,11 +108,43 @@ def load_config(data_dir: Path) -> dict[str, Any]:
     return result
 
 
+class ConfigManager:
+    """Unified interface for any config section stored as a YAML file.
+
+    Usage:
+        mgr = ConfigManager("config", data_dir, defaults=_DEFAULTS)
+        cfg = mgr.load()
+        mgr.save(cfg)
+    """
+
+    def __init__(
+        self,
+        filename: str,
+        data_dir: Path,
+        defaults: dict[str, Any],
+    ) -> None:
+        self._path = data_dir / f"{filename}.yaml"
+        self._defaults = defaults
+
+    def load(self) -> dict[str, Any]:
+        if not self._path.exists():
+            return _deep_merge(self._defaults, {})
+        raw: dict[str, Any] = yaml.safe_load(self._path.read_text()) or {}
+        return _deep_merge(self._defaults, raw)
+
+    def save(self, config: dict[str, Any]) -> None:
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        self._path.write_text(
+            yaml.dump(config, default_flow_style=False, sort_keys=True)
+        )
+
+
+def load_config(data_dir: Path) -> dict[str, Any]:
+    return ConfigManager("config", data_dir, _DEFAULTS).load()
+
+
 def save_config(data_dir: Path, config: dict[str, dict[str, bool]]) -> None:
-    data_dir.mkdir(parents=True, exist_ok=True)
-    (data_dir / "config.yaml").write_text(
-        yaml.dump(config, default_flow_style=False, sort_keys=True)
-    )
+    ConfigManager("config", data_dir, _DEFAULTS).save(config)
 
 
 def enabled_sources(data_dir: Path) -> list[str]:
@@ -135,25 +162,12 @@ _TELEMETRY_DEFAULTS: dict[str, object] = {
 }
 
 
-def _telemetry_config_path(data_dir: Path) -> Path:
-    return data_dir / "telemetry.yaml"
-
-
 def load_telemetry_config(data_dir: Path) -> dict[str, object]:
-    path = _telemetry_config_path(data_dir)
-    if not path.exists():
-        return dict(_TELEMETRY_DEFAULTS)
-    raw = yaml.safe_load(path.read_text()) or {}
-    result = dict(_TELEMETRY_DEFAULTS)
-    result.update({k: v for k, v in raw.items() if k in _TELEMETRY_DEFAULTS})
-    return result
+    return ConfigManager("telemetry", data_dir, _TELEMETRY_DEFAULTS).load()
 
 
 def save_telemetry_config(data_dir: Path, config: dict[str, object]) -> None:
-    data_dir.mkdir(parents=True, exist_ok=True)
-    _telemetry_config_path(data_dir).write_text(
-        yaml.dump(config, default_flow_style=False, sort_keys=True)
-    )
+    ConfigManager("telemetry", data_dir, _TELEMETRY_DEFAULTS).save(config)
 
 
 def get_active_domains(data_dir: Path) -> list[str] | None:

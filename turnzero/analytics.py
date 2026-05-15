@@ -29,7 +29,7 @@ class SessionAnalytics:
     MINUTES_PER_TURN: float = 4.0
 
     def log_injection(self, block_ids: list[str]) -> None:
-        from turnzero.state import record_project_affinity, record_session_injection
+        from turnzero.session import record_project_affinity, record_session_injection
 
         self.events.append(
             SessionEvent(
@@ -119,6 +119,17 @@ class SessionAnalytics:
             events=events,
             project_root=project_root,
         )
+
+
+# ---------------------------------------------------------------------------
+# Module-level ROI constants — single source of truth for both CLI stats and
+# SessionAnalytics. Changing these propagates to all display surfaces.
+# ---------------------------------------------------------------------------
+
+# Turns saved per injected block (conservative estimate for stats display).
+# Distinct from TURNS_SAVED_PER_PRIOR (2.5) which measures correction avoidance.
+TURNS_SAVED_PER_INJECTION: float = 0.5
+TOKENS_PER_TURN: int = 1500  # matches SessionAnalytics.TOKENS_PER_TURN
 
 
 def get_global_roi(data_dir: Path) -> dict[str, Any]:

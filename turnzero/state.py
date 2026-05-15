@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from turnzero.config import get_affinity_path, get_session_injections_dir
@@ -66,19 +69,29 @@ def get_project_affinity(project_root: Path) -> dict[str, int]:
 
 
 def record_project_affinity(project_root: Path, block_id: str) -> None:
-    """Increment the affinity count for a block in a project."""
+    """Increment the affinity count for a block in a project.
+
+    Uses an exclusive file lock + atomic rename so concurrent agent processes
+    writing the same affinity file cannot lose each other's updates.
+    """
     path = get_affinity_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     project_hash = _get_project_hash(project_root)
 
-    from contextlib import suppress
+    lock_path = path.with_suffix(".lock")
+    with lock_path.open("a") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            data: dict[str, dict[str, int]] = {}
+            if path.exists():
+                with contextlib.suppress(OSError, json.JSONDecodeError):
+                    data = json.loads(path.read_text(encoding="utf-8"))
 
-    data: dict[str, dict[str, int]] = {}
-    if path.exists():
-        with suppress(OSError, json.JSONDecodeError):
-            data = json.loads(path.read_text(encoding="utf-8"))
+            project_data = data.setdefault(project_hash, {})
+            project_data[block_id] = project_data.get(block_id, 0) + 1
 
-    project_data = data.setdefault(project_hash, {})
-    project_data[block_id] = project_data.get(block_id, 0) + 1
-
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            tmp_path = path.with_suffix(".tmp")
+            tmp_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            os.replace(tmp_path, path)
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)

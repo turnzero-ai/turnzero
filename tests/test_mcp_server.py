@@ -536,7 +536,7 @@ def test_list_suggested_blocks_first_turn_without_session() -> None:
 
 def test_list_suggested_blocks_subsequent_turn_skips_personal(data_dir: Path) -> None:
     """After inject_block records an injection, next list call is Turn N."""
-    from turnzero.state import record_session_injection
+    from turnzero.session import record_session_injection
 
     sid = "wf2-test-session"
     record_session_injection(sid, "fake-prior-already-injected")
