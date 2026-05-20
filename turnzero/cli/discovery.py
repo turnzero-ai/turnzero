@@ -555,108 +555,85 @@ def inject(
 
 
 @discovery_app.command(name="list")
-def list_blocks(
-    domain: str | None = typer.Option(
-        None, "--domain", "-d", help="Show blocks in a specific domain."
-    ),
-    candidates: bool = typer.Option(
-        False, "--candidates", "-c", help="Show pending candidates awaiting review."
-    ),
-    stale: bool = typer.Option(
-        False, "--stale", help="Show only stale blocks (>90d unverified)."
-    ),
-) -> None:
-    """Browse the Expert Prior library."""
-
-
-    if candidates:
-        cand_dir = get_data_dir() / "candidates"
-        if not cand_dir.exists() or not list(cand_dir.glob("*.yaml")):
-            console.print("\n[dim]No candidates pending review.[/dim]\n")
-            console.print(
-                "[dim]Candidates are created when the AI is corrected mid-session. "
-                "Run `turnzero review` to manage them.[/dim]\n"
-            )
-            return
-
-        console.print("\n[bold]Candidates pending review[/bold]\n")
-        tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
-        tbl.add_column("slug", style="cyan", min_width=30)
-        tbl.add_column("domain", min_width=12)
-        tbl.add_column("confidence", justify="right")
-        tbl.add_column("submitted", min_width=10)
-
-        for path in sorted(cand_dir.glob("*.yaml")):
-            with contextlib.suppress(Exception):
-                raw = yaml.safe_load(path.read_text())
-                conf = f"{float(raw.get('confidence', 0.0)):.2f}"
-                tbl.add_row(
-                    str(raw.get("slug", path.stem)),
-                    str(raw.get("domain", "—")),
-                    conf,
-                    str(raw.get("last_verified", "—")),
-                )
-        console.print(tbl)
-        console.print("[dim]Run `turnzero review` to approve or reject.[/dim]\n")
-        cand_count = sum(1 for _ in cand_dir.glob("*.yaml"))
-        track_list_viewed(mode="candidates", blocks_shown=cand_count)
-        return
-
-    try:
-        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
-    except FileNotFoundError:
-        # Fall back to bundled index
-        try:
-            blocks = retrieval_svc.get_all_blocks(get_bundled_blocks_dir())
-        except FileNotFoundError:
-            console.print("[red]No block library found. Run: turnzero setup[/red]")
-            raise typer.Exit(1)
-
-    if stale:
-        stale_blocks = {k: v for k, v in blocks.items() if v.is_stale()}
-        if not stale_blocks:
-            console.print("\n[green]No stale blocks.[/green]\n")
-            return
-        console.print("\n[bold]Stale blocks[/bold] [dim](>90d unverified)[/dim]\n")
-        tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
-        tbl.add_column("slug", style="cyan", min_width=36)
-        tbl.add_column("domain", min_width=12)
-        tbl.add_column("last verified", min_width=12)
-        tbl.add_column("confidence", justify="right")
-        for b in sorted(stale_blocks.values(), key=lambda b: b.last_verified):
-            tbl.add_row(b.slug, b.domain, b.last_verified, f"{b.confidence:.2f}")
-        console.print(tbl)
-        track_list_viewed(mode="stale", blocks_shown=len(stale_blocks))
-        return
-
-    if domain:
-        domain_blocks = [b for b in blocks.values() if b.domain == domain]
-        if not domain_blocks:
-            console.print(f"\n[yellow]No blocks found for domain: {domain}[/yellow]\n")
-            domains_present = sorted({b.domain for b in blocks.values()})
-            console.print(
-                f"[dim]Available domains: {', '.join(domains_present)}[/dim]\n"
-            )
-            raise typer.Exit(1)
-
+def _list_candidates(cand_dir: Path) -> None:
+    """Display pending candidates awaiting review."""
+    if not cand_dir.exists() or not list(cand_dir.glob("*.yaml")):
+        console.print("\n[dim]No candidates pending review.[/dim]\n")
         console.print(
-            f"\n[bold]Domain: {domain}[/bold] [dim]({len(domain_blocks)} block(s))[/dim]\n"
+            "[dim]Candidates are created when the AI is corrected mid-session. "
+            "Run `turnzero review` to manage them.[/dim]\n"
         )
-        tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
-        tbl.add_column("slug", style="cyan", min_width=36)
-        tbl.add_column("tier", min_width=10)
-        tbl.add_column("confidence", justify="right")
-        tbl.add_column("last verified", min_width=12)
-        tbl.add_column("", min_width=6)
-
-        for b in sorted(domain_blocks, key=lambda b: b.slug):
-            stale_tag = "[red]STALE[/red]" if b.is_stale() else "[green]ok[/green]"
-            tbl.add_row(b.slug, b.tier, f"{b.confidence:.2f}", b.last_verified, stale_tag)
-        console.print(tbl)
-        track_list_viewed(mode="domain", blocks_shown=len(domain_blocks), domain=domain)
         return
 
-    # Default: domain summary
+    console.print("\n[bold]Candidates pending review[/bold]\n")
+    tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
+    tbl.add_column("slug", style="cyan", min_width=30)
+    tbl.add_column("domain", min_width=12)
+    tbl.add_column("confidence", justify="right")
+    tbl.add_column("submitted", min_width=10)
+
+    for path in sorted(cand_dir.glob("*.yaml")):
+        with contextlib.suppress(Exception):
+            raw = yaml.safe_load(path.read_text())
+            conf = f"{float(raw.get('confidence', 0.0)):.2f}"
+            tbl.add_row(
+                str(raw.get("slug", path.stem)),
+                str(raw.get("domain", "—")),
+                conf,
+                str(raw.get("last_verified", "—")),
+            )
+    console.print(tbl)
+    console.print("[dim]Run `turnzero review` to approve or reject.[/dim]\n")
+    cand_count = sum(1 for _ in cand_dir.glob("*.yaml"))
+    track_list_viewed(mode="candidates", blocks_shown=cand_count)
+
+
+def _list_stale(blocks: dict[str, Block]) -> None:
+    """Display blocks not verified in >90 days."""
+    stale_blocks = {k: v for k, v in blocks.items() if v.is_stale()}
+    if not stale_blocks:
+        console.print("\n[green]No stale blocks.[/green]\n")
+        return
+    console.print("\n[bold]Stale blocks[/bold] [dim](>90d unverified)[/dim]\n")
+    tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
+    tbl.add_column("slug", style="cyan", min_width=36)
+    tbl.add_column("domain", min_width=12)
+    tbl.add_column("last verified", min_width=12)
+    tbl.add_column("confidence", justify="right")
+    for b in sorted(stale_blocks.values(), key=lambda b: b.last_verified):
+        tbl.add_row(b.slug, b.domain, b.last_verified, f"{b.confidence:.2f}")
+    console.print(tbl)
+    track_list_viewed(mode="stale", blocks_shown=len(stale_blocks))
+
+
+def _list_domain(blocks: dict[str, Block], domain: str) -> None:
+    """Display all blocks in a specific domain."""
+    domain_blocks = [b for b in blocks.values() if b.domain == domain]
+    if not domain_blocks:
+        console.print(f"\n[yellow]No blocks found for domain: {domain}[/yellow]\n")
+        domains_present = sorted({b.domain for b in blocks.values()})
+        console.print(f"[dim]Available domains: {', '.join(domains_present)}[/dim]\n")
+        raise typer.Exit(1)
+
+    console.print(
+        f"\n[bold]Domain: {domain}[/bold] [dim]({len(domain_blocks)} block(s))[/dim]\n"
+    )
+    tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
+    tbl.add_column("slug", style="cyan", min_width=36)
+    tbl.add_column("tier", min_width=10)
+    tbl.add_column("confidence", justify="right")
+    tbl.add_column("last verified", min_width=12)
+    tbl.add_column("", min_width=6)
+
+    for b in sorted(domain_blocks, key=lambda b: b.slug):
+        stale_tag = "[red]STALE[/red]" if b.is_stale() else "[green]ok[/green]"
+        tbl.add_row(b.slug, b.tier, f"{b.confidence:.2f}", b.last_verified, stale_tag)
+    console.print(tbl)
+    track_list_viewed(mode="domain", blocks_shown=len(domain_blocks), domain=domain)
+
+
+def _list_summary(blocks: dict[str, Block]) -> None:
+    """Display domain summary table with active/inactive status."""
     from collections import Counter
 
     # Exclude personal-tier blocks from domain table — they inject unconditionally
@@ -668,11 +645,11 @@ def list_blocks(
     stale_by_domain: Counter[str] = Counter(
         b.domain for b in expert_blocks.values() if b.is_stale()
     )
-
     active_domains = get_active_domains(get_data_dir())
 
     console.print(
-        f"\n[bold]Expert Prior Library[/bold] [dim]({len(blocks)} blocks across {len(domain_counts)} domains)[/dim]\n"
+        f"\n[bold]Expert Prior Library[/bold] "
+        f"[dim]({len(blocks)} blocks across {len(domain_counts)} domains)[/dim]\n"
     )
     tbl = Table(box=box.SIMPLE, show_header=True, padding=(0, 1))
     tbl.add_column("domain", style="cyan", min_width=20)
@@ -694,15 +671,15 @@ def list_blocks(
     for d, count in sorted(domain_counts.items()):
         stale_n = stale_by_domain.get(d, 0)
         stale_cell = f"[red]{stale_n}[/red]" if stale_n else "[dim]0[/dim]"
-        if active_domains is None or d in active_domains:
-            status = "[green]active[/green]"
-        else:
-            status = "[dim]inactive[/dim]"
+        status = (
+            "[green]active[/green]"
+            if active_domains is None or d in active_domains
+            else "[dim]inactive[/dim]"
+        )
         tbl.add_row(d, str(count), stale_cell, status)
 
     console.print(tbl)
 
-    # Pending candidates
     cand_dir = get_data_dir() / "candidates"
     cand_count = len(list(cand_dir.glob("*.yaml"))) if cand_dir.exists() else 0
     if cand_count:
@@ -717,6 +694,39 @@ def list_blocks(
             "[dim] to see blocks in a specific domain.[/dim]\n"
         )
     track_list_viewed(mode="summary", blocks_shown=len(blocks))
+
+
+def list_blocks(
+    domain: str | None = typer.Option(
+        None, "--domain", "-d", help="Show blocks in a specific domain."
+    ),
+    candidates: bool = typer.Option(
+        False, "--candidates", "-c", help="Show pending candidates awaiting review."
+    ),
+    stale: bool = typer.Option(
+        False, "--stale", help="Show only stale blocks (>90d unverified)."
+    ),
+) -> None:
+    """Browse the Expert Prior library."""
+    if candidates:
+        _list_candidates(get_data_dir() / "candidates")
+        return
+
+    try:
+        blocks = retrieval_svc.get_all_blocks(get_blocks_dir())
+    except FileNotFoundError:
+        try:
+            blocks = retrieval_svc.get_all_blocks(get_bundled_blocks_dir())
+        except FileNotFoundError:
+            console.print("[red]No block library found. Run: turnzero setup[/red]")
+            raise typer.Exit(1)
+
+    if stale:
+        _list_stale(blocks)
+    elif domain:
+        _list_domain(blocks, domain)
+    else:
+        _list_summary(blocks)
 
 
 @discovery_app.command()

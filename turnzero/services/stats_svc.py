@@ -75,6 +75,28 @@ def log_tool_call(
         pass
 
 
+def _load_log_entries(data_dir: Path) -> list[dict[str, Any]]:
+    """Load all injection log entries from hook_log.jsonl in data_dir."""
+    log_path = data_dir / "hook_log.jsonl"
+    entries: list[dict[str, Any]] = []
+    if log_path.exists():
+        for line in log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                entries.append(json.loads(line))
+    return entries
+
+
+def _load_tool_entries(data_dir: Path) -> list[dict[str, Any]]:
+    """Load all tool call log entries from tool_call_log.jsonl in data_dir."""
+    tool_log_path = data_dir / "tool_call_log.jsonl"
+    tool_entries: list[dict[str, Any]] = []
+    if tool_log_path.exists():
+        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
+            with contextlib.suppress(json.JSONDecodeError):
+                tool_entries.append(json.loads(line))
+    return tool_entries
+
+
 def _aggregate_tool_tokens(
     entries: list[dict[str, Any]], week_ago: float
 ) -> dict[str, Any]:
@@ -113,22 +135,12 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:
     """Aggregate all stats for CLI display, building on compute() for shared logic."""
     import datetime
 
-    # Reuse compute() for MCP-shape data; enrich with CLI-only fields.
-    # Use data_dir override so tests can isolate data directories.
-    import os as _os
-
     from turnzero.config import get_blocks_dir, get_index_path
     from turnzero.repositories.block_repo import load_all_blocks
     from turnzero.repositories.index_repo import load_index
-    orig = _os.environ.get("TURNZERO_DATA_DIR")
-    _os.environ["TURNZERO_DATA_DIR"] = str(data_dir)
-    try:
-        base = compute()
-    finally:
-        if orig is None:
-            _os.environ.pop("TURNZERO_DATA_DIR", None)
-        else:
-            _os.environ["TURNZERO_DATA_DIR"] = orig
+
+    # compute() accepts data_dir directly — no env-var mutation needed
+    base = compute(data_dir=data_dir)
 
     # CLI-specific enrichment: personal prior growth window + index entry count
     try:
@@ -151,13 +163,7 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:
         index_count = len(load_index(get_index_path()))
 
     # Corrections count from tool_call_log (not in StatsData shape)
-    tool_log_path = data_dir / "tool_call_log.jsonl"
-    tool_entries: list[dict[str, Any]] = []
-    if tool_log_path.exists():
-        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                tool_entries.append(json.loads(line))
-
+    tool_entries = _load_tool_entries(data_dir)
     now = time.time()
     week_ago = now - 7 * 86400
 
@@ -205,17 +211,17 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:
     }
 
 
-def compute() -> StatsData:
-    """Return TurnZero usage and library statistics."""
+def compute(data_dir: Path | None = None) -> StatsData:
+    """Return TurnZero usage and library statistics.
+
+    Args:
+        data_dir: Override the data directory. Defaults to get_data_dir().
+    """
     from turnzero.services.retrieval_svc import _load_active_blocks
 
-    data_dir = get_data_dir()
-    log_path = data_dir / "hook_log.jsonl"
-    entries: list[dict[str, Any]] = []
-    if log_path.exists():
-        for line in log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                entries.append(json.loads(line))
+    resolved = data_dir if data_dir is not None else get_data_dir()
+    entries = _load_log_entries(resolved)
+    tool_entries = _load_tool_entries(resolved)
 
     now = time.time()
     week_ago = now - 7 * 86400
@@ -252,15 +258,8 @@ def compute() -> StatsData:
 
     stale_count = sum(1 for b in blocks.values() if b.is_stale())
     personal_count = sum(1 for b in blocks.values() if b.tier == Tier.PERSONAL)
-    candidates_dir = data_dir / "candidates"
+    candidates_dir = resolved / "candidates"
     candidates = list(candidates_dir.glob("*.yaml")) if candidates_dir.exists() else []
-
-    tool_log_path = data_dir / "tool_call_log.jsonl"
-    tool_entries: list[dict[str, Any]] = []
-    if tool_log_path.exists():
-        for line in tool_log_path.read_text(encoding="utf-8").splitlines():
-            with contextlib.suppress(json.JSONDecodeError):
-                tool_entries.append(json.loads(line))
 
     tool_calls_total = len(tool_entries)
     tool_calls_week = sum(1 for e in tool_entries if e.get("ts", 0) >= week_ago)

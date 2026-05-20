@@ -627,3 +627,54 @@ def test_no_match_hint_not_added_when_results_exist(
     results = srv.list_suggested_blocks("write a python script")
     hint = [r for r in results if r.get("block_id") == "no-match-hint"]
     assert not hint
+
+
+# ── DEBT-1: BlockSubmission dataclass ────────────────────────────────────────
+
+def test_block_submission_requires_positional_fields() -> None:
+    """BlockSubmission enforces required fields at construction time."""
+    from turnzero.services.candidate_svc import BlockSubmission
+
+    # Valid construction — no error
+    sub = BlockSubmission(
+        block_id="test-slug",
+        domain="python",
+        intent="build",
+        constraints=["Use X"],
+        anti_patterns=["Do not use Y"],
+    )
+    assert sub.block_id == "test-slug"
+    assert sub.tags == []
+    assert sub.rationale is None
+
+    # Missing required positional args raises TypeError
+    with pytest.raises(TypeError):
+        BlockSubmission()  # type: ignore[call-arg]
+
+
+def test_build_block_dict_uses_submission_fields() -> None:
+    """_build_block_dict output reflects all BlockSubmission fields."""
+    from turnzero.services.candidate_svc import BlockSubmission, _build_block_dict
+
+    sub = BlockSubmission(
+        block_id="my-prior",
+        domain="python",
+        intent="debug",
+        constraints=["Always log errors"],
+        anti_patterns=["Do not swallow exceptions"],
+        tags=["logging"],
+        rationale="Visibility matters.",
+        confidence=0.8,
+        today="2026-05-20",
+        project_hash=None,
+    )
+    d = _build_block_dict(sub)
+    assert d["slug"] == "my-prior"
+    assert d["domain"] == "python"
+    assert d["intent"] == "debug"
+    assert d["constraints"] == ["Always log errors"]
+    assert d["anti_patterns"] == ["Do not swallow exceptions"]
+    assert d["tags"] == ["logging"]
+    assert d["confidence"] == 0.8
+    assert d["last_verified"] == "2026-05-20"
+    assert d["archived"] is False

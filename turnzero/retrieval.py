@@ -322,41 +322,35 @@ def get_identity_context(
 
 def _score_entry(
     entry: IndexEntry,
-    prompt: str,
-    prompt_embedding: Any,
-    prompt_lower: str,
-    intent: str,
-    domain: str | None,
-    affinity: dict[str, Any],
-    use_override: bool,
+    ctx: QueryContext,
     blocks: dict[str, Block],
 ) -> float | None:
-    """Score one index entry against the prompt. Returns None if the entry is filtered."""
-    if use_override:
+    """Score one index entry against the query context. Returns None if filtered."""
+    if ctx.use_override:
         block = blocks.get(entry.block_id)
         if block is None:
             return None
-        score = float(_similarity_override(prompt, block))
+        score = float(_similarity_override(ctx.prompt, block))
     else:
-        score = cosine_similarity(prompt_embedding, entry.embedding)
+        score = cosine_similarity(ctx.prompt_embedding, entry.embedding)
 
     boost = 1.0
-    if entry.intent == intent:
+    if entry.intent == ctx.intent:
         boost *= INTENT_BOOST
-    if domain and entry.domain == domain:
+    if ctx.domain and entry.domain == ctx.domain:
         boost *= DOMAIN_BOOST
-    elif domain and entry.domain != domain:
+    elif ctx.domain and entry.domain != ctx.domain:
         boost *= 0.5
-    if entry.block_id in affinity:
+    if entry.block_id in ctx.affinity:
         boost *= PROJECT_AFFINITY_BOOST
 
     score = min(score * boost, 1.0)
 
     # Keyword overlap gate: when no domain detected, penalise blocks with
     # no tag/domain overlap with the prompt — prevents off-topic injection.
-    if domain is None and entry.domain not in ("global",):
+    if ctx.domain is None and entry.domain not in ("global",):
         overlap_tokens = set(entry.tags) | {entry.domain}
-        if not any(tok in prompt_lower for tok in overlap_tokens):
+        if not any(tok in ctx.prompt_lower for tok in overlap_tokens):
             score *= DOMAIN_OVERLAP_PENALTY
 
     return score
@@ -513,17 +507,7 @@ def _filter_and_score(
             continue
         if strict_intent and entry.intent != ctx.intent:
             continue
-        score = _score_entry(
-            entry,
-            ctx.prompt,
-            ctx.prompt_embedding,
-            ctx.prompt_lower,
-            ctx.intent,
-            ctx.domain,
-            ctx.affinity,
-            ctx.use_override,
-            blocks,
-        )
+        score = _score_entry(entry, ctx, blocks)
         if score is not None:
             scored.append((entry, score))
     return scored

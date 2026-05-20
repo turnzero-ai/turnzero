@@ -43,6 +43,9 @@ _INDEX_CACHE: dict[Path, tuple[float, list[IndexEntry]]] = {}
 # Blocks cache: (blocks_dir, tuple(sources)) → (mtime, blocks_dict)
 _BLOCKS_CACHE: dict[tuple[Path, tuple[str, ...]], tuple[float, dict[str, Block]]] = {}
 
+# Number of words to show in an expert block preview string
+_EXPERT_PREVIEW_WORDS = 6
+
 
 def _active_sources() -> list[str]:
     return enabled_sources(get_data_dir())
@@ -104,9 +107,6 @@ def _load_active_index() -> list[IndexEntry]:
     for source in _active_sources():
         result.extend(_load_source_index(source))
     return result
-
-
-_EXPERT_PREVIEW_WORDS = 6
 
 
 def _expert_preview(block: Block) -> str:

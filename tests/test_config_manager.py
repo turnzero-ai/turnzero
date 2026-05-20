@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
+
+import pytest
 
 from turnzero.config import ConfigManager, _deep_merge
 
@@ -88,3 +91,42 @@ def test_compute_display_data_uses_roi_constants(tmp_path: Path) -> None:
     data = stats_svc.compute_display_data(tmp_path)
     assert data["est_turns"] == round(10 * TURNS_SAVED_PER_INJECTION)
     assert data["est_tokens"] == 10 * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN
+
+
+# ── DEBT-6: compute() data_dir param + no env-var mutation ───────────────────
+
+def test_compute_with_explicit_data_dir(tmp_path: Path) -> None:
+    """compute(data_dir=...) reads from the supplied dir, not get_data_dir()."""
+    import json
+    import time
+
+    from turnzero.services import stats_svc
+
+    # Write 3 injection entries to tmp_path only
+    log = tmp_path / "hook_log.jsonl"
+    log.write_text(
+        "\n".join(
+            json.dumps({"ts": time.time(), "blocks": ["b1"], "domains": ["python"], "tokens_injected": 0})
+            for _ in range(3)
+        )
+        + "\n"
+    )
+
+    data = stats_svc.compute(data_dir=tmp_path)
+    assert data["sessions"]["total"] == 3
+    assert data["priors_injected"]["total"] == 3
+
+
+def test_compute_display_data_no_env_mutation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """compute_display_data() must not set or leave TURNZERO_DATA_DIR in the env."""
+
+    from turnzero.services import stats_svc
+
+    monkeypatch.delenv("TURNZERO_DATA_DIR", raising=False)
+
+    stats_svc.compute_display_data(tmp_path)
+
+    after_env = {k: v for k, v in os.environ.items() if k == "TURNZERO_DATA_DIR"}
+    assert not after_env, "TURNZERO_DATA_DIR must not be set after compute_display_data()"

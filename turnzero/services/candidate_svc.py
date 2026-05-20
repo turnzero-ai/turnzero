@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -71,38 +72,43 @@ def check_auto_approve_guard(auto_approve: bool, reason: str) -> tuple[bool, boo
     return AutoApprovePolicy.evaluate(auto_approve, reason)
 
 
-def _build_block_dict(
-    block_id: str,
-    domain: str,
-    intent: str,
-    constraints: list[str],
-    anti_patterns: list[str],
-    tags: list[str],
-    doc_anchors: list[str],
-    rationale: str | None,
-    confidence: float,
-    today: str,
-    project_hash: str | None,
-) -> dict[str, Any]:
-    """Construct the canonical block dict. Pure data, no I/O."""
+@dataclass
+class BlockSubmission:
+    """All fields required to construct and persist a candidate block."""
+
+    block_id: str
+    domain: str
+    intent: str
+    constraints: list[str]
+    anti_patterns: list[str]
+    tags: list[str] = field(default_factory=list)
+    doc_anchors: list[str] = field(default_factory=list)
+    rationale: str | None = None
+    confidence: float = 0.5
+    today: str = ""
+    project_hash: str | None = None
+
+
+def _build_block_dict(sub: BlockSubmission) -> dict[str, Any]:
+    """Construct the canonical block dict from a BlockSubmission. Pure data, no I/O."""
     return {
-        "id": block_id,
-        "slug": block_id,
+        "id": sub.block_id,
+        "slug": sub.block_id,
         "version": "1.0.0",
-        "domain": domain,
-        "intent": intent,
-        "last_verified": today,
-        "tags": tags,
-        "context_weight": sum(len(c.split()) * 4 for c in constraints + anti_patterns),
+        "domain": sub.domain,
+        "intent": sub.intent,
+        "last_verified": sub.today,
+        "tags": sub.tags,
+        "context_weight": sum(len(c.split()) * 4 for c in sub.constraints + sub.anti_patterns),
         "conflicts_with": [],
         "requires": [],
-        "constraints": constraints,
-        "anti_patterns": anti_patterns,
-        "rationale": rationale,
-        "doc_anchors": [{"url": u, "verified": today} for u in doc_anchors],
-        "confidence": confidence,
+        "constraints": sub.constraints,
+        "anti_patterns": sub.anti_patterns,
+        "rationale": sub.rationale,
+        "doc_anchors": [{"url": u, "verified": sub.today} for u in sub.doc_anchors],
+        "confidence": sub.confidence,
         "archived": False,
-        "project_hash": project_hash,
+        "project_hash": sub.project_hash,
     }
 
 
@@ -230,10 +236,19 @@ def submit(
         from turnzero.session import _get_project_hash
         project_hash = _get_project_hash(Path(project_root))
 
-    block = _build_block_dict(
-        block_id, domain, intent, constraints, anti_patterns or [],
-        tags or [], doc_anchors or [], rationale, confidence, today, project_hash,
-    )
+    block = _build_block_dict(BlockSubmission(
+        block_id=block_id,
+        domain=domain,
+        intent=intent,
+        constraints=constraints,
+        anti_patterns=anti_patterns or [],
+        tags=tags or [],
+        doc_anchors=doc_anchors or [],
+        rationale=rationale,
+        confidence=confidence,
+        today=today,
+        project_hash=project_hash,
+    ))
     input_snapshot: dict[str, Any] = {
         "block_id": block_id, "domain": domain, "intent": intent,
         "constraints": constraints, "anti_patterns": anti_patterns or [],
