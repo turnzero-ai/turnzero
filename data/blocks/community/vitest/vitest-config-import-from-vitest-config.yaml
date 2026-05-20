@@ -1,0 +1,30 @@
+id: vitest-config-import-from-vitest-config
+slug: vitest-config-import-from-vitest-config
+version: 1.0.0
+domain: vitest
+intent: build
+last_verified: '2026-05-20'
+tags:
+- vitest
+- vite
+- typescript
+- config
+context_weight: 244
+conflicts_with: []
+requires: []
+constraints:
+- Import defineConfig from 'vitest/config', not from 'vite', when vite.config.ts includes
+  a `test` block.
+- The `test` property only exists on Vitest's extended config type, not on Vite's
+  UserConfigExport.
+anti_patterns:
+- 'Do not write `import { defineConfig } from ''vite''` in a config file that has
+  a `test: { environment, globals, setupFiles }` block — TypeScript will error: ''test
+  does not exist in type UserConfigExport''.'
+rationale: Vite's defineConfig type does not include the `test` property. Vitest ships
+  its own defineConfig that extends Vite's with the test block. Wrong import causes
+  a TS compile error at config level, not at test runtime.
+doc_anchors: []
+confidence: 1.0
+verification_level: curated
+archived: false

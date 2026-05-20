@@ -1,3 +1,4 @@
+id: python-asyncio-get-running-loop
 slug: python-asyncio-get-running-loop
 version: 1.0.0
 domain: python
@@ -34,6 +35,6 @@ rationale: asyncio.get_event_loop() was deprecated in Python 3.10 and raises Run
   explicitly only when no loop is running — correct behaviour for branching between
   create_task() and asyncio.run().
 doc_anchors: []
-confidence: 0.95
-archived: false
+confidence: 1.0
 verification_level: curated
+archived: false

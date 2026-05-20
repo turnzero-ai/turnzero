@@ -1,0 +1,30 @@
+id: web-worker-addeventlistener-not-self-onmessage
+slug: web-worker-addeventlistener-not-self-onmessage
+version: 1.0.0
+domain: typescript
+intent: build
+last_verified: '2026-05-20'
+tags:
+- typescript
+- web-worker
+- dom-types
+context_weight: 300
+conflicts_with: []
+requires: []
+constraints:
+- 'In TypeScript Web Worker files, use `addEventListener(''message'', async (event:
+  MessageEvent<T>) => { ... })` instead of `self.onmessage = ...`.'
+- 'Type the event parameter explicitly: `MessageEvent<{ file: File }>` or whatever
+  the payload type is.'
+anti_patterns:
+- Do not use `self.onmessage = (event) => { ... }` in TypeScript worker files — causes
+  type conflicts between DOM's Window.onmessage and WorkerGlobalScope.onmessage, producing
+  TS errors.
+- Do not rely on implicit `self` typing in worker files without a tsconfig `lib` override.
+rationale: TypeScript's default lib includes both DOM and Worker types. `self.onmessage`
+  is ambiguous — tsc sees it as Window.onmessage and raises type errors. `addEventListener`
+  is unambiguous and resolves correctly in the Worker context at runtime.
+doc_anchors: []
+confidence: 1.0
+verification_level: curated
+archived: false

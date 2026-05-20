@@ -1,0 +1,33 @@
+id: vitest-worker-mock-must-be-class
+slug: vitest-worker-mock-must-be-class
+version: 1.0.0
+domain: vitest
+intent: build
+last_verified: '2026-05-20'
+tags:
+- vitest
+- web-worker
+- mock
+- testing-library
+context_weight: 356
+conflicts_with: []
+requires: []
+constraints:
+- When mocking Web Worker in Vitest/jsdom, define a class with an explicit constructor,
+  not a vi.fn() arrow. Use vi.stubGlobal('Worker', WorkerStub) where WorkerStub is
+  a class.
+- WorkerStub must have postMessage and terminate as vi.fn() instance properties, and
+  onmessage/onerror as null instance properties set inside the constructor body or
+  as class fields.
+anti_patterns:
+- Do not use vi.fn() or an arrow function as a Worker replacement — arrow functions
+  are not constructable and `new Worker()` will throw 'not a constructor'.
+- Do not assign the stub via const WorkerStub = vi.fn() — same problem.
+rationale: JavaScript arrow functions and vi.fn() stubs lack a [[Construct]] internal
+  method. The browser Worker API is called with `new`, so the mock must be a proper
+  class. Using a class with `constructor() { workers.push(this); }` also lets tests
+  capture each instance for asserting onmessage/terminate calls.
+doc_anchors: []
+confidence: 1.0
+verification_level: curated
+archived: false

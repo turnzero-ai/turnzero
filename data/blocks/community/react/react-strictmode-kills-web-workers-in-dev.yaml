@@ -1,0 +1,33 @@
+id: react-strictmode-kills-web-workers-in-dev
+slug: react-strictmode-kills-web-workers-in-dev
+version: 1.0.0
+domain: react
+intent: debug
+last_verified: '2026-05-20'
+tags:
+- react
+- strictmode
+- web-worker
+- useeffect
+- dev-mode
+context_weight: 332
+conflicts_with: []
+requires: []
+constraints:
+- Remove React StrictMode from main.tsx when the app relies on Web Workers spawned
+  inside useEffect or event handlers in development.
+- StrictMode is a dev-only behaviour — production builds are unaffected.
+anti_patterns:
+- Do not wrap Worker-heavy React apps in StrictMode during development — StrictMode
+  mounts, unmounts, then remounts every component; the unmount fires useEffect cleanup
+  which terminates the Worker before it can post any result.
+- Do not assume the Worker 'error' on first file upload is a logic bug — check for
+  StrictMode double-invoke first.
+rationale: 'React StrictMode intentionally double-invokes effects in dev to surface
+  cleanup bugs. The unmount phase fires `return () => { workerRef.current?.terminate()
+  }` inside useEffect, killing the Worker mid-run. The remount spawns a new idle Worker.
+  Result: progress bar flickers and disappears with no hash, no error message.'
+doc_anchors: []
+confidence: 1.0
+verification_level: curated
+archived: false
