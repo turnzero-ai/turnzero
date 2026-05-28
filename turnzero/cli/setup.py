@@ -287,10 +287,7 @@ def _setup_gemini_md(force: bool, con: Any, gemini_dir: Path | None = None) -> N
 
 
 def _setup_embedding_backend(resolved: Path) -> bool:
-    """Install ONNX deps and download model if needed. Returns True when ready."""
-    import subprocess
-    import sys
-
+    """Download ONNX model if needed. Returns True when ONNX backend is ready."""
     from turnzero.embed import _is_onnx_available, download_onnx_model
 
     onnx_model_dir = resolved / "models" / "nomic-embed-text-v1.5"
@@ -299,47 +296,25 @@ def _setup_embedding_backend(resolved: Path) -> bool:
     ).exists()
 
     if not _is_onnx_available():
-        console.print("Installing ONNX embedding backend…")
-        install_result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "onnxruntime>=1.18", "tokenizers>=0.19"],
-            capture_output=True, text=True, check=False,
-        )
-        if install_result.returncode == 0:
-            import importlib as _il
-            _il.invalidate_caches()
-            console.print("[green]✓[/green] onnxruntime + tokenizers installed")
-        else:
-            import platform
-            console.print("[red]✗ ONNX backend installation failed.[/red]")
-            is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
-            if is_intel_mac:
-                console.print(
-                    "  [yellow]Note:[/yellow] Intel Macs often lack ONNX wheels for the very latest Python versions.\n"
-                    "  [bold]Recommended fix:[/bold] Install TurnZero using [cyan]Python 3.13[/cyan] or [cyan]3.12[/cyan].\n"
-                    "  Or, use [bold]Ollama[/bold] as your local backend instead."
-                )
-            else:
-                console.print("  Run manually: [cyan]pip install onnxruntime tokenizers[/cyan]")
-            if install_result.stderr:
-                console.print(f"[dim]{install_result.stderr.strip()}[/dim]")
-
-    if _is_onnx_available():
-        if onnx_model_ready:
-            console.print("[dim]✓ ONNX model already downloaded[/dim]")
-            return True
-        console.print("Downloading nomic-embed-text-v1.5 ONNX model (~520 MB, one-time)…")
-        try:
-            download_onnx_model(onnx_model_dir)
-            console.print("[green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)")
-            return True
-        except Exception as exc:
-            console.print(f"[red]✗ Model download failed:[/red] {exc}")
-            console.print("  Check your internet connection and re-run [cyan]turnzero setup[/cyan].")
-    else:
+        # onnxruntime has no wheel for Python 3.14+ yet; users on 3.12/3.13 always have it
         console.print(
-            "[yellow]⚠[/yellow] ONNX deps unavailable after install attempt.\n"
-            "  Re-run [cyan]turnzero setup[/cyan] in a fresh shell."
+            "[yellow]⚠[/yellow] ONNX backend unavailable on this Python version.\n"
+            "  Install TurnZero with [cyan]Python 3.12[/cyan] or [cyan]3.13[/cyan] for in-process embeddings,\n"
+            "  or use [bold]Ollama[/bold] as your local backend instead."
         )
+        return False
+
+    if onnx_model_ready:
+        console.print("[dim]✓ ONNX model already downloaded[/dim]")
+        return True
+    console.print("Downloading nomic-embed-text-v1.5 ONNX model (~520 MB, one-time)…")
+    try:
+        download_onnx_model(onnx_model_dir)
+        console.print("[green]✓[/green] Embedding backend: ONNX (nomic-embed-text-v1.5, in-process)")
+        return True
+    except Exception as exc:
+        console.print(f"[red]✗ Model download failed:[/red] {exc}")
+        console.print("  Check your internet connection and re-run [cyan]turnzero setup[/cyan].")
     return False
 
 
