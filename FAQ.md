@@ -46,7 +46,7 @@ RAG retrieves documents to answer a question *mid-response*. TurnZero retrieves 
 
 **How does the library grow? Who writes the Expert Priors?**
 
-The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly — you'll see a `💡 Correction captured` nudge pointing you to `turnzero review`. The 169 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
+The highest-signal source is mid-session corrections: when the AI gets something wrong and you correct it, that correction is exactly what TurnZero should inject next time. During a session, the AI can call `submit_candidate` to write a new prior directly — you'll see a `💡 Correction captured` nudge pointing you to `turnzero review`. The 152 blocks shipped in the library came from real sessions where the model made domain-specific mistakes. You can also write blocks manually in YAML — the schema is in the README.
 
 ---
 

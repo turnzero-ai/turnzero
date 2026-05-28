@@ -197,7 +197,7 @@ doc_anchors:
 
 ## Knowledge domains
 
-169 Expert Priors across 40 domains — web frameworks, databases, cloud infra, security, CI/CD, containerisation, and more. Coverage is deepest where corrections come from real sessions: FastAPI, Next.js, PostgreSQL, Docker, Kubernetes, Redis, Supabase, Django, Rails, and others. The library grows from your sessions via `submit_candidate`.
+152 Expert Priors across 40 domains — web frameworks, databases, cloud infra, security, CI/CD, containerisation, and more. Coverage is deepest where corrections come from real sessions: FastAPI, Next.js, PostgreSQL, Docker, Kubernetes, Redis, Supabase, Django, Rails, and others. The library grows from your sessions via `submit_candidate`.
 
 Fresh installs activate a curated default set (Python, TypeScript, Security, REST API, Docker, FastAPI, Next.js, PostgreSQL). Add more with `turnzero domain add <name>` or browse available domains with `turnzero domain list`.
 
