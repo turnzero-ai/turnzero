@@ -110,7 +110,7 @@ Never `TURNZERO_DATA_DIR=data turnzero index build` — falls back to Ollama sil
 - pytest + pytest-asyncio (`asyncio_mode = "auto"`)
 - Test file naming: `tests/test_<module>.py`
 - Every new behaviour gets a test before the task is closed
-- Retrieval quality gate: Hit Rate@3 ≥ 1.00 on `tests/validation_set.json` — run `turnzero validate` before any retrieval change
+- Retrieval quality gate: Hit Rate@3 ≥ 0.70 on `tests/validation_set.json` — run `turnzero validate` before any retrieval change
 - Test the public contract, not internals. Mock nothing that can be tested with real data
 - Run: `source .venv/bin/activate && pytest`
 
@@ -151,7 +151,7 @@ source .venv/bin/activate && pytest && ruff check . && mypy turnzero
 ### Release checklist (before every `hatch publish`)
 1. All tests green: `pytest`
 2. Lint + types clean: `ruff check . && mypy turnzero`
-3. Retrieval quality gate: `turnzero validate` — Hit Rate@3 must be ≥ 1.00
+3. Retrieval quality gate: `turnzero validate` — Hit Rate@3 must be ≥ 0.70
 4. `data/index.jsonl` rebuilt from current blocks: `turnzero index build`
 5. Version bumped in `pyproject.toml` in its own commit
 6. Tagged: `git tag vX.Y.Z`

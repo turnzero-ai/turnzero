@@ -47,9 +47,9 @@ Circle 3 — Enterprise (Phase 5)
 - [ ] **Block versioning / deprecation** — `deprecated_by` field on block schema; old versions decay in ranking.
 - [ ] **Hosted block registry** — Versioned YAML + pre-computed embeddings, no local model required for sync.
 - [ ] **`turnzero sync`** — Pull community blocks + index from registry.
-- [ ] **Community submission flow** — `submit_candidate` → registry PR → merged → synced to all users.
+- [x] **Community submission flow** — `turnzero contribute <slug>` opens a pre-filled GitHub issue; maintainer merges PR (v0.13.0).
 - [ ] **Correction prevention rate** — Instrument sessions to measure whether injected priors actually prevented mid-session corrections.
-- [ ] **Per-turn domain shift** — Optional re-call of `list_suggested_blocks` when domain context shifts mid-session.
+- ~~**Per-turn domain shift**~~ — CLOSED: Turn-0-only injection is intentional. No evidence of mid-session domain shift problem. Reopen if evidence emerges.
 
 ---
 
