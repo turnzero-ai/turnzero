@@ -63,6 +63,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [x] v0.15.1 — fix(INF-5): onnxruntime + tokenizers promoted to base deps (python_version < '3.14'); smoke CI workflow added.
 - [x] v0.15.0 — Debt-reduction sprint: BlockSubmission dataclass (DEBT-1), _score_entry QueryContext refactor (DEBT-2), review()/list_blocks() decomposition (DEBT-3/4), file structure fixes (DEBT-5), compute() env-var hack removed (DEBT-6), harvest.py → harvest/ package (REF-9). 400 tests.
 - [x] v0.14.1 — Fix: bundled index rebuilt with ONNX (v0.14.0 shipped Ollama index by mistake).
 - [x] v0.14.0 — Code quality sprint: layered architecture enforced (CLI → services → repos), canonical file structure across 14 modules, DDD cleanup (AutoApprovePolicy, pure domain analytics, stats_svc owns ROI infrastructure), god function decomposition (setup → 7 helpers, list_suggested_blocks → 3 functions), QueryContext dataclass, CachedLoader, EmbeddingBackend protocol, ConfigManager, SessionLifecycle. 396 tests.
