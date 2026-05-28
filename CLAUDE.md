@@ -10,7 +10,7 @@ TurnZero is at **v0.15.1** (PyPI live).
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 400 tests passing; Hit Rate@3 = 0.815 on validation set
+- 402 tests passing; Hit Rate@3 = 0.815 on validation set
 - Primary injection path: MCP server (hook is optional `--with-hook`)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
