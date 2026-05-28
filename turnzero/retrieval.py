@@ -24,7 +24,7 @@ from turnzero.signals import (
     MIN_SINGLE_WORD_QUESTION_LEN,
     MIN_SUBSTANTIVE_WORD_LEN,
 )
-from turnzero.types import Tier
+from turnzero.types import Intent, Tier
 
 # ---------------------------------------------------------------------------
 # Constants — scoring weights tuned on tests/validation_set.json.
@@ -90,7 +90,7 @@ def classify_intent(prompt: str) -> str:
         for intent, keywords in INTENT_SIGNALS.items()
     }
     best = max(scores, key=lambda k: scores[k])
-    return best if scores[best] > 0 else "build"
+    return best if scores[best] > 0 else Intent.BUILD
 
 
 # ---------------------------------------------------------------------------

@@ -43,7 +43,7 @@ from turnzero.retrieval import (
 )
 from turnzero.services import retrieval_svc, stats_svc
 from turnzero.telemetry import track_list_viewed, track_stats_viewed
-from turnzero.types import Tier
+from turnzero.types import DisplayStatsData, Tier
 from turnzero.upgrade import check_for_upgrade
 
 discovery_app = typer.Typer(no_args_is_help=True)
@@ -64,12 +64,12 @@ def _load_blocks_and_index() -> tuple[dict[str, Block], list[Any]]:
         raise typer.Exit(1)
 
 
-def _load_stats_data(data_dir: Path) -> dict[str, Any]:
+def _load_stats_data(data_dir: Path) -> DisplayStatsData:
     """Delegate to stats_svc for stats aggregation."""
     return stats_svc.compute_display_data(data_dir)
 
 
-def _render_stats(data: dict[str, Any]) -> None:
+def _render_stats(data: DisplayStatsData) -> None:
     """Render stats tables and nudges to the console."""
 
     sessions_total = data["sessions_total"]

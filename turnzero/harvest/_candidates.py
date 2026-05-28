@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from turnzero.blocks import compute_confidence
+from turnzero.types import Intent
 
 MIN_CONTEXT_WEIGHT = 50
 
@@ -138,14 +139,14 @@ def _normalise(candidate: dict[str, Any]) -> dict[str, Any]:
     )
 
     # Ensure intent is valid
-    valid_intents = {"build", "debug", "migrate", "review"}
+    valid_intents = set(Intent)
     if candidate.get("intent") not in valid_intents:
-        candidate["intent"] = "build"
+        candidate["intent"] = Intent.BUILD
 
     # Generate ID if missing or placeholder
     if not candidate.get("id") or candidate["id"] == "<descriptive-slug>-<intent>":
         domain = str(candidate.get("domain", candidate.get("stack", "unknown")))
-        intent = str(candidate.get("intent", "build"))
+        intent = str(candidate.get("intent", Intent.BUILD))
         candidate["id"] = f"{domain}-{intent}-extracted"
 
     return candidate

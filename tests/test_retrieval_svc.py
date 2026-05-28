@@ -230,3 +230,75 @@ def test_list_suggested_blocks_filters_inactive_domain(
 
     assert "py-build" in captured_blocks
     assert "k8s-build" not in captured_blocks
+
+
+# ---------------------------------------------------------------------------
+# UX-1: "no priors matched" hint — logic lives in retrieval_svc (MCP-1)
+# ---------------------------------------------------------------------------
+
+def _patch_empty_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch retrieval_svc internals so list_suggested_blocks returns no blocks."""
+    import turnzero.retrieval as ret
+    import turnzero.services.retrieval_svc as rsvc
+    import turnzero.services.stats_svc as ssvc
+    import turnzero.telemetry as tel
+
+    monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {})
+    monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
+    monkeypatch.setattr(rsvc, "_query", lambda *a, **kw: [])
+    monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
+    monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
+
+
+def test_no_match_hint_fires_when_gate_passes_and_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Impl gate passes but no blocks match → hint entry appended by retrieval_svc."""
+    import turnzero.services.retrieval_svc as rsvc
+
+    _patch_empty_results(monkeypatch)
+    monkeypatch.setattr(rsvc, "is_implementation_prompt", lambda *a, **kw: True)
+
+    results = rsvc.list_suggested_blocks("write a kubernetes deployment manifest")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert hint, "hint entry missing when gate passes and results empty"
+    assert "turnzero query" in hint[0]["preview"]
+
+
+def test_no_match_hint_suppressed_for_chitchat(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Chitchat → gate fails → no hint even when results empty."""
+    import turnzero.services.retrieval_svc as rsvc
+
+    _patch_empty_results(monkeypatch)
+    monkeypatch.setattr(rsvc, "is_implementation_prompt", lambda *a, **kw: False)
+
+    results = rsvc.list_suggested_blocks("thanks looks good")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert not hint, "hint must not fire for chitchat"
+
+
+def test_no_match_hint_suppressed_when_results_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Non-empty results → hint not appended."""
+    import turnzero.retrieval as ret
+    import turnzero.services.retrieval_svc as rsvc
+    import turnzero.services.stats_svc as ssvc
+    import turnzero.telemetry as tel
+
+    fake_block = _make_block("py-build", "python")
+    monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {"py-build": fake_block})
+    monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
+    monkeypatch.setattr(rsvc, "_query", lambda *a, **kw: [(fake_block, 0.85)])
+    monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
+    monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
+
+    results = rsvc.list_suggested_blocks("write a python script")
+    hint = [r for r in results if r.get("block_id") == "no-match-hint"]
+    assert not hint

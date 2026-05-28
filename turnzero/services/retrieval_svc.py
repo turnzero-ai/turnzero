@@ -17,6 +17,7 @@ from turnzero.config import (
 from turnzero.formatters import block_fmt
 from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.repositories.index_repo import IndexEntry, load_index
+from turnzero.retrieval import is_implementation_prompt
 from turnzero.retrieval import query as _query
 from turnzero.session import (
     clear_session_injections,
@@ -30,8 +31,10 @@ from turnzero.telemetry import (
     track_session_summary,
 )
 from turnzero.types import (
+    BLOCK_ID_NO_MATCH_HINT,
     BLOCK_ID_PERSONAL_LIMIT_WARNING,
     BlockData,
+    Intent,
     SuggestionEntry,
     Tier,
     TurnLabel,
@@ -180,7 +183,7 @@ def _assemble_suggestions(
                 "block_id": BLOCK_ID_PERSONAL_LIMIT_WARNING,
                 "score": 0.0,
                 "domain": "system",
-                "intent": "review",
+                "intent": Intent.REVIEW,
                 "tags": ["warning"],
                 "context_weight": 0,
                 "stale": False,
@@ -263,6 +266,25 @@ def list_suggested_blocks(
         session_id, project_root, inject_all,
     )
     _record_and_track(formatted, blocks, prompt, session_id, personal_results)
+
+    # UX-1: when gate passed but no blocks matched, guide user to diagnose
+    if not formatted and is_implementation_prompt(prompt, project_root=project_root):
+        formatted = [
+            SuggestionEntry(
+                block_id=BLOCK_ID_NO_MATCH_HINT,
+                score=0.0,
+                domain="system",
+                intent=Intent.REVIEW,
+                tags=["hint"],
+                context_weight=0,
+                stale=False,
+                turn=TurnLabel.SUBSEQUENT,
+                preview=(
+                    "No priors matched. Run "
+                    '`turnzero query --explain "<your prompt>"` to diagnose.'
+                ),
+            )
+        ]
     return formatted
 
 

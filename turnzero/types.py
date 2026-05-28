@@ -8,7 +8,8 @@ multiple modules — rename in one place, catch mismatches at type-check time.
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Any, TypedDict
+from pathlib import Path
+from typing import TypedDict
 
 # ---------------------------------------------------------------------------
 # MCP tool name constants — defined before enums so INJECTION_TOOLS can
@@ -151,17 +152,64 @@ class TokenCostStats(TypedDict):
     submit_candidate_total: int
 
 
+class ContextTokensStats(TypedDict):
+    total: int
+    this_week: int
+    note: str
+
+
+class InjectionOverheadStats(TypedDict):
+    total: int
+    this_week: int
+    note: str
+
+
+class TopBlockEntry(TypedDict):
+    block_id: str
+    count: int
+
+
+class ToolCallStats(TypedDict):
+    total: int
+    this_week: int
+    by_tool: dict[str, int]
+
+
 class StatsData(TypedDict):
     """Shape of stats_svc.compute() return value."""
 
     sessions: CountWithWeek
     priors_injected: CountWithWeek
-    context_tokens_injected: dict[str, Any]
-    injection_overhead: dict[str, Any]
+    context_tokens_injected: ContextTokensStats
+    injection_overhead: InjectionOverheadStats
     estimated_turns_saved: int
     estimated_tokens_saved: int
     top_domains: list[str]
-    top_blocks: list[dict[str, Any]]
+    top_blocks: list[TopBlockEntry]
     library: LibraryStats
-    tool_calls: dict[str, Any]
+    tool_calls: ToolCallStats
     token_cost: TokenCostStats
+
+
+class DisplayStatsData(TypedDict):
+    """Shape of stats_svc.compute_display_data() return value."""
+
+    sessions_total: int
+    sessions_week: int
+    priors_total: int
+    priors_week: int
+    tokens_injected_total: int
+    tokens_injected_week: int
+    overhead_total: int
+    overhead_week: int
+    corrections_total: int
+    corrections_week: int
+    top_domains: list[str]
+    est_turns: int
+    est_tokens: float
+    blocks_total: int
+    personal_count: int
+    personal_weeks: int | None
+    stale_count: int
+    index_count: int | None
+    data_dir: Path

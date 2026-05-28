@@ -25,6 +25,9 @@ from turnzero.services import candidate_svc, retrieval_svc, stats_svc
 from turnzero.types import (
     BLOCK_ID_NO_MATCH_HINT,
     BLOCK_ID_PERSONAL_LIMIT_WARNING,
+    TOOL_INJECT_BLOCK,
+    TOOL_LIST_SUGGESTED,
+    TOOL_SUBMIT_CANDIDATE,
     BlockData,
     StatsData,
     SuggestionEntry,
@@ -144,29 +147,9 @@ def list_suggested_blocks(
         suggestions = retrieval_svc.list_suggested_blocks(
             prompt, project_root=Path.cwd(), session_id=sid, inject_all=inject_all
         )
-        # UX-1: when gate passed but no priors matched, guide user to diagnose
-        if not suggestions:
-            from turnzero.retrieval import is_implementation_prompt
-            if is_implementation_prompt(prompt, project_root=Path.cwd()):
-                suggestions = [
-                    SuggestionEntry(
-                        block_id=BLOCK_ID_NO_MATCH_HINT,
-                        score=0.0,
-                        domain="system",
-                        intent="review",
-                        tags=["hint"],
-                        context_weight=0,
-                        stale=False,
-                        turn="subsequent",
-                        preview=(
-                            "No priors matched. Run "
-                            '`turnzero query --explain "<your prompt>"` to diagnose.'
-                        ),
-                    )
-                ]
         _sentinel_ids = {BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING}
         stats_svc.log_tool_call(
-            "list_suggested_blocks",
+            TOOL_LIST_SUGGESTED,
             {"prompt": prompt, "session_id": sid, "inject_all": inject_all},
             suggestions,
             meta={
@@ -194,7 +177,7 @@ def list_suggested_blocks(
                 ),
             }
         ]
-        stats_svc.log_tool_call("list_suggested_blocks", {"prompt": prompt}, error_payload)
+        stats_svc.log_tool_call(TOOL_LIST_SUGGESTED, {"prompt": prompt}, error_payload)
         return error_payload  # type: ignore[return-value]
 
 
@@ -238,7 +221,7 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
         block_id, session_id=sid, project_root=Path.cwd()
     )
     stats_svc.log_tool_call(
-        "inject_block",
+        TOOL_INJECT_BLOCK,
         {"block_id": block_id, "session_id": sid},
         result,
         meta={"block_id": block_id},
@@ -346,7 +329,7 @@ def submit_candidate(
         project_root=project_root,
     )
     stats_svc.log_tool_call(
-        "submit_candidate",
+        TOOL_SUBMIT_CANDIDATE,
         input_snapshot,
         result,
         meta={"auto_approve": auto_approve, "block_id": block_id},

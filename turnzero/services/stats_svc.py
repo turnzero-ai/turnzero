@@ -10,7 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from turnzero.config import get_data_dir
-from turnzero.types import INJECTION_TOOLS, StatsData, Tier
+from turnzero.types import (
+    INJECTION_TOOLS,
+    TOOL_SUBMIT_CANDIDATE,
+    DisplayStatsData,
+    StatsData,
+    Tier,
+)
 
 # Use the canonical set from types — single source of truth
 _INJECTION_TOOLS = INJECTION_TOOLS
@@ -113,7 +119,7 @@ def _aggregate_tool_tokens(
         if is_recent:
             tokens_in_week += tin
             tokens_out_week += tout
-        if tool == "submit_candidate":
+        if tool == TOOL_SUBMIT_CANDIDATE:
             submit_tokens_total += tin + tout
         if tool in _INJECTION_TOOLS:
             injection_overhead_total += tin + tout
@@ -131,7 +137,7 @@ def _aggregate_tool_tokens(
     }
 
 
-def compute_display_data(data_dir: Path) -> dict[str, Any]:
+def compute_display_data(data_dir: Path) -> DisplayStatsData:
     """Aggregate all stats for CLI display, building on compute() for shared logic."""
     import datetime
 
@@ -170,13 +176,13 @@ def compute_display_data(data_dir: Path) -> dict[str, Any]:
     corrections_total = sum(
         1
         for e in tool_entries
-        if e.get("tool") == "submit_candidate"
+        if e.get("tool") == TOOL_SUBMIT_CANDIDATE
         and not e.get("meta", {}).get("auto_approve", True)
     )
     corrections_week = sum(
         1
         for e in tool_entries
-        if e.get("tool") == "submit_candidate"
+        if e.get("tool") == TOOL_SUBMIT_CANDIDATE
         and not e.get("meta", {}).get("auto_approve", True)
         and e.get("ts", 0) >= week_ago
     )
