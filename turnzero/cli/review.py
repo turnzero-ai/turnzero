@@ -14,6 +14,7 @@ from turnzero.cli.base import (
     get_data_dir,
     get_index_path,
 )
+from turnzero.repositories.block_repo import update_fields as _update_block_fields
 from turnzero.services import retrieval_svc
 
 
@@ -150,8 +151,6 @@ def _show_low_confidence_blocks(
     candidate_count: int,
 ) -> None:
     """Display and interactively triage low-confidence library blocks."""
-    import yaml as _yaml
-
     from turnzero.telemetry import track_review_opened
 
     try:
@@ -198,15 +197,10 @@ def _show_low_confidence_blocks(
                 found_path = next(blocks_dir.rglob(f"{block.slug}.yaml"), None)
 
             if choice in ("v", "verify") and found_path:
-                raw = _yaml.safe_load(found_path.read_text())
-                raw["confidence"] = 1.0
-                raw["verification_level"] = "curated"
-                found_path.write_text(_yaml.dump(raw, sort_keys=False, allow_unicode=True))
+                _update_block_fields(found_path, confidence=1.0, verification_level="curated")
                 console.print(f"  [green]✓ {block.slug} promoted to curated (1.0).[/green]\n")
             elif choice in ("a", "archive") and found_path:
-                raw = _yaml.safe_load(found_path.read_text())
-                raw["archived"] = True
-                found_path.write_text(_yaml.dump(raw, sort_keys=False, allow_unicode=True))
+                _update_block_fields(found_path, archived=True)
                 console.print(f"  [yellow]✓ {block.slug} archived (excluded from retrieval).[/yellow]\n")
             elif choice in ("d", "delete") and found_path:
                 if typer.confirm(f"  Are you sure you want to PERMANENTLY delete {block.slug}?"):

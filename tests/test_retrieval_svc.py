@@ -107,20 +107,8 @@ def test_block_cache_invalidation(
 # ---------------------------------------------------------------------------
 
 
-def _make_block(slug: str, domain: str, tier: str = "community") -> Block:
-    from turnzero.blocks import Block
-    return Block(
-        slug=slug, hash="h", version="1.0.0", domain=domain, intent="build",
-        last_verified="2026-01-01", tags=[], context_weight=100,
-        constraints=["Do the thing"], anti_patterns=[], doc_anchors=[],
-        conflicts_with=[], conflicts_with_tags=[], provides=[], requires=[],
-        confidence=1.0, verification_level="curated", rationale=None,
-        archived=False, tier=tier,
-    )
-
-
 def test_inject_block_raises_when_domain_inactive(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     import yaml
 
@@ -130,7 +118,7 @@ def test_inject_block_raises_when_domain_inactive(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True, "local": True}})
     )
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
-        "k8s-build": _make_block("k8s-build", "kubernetes"),
+        "k8s-build": make_block("k8s-build", "kubernetes"),
     })
 
     with pytest.raises(ValueError, match="not in active domains"):
@@ -138,7 +126,7 @@ def test_inject_block_raises_when_domain_inactive(
 
 
 def test_inject_block_personal_tier_always_passes(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     import yaml
 
@@ -147,7 +135,7 @@ def test_inject_block_personal_tier_always_passes(
     (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": ["python"], "sources": {"personal": True}})
     )
-    personal_block = _make_block("my-pref", "global", tier="personal")
+    personal_block = make_block("my-pref", "global", tier="personal")
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {"my-pref": personal_block})
     monkeypatch.setattr(retrieval_svc, "record_session_injection", lambda *a: None)
     monkeypatch.setattr(retrieval_svc, "record_project_affinity", lambda *a: None)
@@ -159,7 +147,7 @@ def test_inject_block_personal_tier_always_passes(
 
 
 def test_get_block_reports_inactive_when_domain_not_in_active(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     import yaml
 
@@ -169,7 +157,7 @@ def test_get_block_reports_inactive_when_domain_not_in_active(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
-        "k8s-build": _make_block("k8s-build", "kubernetes"),
+        "k8s-build": make_block("k8s-build", "kubernetes"),
     })
 
     result = retrieval_svc.get_block("k8s-build")
@@ -178,7 +166,7 @@ def test_get_block_reports_inactive_when_domain_not_in_active(
 
 
 def test_get_block_active_true_when_domain_in_active(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     import yaml
 
@@ -188,7 +176,7 @@ def test_get_block_active_true_when_domain_in_active(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
     monkeypatch.setattr(retrieval_svc, "_load_active_blocks", lambda: {
-        "py-build": _make_block("py-build", "python"),
+        "py-build": make_block("py-build", "python"),
     })
 
     result = retrieval_svc.get_block("py-build")
@@ -196,7 +184,7 @@ def test_get_block_active_true_when_domain_in_active(
 
 
 def test_list_suggested_blocks_filters_inactive_domain(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     """active_domains set → blocks from inactive domain excluded before query."""
     import yaml
@@ -210,8 +198,8 @@ def test_list_suggested_blocks_filters_inactive_domain(
         yaml.dump({"active_domains": ["python"], "sources": {"community": True}})
     )
     monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {
-        "py-build": _make_block("py-build", "python"),
-        "k8s-build": _make_block("k8s-build", "kubernetes"),
+        "py-build": make_block("py-build", "python"),
+        "k8s-build": make_block("k8s-build", "kubernetes"),
     })
     captured_blocks: list[str] = []
 
@@ -282,7 +270,7 @@ def test_no_match_hint_suppressed_for_chitchat(
 
 
 def test_no_match_hint_suppressed_when_results_exist(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, make_block: object
 ) -> None:
     """Non-empty results → hint not appended."""
     import turnzero.retrieval as ret
@@ -290,7 +278,7 @@ def test_no_match_hint_suppressed_when_results_exist(
     import turnzero.services.stats_svc as ssvc
     import turnzero.telemetry as tel
 
-    fake_block = _make_block("py-build", "python")
+    fake_block = make_block("py-build", "python")
     monkeypatch.setattr(rsvc, "_load_active_blocks", lambda: {"py-build": fake_block})
     monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
     monkeypatch.setattr(rsvc, "_query", lambda *a, **kw: [(fake_block, 0.85)])

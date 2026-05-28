@@ -275,20 +275,13 @@ def test_query_no_match_hints_explain(
 # ---------------------------------------------------------------------------
 
 
-def _write_test_block(path: Path, slug: str, domain: str, stale: bool = False) -> None:
-    verified = "2020-01-01" if stale else "2026-05-01"
-    path.write_text(
-        f"slug: {slug}\nversion: 1.0.0\ndomain: {domain}\nintent: build\n"
-        f"last_verified: {verified}\ncontext_weight: 100\nconstraints: []\n"
-        f"anti_patterns: []\nconfidence: 0.9\narchived: false\n"
-    )
-
-
-def test_list_domain_summary(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_domain_summary(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
-    _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
-    _write_test_block(blocks_dir / "fastapi-cors-build.yaml", "fastapi-cors-build", "fastapi")
+    write_block_yaml(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
+    write_block_yaml(blocks_dir / "fastapi-cors-build.yaml", "fastapi-cors-build", "fastapi")
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
@@ -298,10 +291,12 @@ def test_list_domain_summary(data_dir: Path, monkeypatch: pytest.MonkeyPatch) ->
     assert "2" in result.output  # block count
 
 
-def test_list_domain_filter(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_domain_filter(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
-    _write_test_block(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
+    write_block_yaml(blocks_dir / "fastapi-async-build.yaml", "fastapi-async-build", "fastapi")
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
@@ -320,10 +315,12 @@ def test_list_candidates_empty(data_dir: Path, monkeypatch: pytest.MonkeyPatch) 
     assert "No candidates" in result.output
 
 
-def test_list_candidates_shows_pending(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_candidates_shows_pending(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     cand_dir = data_dir / "candidates"
     cand_dir.mkdir()
-    _write_test_block(cand_dir / "my-rule-build.yaml", "my-rule-build", "fastapi")
+    write_block_yaml(cand_dir / "my-rule-build.yaml", "my-rule-build", "fastapi")
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_data_dir", lambda: data_dir)
 
@@ -332,10 +329,12 @@ def test_list_candidates_shows_pending(data_dir: Path, monkeypatch: pytest.Monke
     assert "my-rule-build" in result.output
 
 
-def test_list_stale_none(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_stale_none(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
-    _write_test_block(blocks_dir / "fresh.yaml", "fresh", "fastapi", stale=False)
+    write_block_yaml(blocks_dir / "fresh.yaml", "fresh", "fastapi", stale=False)
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
@@ -344,10 +343,12 @@ def test_list_stale_none(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     assert "No stale" in result.output
 
 
-def test_list_stale_shows_old_blocks(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_stale_shows_old_blocks(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     blocks_dir = data_dir / "blocks" / "community" / "fastapi"
     blocks_dir.mkdir(parents=True)
-    _write_test_block(blocks_dir / "old.yaml", "old-block-build", "fastapi", stale=True)
+    write_block_yaml(blocks_dir / "old.yaml", "old-block-build", "fastapi", stale=True)
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
@@ -415,10 +416,12 @@ def test_stats_corrections_counted_from_tool_log(data_dir: Path, monkeypatch: py
     assert "2  " in result.output or "+2" in result.output
 
 
-def test_stats_personal_prior_growth(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_stats_personal_prior_growth(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
+) -> None:
     blocks_dir = data_dir / "blocks" / "personal" / "global"
     blocks_dir.mkdir(parents=True)
-    _write_test_block(blocks_dir / "my-pref.yaml", "my-pref-build", "global")
+    write_block_yaml(blocks_dir / "my-pref.yaml", "my-pref-build", "global")
     import turnzero.cli.discovery as disc
     monkeypatch.setattr(disc, "get_blocks_dir", lambda: data_dir / "blocks")
 
@@ -657,17 +660,17 @@ def test_stats_nudge_not_shown_when_sessions_exist(data_dir: Path, monkeypatch: 
 
 
 def test_list_domain_summary_personal_shown_as_always_on(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, write_block_yaml: object
 ) -> None:
     blocks_dir = data_dir / "blocks"
     (blocks_dir / "community" / "fastapi").mkdir(parents=True)
-    _write_test_block(
+    write_block_yaml(
         blocks_dir / "community" / "fastapi" / "fastapi-build.yaml",
         "fastapi-build", "fastapi",
     )
     personal_dir = blocks_dir / "personal" / "global"
     personal_dir.mkdir(parents=True)
-    _write_test_block(
+    write_block_yaml(
         personal_dir / "my-pref-build.yaml",
         "my-pref-build", "global",
     )

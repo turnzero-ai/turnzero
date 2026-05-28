@@ -143,7 +143,7 @@ def test_concurrent_affinity_writes(tmp_path: Path) -> None:
 
 
 def test_inject_block_records_session_injection(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """inject_block() without inject_all records injection in session file (BUG-2 contract)."""
     import yaml
@@ -151,8 +151,6 @@ def test_inject_block_records_session_injection(
     from turnzero.blocks import Block
     from turnzero.services import retrieval_svc
 
-    data_dir = tmp_path / "turnzero"
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(data_dir))
     (data_dir / "config.yaml").parent.mkdir(parents=True, exist_ok=True)
     (data_dir / "config.yaml").write_text(
         yaml.dump({"active_domains": None, "sources": {"local": True}})

@@ -6,7 +6,7 @@ import pytest
 
 from turnzero.blocks import Block, DocAnchor
 from turnzero.formatters import block_fmt
-from turnzero.repositories.block_repo import load_all_blocks, load_block
+from turnzero.repositories.block_repo import load_all_blocks, load_block, update_fields
 
 BLOCKS_DIR = Path("data/blocks")
 
@@ -113,3 +113,32 @@ def test_is_stale_boundary() -> None:
 
     assert stale_block.is_stale()
     assert not fresh_block.is_stale()
+
+
+# ---------------------------------------------------------------------------
+# LAY-1: block_repo.update_fields
+# ---------------------------------------------------------------------------
+
+def test_update_fields_sets_confidence(tmp_path: Path) -> None:
+    path = tmp_path / "test-block.yaml"
+    path.write_text(
+        "slug: test-block\nversion: 1.0.0\ndomain: python\nintent: build\n"
+        "last_verified: 2026-01-01\ncontext_weight: 100\nconstraints: []\n"
+        "anti_patterns: []\nconfidence: 0.5\narchived: false\n"
+    )
+    update_fields(path, confidence=1.0, verification_level="curated")
+    block = load_block(path, tier="local")
+    assert block.confidence == 1.0
+    assert block.verification_level == "curated"
+
+
+def test_update_fields_sets_archived(tmp_path: Path) -> None:
+    path = tmp_path / "test-block.yaml"
+    path.write_text(
+        "slug: test-block\nversion: 1.0.0\ndomain: python\nintent: build\n"
+        "last_verified: 2026-01-01\ncontext_weight: 100\nconstraints: []\n"
+        "anti_patterns: []\nconfidence: 0.9\narchived: false\n"
+    )
+    update_fields(path, archived=True)
+    block = load_block(path, tier="local")
+    assert block.archived is True

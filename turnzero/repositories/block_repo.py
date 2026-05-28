@@ -53,6 +53,15 @@ def load_block(path: Path, tier: str = "unknown") -> Block:
     )
 
 
+def update_fields(path: Path, **kwargs: Any) -> None:
+    """Read a block YAML, merge kwargs into it, and write atomically."""
+    raw: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw.update(kwargs)
+    tmp = path.with_suffix(".yaml.tmp")
+    tmp.write_text(yaml.dump(raw, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    tmp.replace(path)
+
+
 def load_all_blocks(
     blocks_dir: Path,
     sources: list[str] | None = None,

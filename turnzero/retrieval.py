@@ -182,6 +182,49 @@ def is_implementation_prompt(prompt: str, project_root: Path | None = None) -> b
 # ---------------------------------------------------------------------------
 
 
+# Filesystem markers: (marker_files, domain). First match wins.
+# marker_files is a list of filenames/dirs — presence of ANY is sufficient.
+_FS_PRESENCE_MARKERS: list[tuple[list[str], str]] = [
+    (["docker-compose.yml", "Dockerfile"], "docker"),
+    (["supabase", "supabase.yaml"], "supabase"),
+    (["go.mod"], "golang"),
+    (["Cargo.toml"], "rust"),
+]
+
+# File content markers: (filename, keywords, domain). Checked in order.
+_FS_CONTENT_MARKERS: list[tuple[str, list[str], str]] = [
+    ("package.json", ['"next"'], "nextjs"),
+    ("package.json", ['"react-native"'], "react-native"),
+    ("package.json", ['"stripe"'], "stripe"),
+    ("pyproject.toml", ["fastapi"], "fastapi"),
+    ("requirements.txt", ["fastapi"], "fastapi"),
+    ("pyproject.toml", ["langchain"], "langchain"),
+    ("requirements.txt", ["langchain"], "langchain"),
+]
+
+# Prompt keyword markers: domain → keywords. First match wins.
+_PROMPT_DOMAIN_KEYWORDS: dict[str, list[str]] = {
+    "fastapi": ["fastapi", "python api", "uvicorn"],
+    "nextjs": ["nextjs", "next.js", "app router", "pages router"],
+    "postgresql": ["postgresql", "postgres", "psql", "sql database"],
+    "supabase": ["supabase", "supabase auth", "supabase storage"],
+    "react-native": ["react native", "expo", "react-native"],
+    "docker": ["docker", "docker-compose", "docker compose", "container"],
+    "langchain": ["langchain", "lcel", "retriever", "llm chain"],
+    "stripe": ["stripe", "payment", "checkout", "webhook"],
+    "typescript": ["typescript", "ts-config", "strict mode"],
+    "rest-api": ["rest api", "api design", "http endpoint"],
+    "golang": ["golang", "goroutine", "go module", "go.mod"],
+    "rust": ["cargo build", "cargo run", "tokio", "serde", "rust lang", "rustc"],
+    "security": [
+        "security", "secure", "harden", "hardening", "pentest",
+        "penetration test", "vulnerability", "cve", "owasp",
+        "threat model", "audit", "secrets management", "iam",
+        "least privilege", "zero trust", "devsecops", "rotate secrets",
+    ],
+}
+
+
 def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
     """Identify the primary tech domain from the prompt OR the filesystem.
 
@@ -189,73 +232,19 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
     to keyword matching in the prompt text.
     Returns the domain name (e.g. 'fastapi') or None if not found.
     """
-    # 1. Try Filesystem Detection (Highest Confidence)
     if project_root and project_root.exists():
-        pkg_json = project_root / "package.json"
-        if pkg_json.exists():
-            content = pkg_json.read_text(encoding="utf-8").lower()
-            if '"next"' in content:
-                return "nextjs"
-            if '"react-native"' in content:
-                return "react-native"
-            if '"stripe"' in content:
-                return "stripe"
-
-        pyproject = project_root / "pyproject.toml"
-        reqs = project_root / "requirements.txt"
-        for f in [pyproject, reqs]:
+        for markers, domain in _FS_PRESENCE_MARKERS:
+            if any((project_root / m).exists() for m in markers):
+                return domain
+        for filename, keywords, domain in _FS_CONTENT_MARKERS:
+            f = project_root / filename
             if f.exists():
                 content = f.read_text(encoding="utf-8").lower()
-                if "fastapi" in content:
-                    return "fastapi"
-                if "langchain" in content:
-                    return "langchain"
+                if any(kw in content for kw in keywords):
+                    return domain
 
-        if (project_root / "docker-compose.yml").exists() or (
-            project_root / "Dockerfile"
-        ).exists():
-            return "docker"
-
-        if (project_root / "supabase").exists() or (
-            project_root / "supabase.yaml"
-        ).exists():
-            return "supabase"
-
-    # 2. Fallback to Keyword Detection in Prompt
     prompt_lower = prompt.lower()
-    domains = {
-        "fastapi": ["fastapi", "python api", "uvicorn"],
-        "nextjs": ["nextjs", "next.js", "app router", "pages router"],
-        "postgresql": ["postgresql", "postgres", "psql", "sql database"],
-        "supabase": ["supabase", "supabase auth", "supabase storage"],
-        "react-native": ["react native", "expo", "react-native"],
-        "docker": ["docker", "docker-compose", "docker compose", "container"],
-        "langchain": ["langchain", "lcel", "retriever", "llm chain"],
-        "stripe": ["stripe", "payment", "checkout", "webhook"],
-        "typescript": ["typescript", "ts-config", "strict mode"],
-        "rest-api": ["rest api", "api design", "http endpoint"],
-        "security": [
-            "security",
-            "secure",
-            "harden",
-            "hardening",
-            "pentest",
-            "penetration test",
-            "vulnerability",
-            "cve",
-            "owasp",
-            "threat model",
-            "audit",
-            "secrets management",
-            "iam",
-            "least privilege",
-            "zero trust",
-            "devsecops",
-            "rotate secrets",
-        ],
-    }
-
-    for domain, keywords in domains.items():
+    for domain, keywords in _PROMPT_DOMAIN_KEYWORDS.items():
         if any(kw in prompt_lower for kw in keywords):
             return domain
     return None

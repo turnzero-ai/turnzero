@@ -10,15 +10,7 @@ from turnzero.mcp_server import submit_candidate
 from turnzero.safety import validate_candidate
 
 
-@pytest.fixture
-def clean_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    data_dir = tmp_path / "data"
-    data_dir.mkdir()
-    monkeypatch.setenv("TURNZERO_DATA_DIR", str(data_dir))
-    return data_dir
-
-
-def test_submit_candidate_without_auto_approve_queues(clean_data_dir: Path) -> None:
+def test_submit_candidate_without_auto_approve_queues(data_dir: Path) -> None:
     res = submit_candidate(
         block_id="test-block",
         domain="python",
@@ -29,11 +21,11 @@ def test_submit_candidate_without_auto_approve_queues(clean_data_dir: Path) -> N
         auto_approve=False,
     )
     assert "queued for review" in res
-    assert (clean_data_dir / "candidates" / "test-block.yaml").exists()
+    assert (data_dir / "candidates" / "test-block.yaml").exists()
 
 
 def test_submit_candidate_with_auto_approve_but_env_unset_queues(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", raising=False)
     res = submit_candidate(
@@ -48,14 +40,14 @@ def test_submit_candidate_with_auto_approve_but_env_unset_queues(
     )
     assert "Auto-approval blocked" in res
     assert "queued for review" in res
-    assert (clean_data_dir / "candidates" / "test-block.yaml").exists()
+    assert (data_dir / "candidates" / "test-block.yaml").exists()
     assert not (
-        clean_data_dir / "blocks" / "local" / "python" / "test-block.yaml"
+        data_dir / "blocks" / "local" / "python" / "test-block.yaml"
     ).exists()
 
 
 def test_submit_candidate_with_auto_approve_and_env_false_queues(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "false")
     res = submit_candidate(
@@ -69,11 +61,11 @@ def test_submit_candidate_with_auto_approve_and_env_false_queues(
         reason="I fixed it",
     )
     assert "Auto-approval blocked" in res
-    assert (clean_data_dir / "candidates" / "test-block.yaml").exists()
+    assert (data_dir / "candidates" / "test-block.yaml").exists()
 
 
 def test_submit_candidate_with_auto_approve_env_true_and_intent_approves(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "true")
     res = submit_candidate(
@@ -88,11 +80,11 @@ def test_submit_candidate_with_auto_approve_env_true_and_intent_approves(
     )
     assert "added to local library" in res
     # Incremental indexing or full build will happen, but we check the file
-    assert (clean_data_dir / "blocks" / "local" / "python" / "test-block.yaml").exists()
+    assert (data_dir / "blocks" / "local" / "python" / "test-block.yaml").exists()
 
 
 def test_submit_candidate_with_auto_approve_env_true_but_no_intent_queues(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "true")
     res = submit_candidate(
@@ -106,14 +98,14 @@ def test_submit_candidate_with_auto_approve_env_true_but_no_intent_queues(
         reason="I just thought it was a good idea",
     )
     assert "Auto-approval blocked" in res
-    assert (clean_data_dir / "candidates" / "test-block.yaml").exists()
+    assert (data_dir / "candidates" / "test-block.yaml").exists()
     assert not (
-        clean_data_dir / "blocks" / "local" / "python" / "test-block.yaml"
+        data_dir / "blocks" / "local" / "python" / "test-block.yaml"
     ).exists()
 
 
 def test_submit_candidate_injection_like_reason_still_queues_if_env_false(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "false")
     res = submit_candidate(
@@ -128,11 +120,11 @@ def test_submit_candidate_injection_like_reason_still_queues_if_env_false(
     )
     # Even though "remember" is in reason, env is false
     assert "Auto-approval blocked" in res
-    assert (clean_data_dir / "candidates" / "test-block.yaml").exists()
+    assert (data_dir / "candidates" / "test-block.yaml").exists()
 
 
 def test_submit_candidate_with_auto_approve_env_true_and_intent_fuzzy_approves(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("TURNZERO_ALLOW_MCP_AUTO_APPROVE", "true")
     # Typo: "remmeber" instead of "remember"
@@ -147,11 +139,11 @@ def test_submit_candidate_with_auto_approve_env_true_and_intent_fuzzy_approves(
         reason="User said to remmeber this",
     )
     assert "added to local library" in res
-    assert (clean_data_dir / "blocks" / "local" / "python" / "test-block.yaml").exists()
+    assert (data_dir / "blocks" / "local" / "python" / "test-block.yaml").exists()
 
 
 def test_submit_candidate_log_does_not_leak_content(
-    clean_data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     submit_candidate(
         block_id="secret-block",
@@ -164,7 +156,7 @@ def test_submit_candidate_log_does_not_leak_content(
         reason="Private user data: user@example.com",
     )
 
-    log_path = clean_data_dir / "tool_call_log.jsonl"
+    log_path = data_dir / "tool_call_log.jsonl"
     assert log_path.exists()
     log_content = log_path.read_text()
 

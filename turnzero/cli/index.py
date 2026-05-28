@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich import box
@@ -165,6 +167,154 @@ def validate(
         console.print(f"[green]✓ Meets target {target:.2f}[/green]")
 
 
+def _is_blocked(
+    prompt: str,
+    min_words: int,
+    require_impl: bool,
+    is_implementation_prompt: Callable[..., bool],
+) -> bool:
+    if min_words > 0 and len(prompt.split()) < min_words:
+        return True
+    return bool(require_impl and not is_implementation_prompt(prompt))
+
+
+def _run_verbose_dump(
+    val_set: list[dict[str, Any]],
+    negatives: list[str],
+    blocks: Mapping[str, Any],
+    index: Sequence[Any],
+    min_words: int,
+    require_impl: bool,
+    strict_intent: bool,
+    is_implementation_prompt: Callable[..., bool],
+    _query: Callable[..., Any],
+) -> None:
+    console.print("\n[bold]Per-prompt top scores[/bold] (all prompts, no threshold filter)\n")
+    all_prompts: list[tuple[str, bool]] = (
+        [(str(e["prompt"]), True) for e in val_set] + [(p, False) for p in negatives]
+    )
+    score_table = Table(box=box.SIMPLE)
+    score_table.add_column("Type", width=4)
+    score_table.add_column("Prompt", max_width=55)
+    score_table.add_column("Top block", max_width=35)
+    score_table.add_column("Score", justify="right")
+    score_table.add_column("Intent hit")
+
+    for prompt_text, is_positive in all_prompts:
+        word_blocked = min_words > 0 and len(prompt_text.split()) < min_words
+        impl_blocked = require_impl and not is_implementation_prompt(prompt_text)
+        raw = _query(prompt_text, index, blocks, top_k=1, threshold=0.0, context_weight=99999, strict_intent=False)
+        type_str = "[green]+[/green]" if is_positive else "[red]-[/red]"
+        if raw:
+            top_block, top_score = raw[0]
+            strict_raw = _query(prompt_text, index, blocks, top_k=1, threshold=0.0, context_weight=99999, strict_intent=strict_intent)
+            intent_ok = "[green]✓[/green]" if strict_raw else "[yellow]no[/yellow]"
+            if word_blocked:
+                label = "[dim]word-blocked[/dim]"
+            elif impl_blocked:
+                label = "[dim]impl-blocked[/dim]"
+            else:
+                label = intent_ok
+            score_table.add_row(type_str, prompt_text[:55], top_block.slug[:35], f"{top_score:.3f}", label)
+        else:
+            score_table.add_row(type_str, prompt_text[:55], "[none]", "0.000", "—")
+
+    console.print(score_table)
+    console.print("[dim]+ = should fire  - = should NOT fire  Intent hit = passes strict_intent filter[/dim]\n")
+
+
+def _compute_recall(
+    val_set: list[dict[str, Any]],
+    t: float,
+    blocks: Mapping[str, Any],
+    index: Sequence[Any],
+    top_k: int,
+    min_words: int,
+    require_impl: bool,
+    strict_intent: bool,
+    is_implementation_prompt: Callable[..., bool],
+    _query: Callable[..., Any],
+) -> tuple[int, int]:
+    """Return (tp_hits, eligible_count) for the given threshold."""
+    hits = 0
+    eligible = 0
+    for entry in val_set:
+        prompt = str(entry["prompt"])
+        if _is_blocked(prompt, min_words, require_impl, is_implementation_prompt):
+            continue
+        eligible += 1
+        relevant: set[str] = set(entry["relevant_block_ids"])
+        results = _query(prompt, index, blocks, top_k=top_k, threshold=t, context_weight=4000, strict_intent=strict_intent)
+        if any(b.id in relevant for b, _ in results):
+            hits += 1
+    return hits, eligible
+
+
+def _render_threshold_table(
+    t_values: list[float],
+    val_set: list[dict[str, Any]],
+    negatives: list[str],
+    blocks: Mapping[str, Any],
+    index: Sequence[Any],
+    top_k: int,
+    min_words: int,
+    require_impl: bool,
+    strict_intent: bool,
+    is_implementation_prompt: Callable[..., bool],
+    _query: Callable[..., Any],
+) -> None:
+    sweep_table = Table(title="Threshold Sweep", box=box.SIMPLE)
+    sweep_table.add_column("Threshold", justify="right")
+    sweep_table.add_column("TP rate (recall)", justify="right")
+    sweep_table.add_column("FP rate", justify="right")
+    sweep_table.add_column("Fires on", max_width=50)
+
+    for t in t_values:
+        tp_hits, eligible_count = _compute_recall(
+            val_set, t, blocks, index, top_k, min_words, require_impl, strict_intent,
+            is_implementation_prompt, _query,
+        )
+        recall = tp_hits / eligible_count if eligible_count else 0.0
+
+        fp_hits = 0
+        eligible_neg = [n for n in negatives if not _is_blocked(n, min_words, require_impl, is_implementation_prompt)]
+        for neg in eligible_neg:
+            results = _query(neg, index, blocks, top_k=top_k, threshold=t, context_weight=4000, strict_intent=strict_intent)
+            if results:
+                fp_hits += 1
+        fp_rate_str = f"{fp_hits}/{len(eligible_neg)}" if negatives else "n/a"
+
+        fires_on = []
+        for entry in val_set:
+            results = _query(str(entry["prompt"]), index, blocks, top_k=1, threshold=t, context_weight=4000, strict_intent=strict_intent)
+            if results:
+                fires_on.append(results[0][0].slug)
+
+        recall_color = (
+            "green" if recall >= THRESHOLD_TEST_GOOD_RECALL
+            else ("yellow" if recall >= THRESHOLD_TEST_WARN_RECALL else "red")
+        )
+        sweep_table.add_row(
+            f"{t:.2f}",
+            f"[{recall_color}]{recall:.0%} ({tp_hits}/{len(val_set)})[/{recall_color}]",
+            fp_rate_str,
+            ", ".join(dict.fromkeys(fires_on))[:48] or "[dim]nothing[/dim]",
+        )
+
+    console.print(sweep_table)
+    if negatives:
+        console.print("[dim]FP rate = negative prompts that triggered an injection[/dim]")
+    else:
+        console.print(
+            "[dim]No negatives file provided — FP rate unavailable. "
+            "Use --negatives to pass a JSON list of prompts that should NOT trigger.[/dim]"
+        )
+    console.print(
+        "\n[dim]Tip: run with --verbose to see the raw similarity score for every prompt, "
+        "which helps identify where the natural gap is between signal and noise.[/dim]"
+    )
+
+
 def threshold_test(
     thresholds: str = typer.Option(
         "0.50,0.55,0.60,0.65,0.70,0.75",
@@ -239,174 +389,10 @@ def threshold_test(
         )
         raise typer.Exit(1)
 
-    # --- verbose per-prompt score dump (single threshold = current hook value) ---
     if verbose:
-        console.print(
-            "\n[bold]Per-prompt top scores[/bold] (all prompts, no threshold filter)\n"
-        )
-        all_prompts = [(e["prompt"], True) for e in val_set] + [
-            (p, False) for p in negatives
-        ]
-        score_table = Table(box=box.SIMPLE)
-        score_table.add_column("Type", width=4)
-        score_table.add_column("Prompt", max_width=55)
-        score_table.add_column("Top block", max_width=35)
-        score_table.add_column("Score", justify="right")
-        score_table.add_column("Intent hit")
+        _run_verbose_dump(val_set, negatives, blocks, index, min_words, require_impl,
+                          strict_intent, is_implementation_prompt, _query)
 
-        for prompt_text, is_positive in all_prompts:
-            word_blocked = min_words > 0 and len(prompt_text.split()) < min_words
-            impl_blocked = require_impl and not is_implementation_prompt(prompt_text)
-            # Query at very low threshold to always get a score
-            raw = _query(
-                prompt_text,
-                index,
-                blocks,
-                top_k=1,
-                threshold=0.0,
-                context_weight=99999,
-                strict_intent=False,
-            )
-            if raw:
-                top_block, top_score = raw[0]
-                strict_raw = _query(
-                    prompt_text,
-                    index,
-                    blocks,
-                    top_k=1,
-                    threshold=0.0,
-                    context_weight=99999,
-                    strict_intent=strict_intent,
-                )
-                intent_ok = "[green]✓[/green]" if strict_raw else "[yellow]no[/yellow]"
-                score_str = f"{top_score:.3f}"
-                if word_blocked:
-                    blocked_label = "[dim]word-blocked[/dim]"
-                elif impl_blocked:
-                    blocked_label = "[dim]impl-blocked[/dim]"
-                else:
-                    blocked_label = None
-                type_str = "[green]+[/green]" if is_positive else "[red]-[/red]"
-                score_table.add_row(
-                    type_str,
-                    prompt_text[:55],
-                    top_block.slug[:35],
-                    score_str,
-                    blocked_label if blocked_label else intent_ok,
-                )
-            else:
-                type_str = "[green]+[/green]" if is_positive else "[red]-[/red]"
-                score_table.add_row(type_str, prompt_text[:55], "[none]", "0.000", "—")
-
-        console.print(score_table)
-        console.print(
-            "[dim]+ = should fire  - = should NOT fire  Intent hit = passes strict_intent filter[/dim]\n"
-        )
-
-    # --- threshold sweep table ---
-    sweep_table = Table(title="Threshold Sweep", box=box.SIMPLE)
-    sweep_table.add_column("Threshold", justify="right")
-    sweep_table.add_column("TP rate (recall)", justify="right")
-    sweep_table.add_column("FP rate", justify="right")
-    sweep_table.add_column("Fires on", max_width=50)
-
-    for t in t_values:
-        # True positives: validation set entries that hit at least one relevant block
-        tp_hits = 0
-        for entry in val_set:
-            if min_words > 0 and len(entry["prompt"].split()) < min_words:
-                continue  # would be blocked by hook — don't count against recall
-            if require_impl and not is_implementation_prompt(entry["prompt"]):
-                continue  # would be blocked by impl gate
-            relevant = set(entry["relevant_block_ids"])
-            results = _query(
-                entry["prompt"],
-                index,
-                blocks,
-                top_k=top_k,
-                threshold=t,
-                context_weight=4000,
-                strict_intent=strict_intent,
-            )
-            if any(b.id in relevant for b, _ in results):
-                tp_hits += 1
-        eligible_val = [
-            e
-            for e in val_set
-            if not (min_words > 0 and len(e["prompt"].split()) < min_words)
-            and not (require_impl and not is_implementation_prompt(e["prompt"]))
-        ]
-        recall = tp_hits / len(eligible_val) if eligible_val else 0.0
-
-        # False positives: negative prompts that fire anything
-        fp_hits = 0
-        fp_examples: list[str] = []
-        for neg in negatives:
-            if min_words > 0 and len(neg.split()) < min_words:
-                continue  # blocked by word filter — not a FP
-            if require_impl and not is_implementation_prompt(neg):
-                continue  # blocked by impl gate — not a FP
-            results = _query(
-                neg,
-                index,
-                blocks,
-                top_k=top_k,
-                threshold=t,
-                context_weight=4000,
-                strict_intent=strict_intent,
-            )
-            if results:
-                fp_hits += 1
-                fp_examples.append(f'"{neg[:30]}"→{results[0][0].slug}')
-        eligible_neg = [
-            n
-            for n in negatives
-            if not (min_words > 0 and len(n.split()) < min_words)
-            and not (require_impl and not is_implementation_prompt(n))
-        ]
-        fp_rate_str = f"{fp_hits}/{len(eligible_neg)}" if negatives else "n/a"
-
-        # Sample of what fires among non-validated positive prompts
-        fires_on: list[str] = []
-        for entry in val_set:
-            results = _query(
-                entry["prompt"],
-                index,
-                blocks,
-                top_k=1,
-                threshold=t,
-                context_weight=4000,
-                strict_intent=strict_intent,
-            )
-            if results:
-                fires_on.append(results[0][0].slug)
-
-        recall_color = (
-            "green"
-            if recall >= THRESHOLD_TEST_GOOD_RECALL
-            else ("yellow" if recall >= THRESHOLD_TEST_WARN_RECALL else "red")
-        )
-        fires_sample = ", ".join(dict.fromkeys(fires_on))[:48]  # deduplicate, truncate
-
-        sweep_table.add_row(
-            f"{t:.2f}",
-            f"[{recall_color}]{recall:.0%} ({tp_hits}/{len(val_set)})[/{recall_color}]",
-            fp_rate_str,
-            fires_sample or "[dim]nothing[/dim]",
-        )
-
-    console.print(sweep_table)
-
-    if negatives:
-        console.print(
-            "[dim]FP rate = negative prompts that triggered an injection[/dim]"
-        )
-    else:
-        console.print(
-            "[dim]No negatives file provided — FP rate unavailable. "
-            "Use --negatives to pass a JSON list of prompts that should NOT trigger.[/dim]"
-        )
-    console.print(
-        "\n[dim]Tip: run with --verbose to see the raw similarity score for every prompt, "
-        "which helps identify where the natural gap is between signal and noise.[/dim]"
-    )
+    _render_threshold_table(t_values, val_set, negatives, blocks, index, top_k,
+                            min_words, require_impl, strict_intent,
+                            is_implementation_prompt, _query)
