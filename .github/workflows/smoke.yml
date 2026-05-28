@@ -1,0 +1,43 @@
+name: Smoke Test
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install hatch
+        run: pip install hatch
+
+      - name: Build wheel
+        run: hatch build --target wheel
+
+      - name: Install wheel in fresh venv
+        run: |
+          python -m venv /tmp/smoke-venv
+          /tmp/smoke-venv/bin/pip install --quiet dist/*.whl
+
+      - name: Verify CLI loads
+        run: /tmp/smoke-venv/bin/turnzero --version
+
+      - name: Verify base deps present (onnxruntime + tokenizers)
+        run: /tmp/smoke-venv/bin/python -c "import onnxruntime; import tokenizers; print('onnxruntime', onnxruntime.__version__); print('tokenizers', tokenizers.__version__)"
+
+      - name: Verify MCP entry point loads
+        run: /tmp/smoke-venv/bin/python -c "from turnzero.mcp_server import mcp; print('mcp server ok')"
+
+      - name: Verify stats command runs without data dir
+        run: TURNZERO_DATA_DIR=/tmp/smoke-data /tmp/smoke-venv/bin/turnzero stats || true
