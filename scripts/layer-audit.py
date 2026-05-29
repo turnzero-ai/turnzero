@@ -14,7 +14,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "turnzero"
 
 PASS   = "\033[32mPASS\033[0m"

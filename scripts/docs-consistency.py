@@ -16,7 +16,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 MAX_ARCH_AGE_DAYS = 7
 
 PASS = "\033[32mPASS\033[0m"

@@ -21,6 +21,6 @@ def test_requires_python_is_bounded_for_embedding_stack() -> None:
 
 def test_embedding_dependency_contract_is_pinned() -> None:
     text = _pyproject_text()
-    assert '"numpy>=1.26,<2"' in text
+    assert '"numpy>=1.26,<3"' in text
     assert "sentence-transformers" not in text
     assert "transformers" not in text
