@@ -13,14 +13,34 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from turnzero.config import get_data_dir, load_config
-from turnzero.proxy.injection import maybe_inject
+from turnzero.proxy.injection import _extract_prompt, maybe_inject
 from turnzero.proxy.providers import resolve_provider_url
-from turnzero.proxy.session import get_or_create, new_session_id
+from turnzero.proxy.session import (
+    get_blocks_count,
+    get_or_create,
+    is_turn_0,
+    new_session_id,
+)
+from turnzero.telemetry import track_proxy_turn
 
 _CHAT_PATH = "/v1/chat/completions"
 _SECRET_HEADER = "X-TurnZero-Secret"
 _SESSION_HEADER = "X-TurnZero-Session"
 _SKIP_HEADERS = {"host", "content-length", _SECRET_HEADER.lower(), _SESSION_HEADER.lower()}
+
+
+_PROVIDER_LABELS: list[tuple[str, str]] = [
+    ("anthropic.com", "anthropic"),
+    ("openai.com", "openai"),
+    ("googleapis.com", "google"),
+]
+
+
+def _provider_label(url: str) -> str:
+    for fragment, label in _PROVIDER_LABELS:
+        if fragment in url:
+            return label
+    return "custom"
 
 
 def _forward_headers(request: Request) -> dict[str, str]:
@@ -66,11 +86,24 @@ async def _proxy_chat(request: Request, secret: str) -> Response:
     session_id = request.headers.get(_SESSION_HEADER) or new_session_id()
     get_or_create(session_id)
 
+    was_turn_0 = is_turn_0(session_id)
+    prompt_word_count = len(_extract_prompt(messages).split())
     body["messages"] = maybe_inject(messages, session_id)
+    injection_happened = was_turn_0 and not is_turn_0(session_id)
 
     provider_url = _get_provider_url(request, model)
     target = f"{provider_url}{_CHAT_PATH}"
     headers = _forward_headers(request)
+
+    track_proxy_turn(
+        session_id=session_id,
+        reason="turn_0" if was_turn_0 else "skip",
+        prompt_word_count=prompt_word_count,
+        injection_happened=injection_happened,
+        blocks_count=get_blocks_count(session_id) if injection_happened else 0,
+        provider=_provider_label(provider_url),
+        model=model,
+    )
 
     if is_stream:
         return await _stream_response(target, body, headers, session_id)

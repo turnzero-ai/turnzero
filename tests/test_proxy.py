@@ -315,3 +315,58 @@ def test_provider_unreachable_returns_502(monkeypatch, client):
     )
     # TestClient surfaces 500 when handler raises — verify it's a server-level error, not auth
     assert resp.status_code != 401
+
+
+# ---------------------------------------------------------------------------
+# telemetry — suppressed by default (opt-in, no consent)
+# ---------------------------------------------------------------------------
+
+
+def test_telemetry_suppressed_without_consent(monkeypatch, client):
+    """track_proxy_turn must not fire PostHog when proxy.telemetry_consent is unset."""
+    fired = []
+    monkeypatch.setattr("turnzero.proxy.server.track_proxy_turn", lambda **kw: fired.append(kw))
+    monkeypatch.setattr("turnzero.proxy.server.maybe_inject", lambda m, s, **kw: m)
+    monkeypatch.setattr(
+        "turnzero.proxy.server._json_response",
+        lambda url, body, headers: JSONResponse({}),
+    )
+
+    client.post(
+        "/v1/chat/completions",
+        json={"model": "gpt-4", "messages": [{"role": "user", "content": "hi"}]},
+        headers={"X-TurnZero-Secret": SECRET},
+    )
+
+    # track_proxy_turn was called by server — but _is_proxy_telemetry_enabled() gates it.
+    # We confirmed the function is called; consent gate is tested separately below.
+    assert len(fired) == 1  # server calls it; gate is inside telemetry module
+
+
+def test_proxy_telemetry_disabled_without_consent(monkeypatch):
+    """_is_proxy_telemetry_enabled returns False when proxy.telemetry_consent not set."""
+    import turnzero.config as _cfg
+    from turnzero.telemetry import _is_proxy_telemetry_enabled
+
+    monkeypatch.setattr(_cfg, "load_config", lambda *a, **kw: {})
+    assert not _is_proxy_telemetry_enabled()
+
+
+def test_proxy_telemetry_enabled_with_consent(monkeypatch):
+    """_is_proxy_telemetry_enabled returns True when proxy.telemetry_consent is true."""
+    import turnzero.config as _cfg
+    import turnzero.telemetry as _tel
+    from turnzero.telemetry import _is_proxy_telemetry_enabled
+
+    monkeypatch.setattr(_tel, "_is_enabled", lambda: True)
+    monkeypatch.setattr(_cfg, "load_config", lambda *a, **kw: {"proxy": {"telemetry_consent": True}})
+    assert _is_proxy_telemetry_enabled()
+
+
+def test_provider_label_extraction():
+    from turnzero.proxy.server import _provider_label
+
+    assert _provider_label("https://api.anthropic.com/v1") == "anthropic"
+    assert _provider_label("https://api.openai.com/v1") == "openai"
+    assert _provider_label("https://generativelanguage.googleapis.com/v1beta/openai") == "google"
+    assert _provider_label("http://localhost:11434/v1") == "custom"

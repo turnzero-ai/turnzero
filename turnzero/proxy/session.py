@@ -36,10 +36,16 @@ def is_turn_0(session_id: str) -> bool:
     return not bool(_sessions.get(session_id, {}).get("injected", False))
 
 
-def mark_injected(session_id: str) -> None:
+def mark_injected(session_id: str, blocks_count: int = 0) -> None:
     """Record that a prior injection happened for this session."""
     if session_id in _sessions:
         _sessions[session_id]["injected"] = True
+        _sessions[session_id]["blocks_count"] = blocks_count
+
+
+def get_blocks_count(session_id: str) -> int:
+    """Return the number of blocks injected for this session (0 if unknown)."""
+    return int(_sessions.get(session_id, {}).get("blocks_count", 0))
 
 
 def clear(session_id: str) -> None:

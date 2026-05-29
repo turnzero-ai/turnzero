@@ -68,7 +68,11 @@ def maybe_inject(
         )
         if prior_text:
             messages = _prepend_to_system(messages, prior_text)
-            proxy_session.mark_injected(session_id)
+            blocks_count = sum(
+                1 for s in suggestions
+                if s.get("full_text") and s.get("block_id") not in BLOCK_ID_SENTINELS
+            )
+            proxy_session.mark_injected(session_id, blocks_count=blocks_count)
     except Exception:
         pass
 

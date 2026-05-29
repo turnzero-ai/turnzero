@@ -75,6 +75,7 @@ class TelemetryEvent(StrEnum):
     STATS_VIEWED = "stats_viewed"
     LIST_VIEWED = "list_viewed"
     DOMAIN_CHANGED = "domain_changed"
+    PROXY_TURN = "proxy_turn"
 
 
 # ---------------------------------------------------------------------------

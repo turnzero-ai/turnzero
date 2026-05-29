@@ -255,3 +255,55 @@ def track_domain_changed(action: str, domain: str, total_active: int) -> None:
         TelemetryEvent.DOMAIN_CHANGED,
         {"action": action, "domain": domain, "total_active": total_active},
     )
+
+
+def _is_proxy_telemetry_enabled() -> bool:
+    """Proxy telemetry is opt-IN — requires proxy.telemetry_consent: true in config.
+
+    Unlike MCP telemetry (opt-out), proxy processes messages in-memory so explicit
+    consent is required before any PostHog events fire.
+    """
+    if not _is_enabled():
+        return False
+    try:
+        from turnzero.config import get_data_dir, load_config
+
+        return bool(load_config(get_data_dir()).get("proxy", {}).get("telemetry_consent", False))
+    except Exception:
+        return False
+
+
+def track_proxy_turn(
+    session_id: str,
+    reason: str,
+    prompt_word_count: int,
+    injection_happened: bool,
+    blocks_count: int,
+    provider: str,
+    model: str,
+) -> None:
+    """Fire proxy_turn event. Suppressed until proxy.telemetry_consent: true in config.
+
+    Args:
+        session_id: Proxy session ID — enables cross-correlation with submit_candidate.
+        reason: "turn_0" | "skip" (degradation re-injection added in Phase 3).
+        prompt_word_count: Word count of the user prompt — no raw text stored.
+        injection_happened: True if priors were prepended to the system message.
+        blocks_count: Number of blocks injected (0 when injection_happened is False).
+        provider: Short provider label e.g. "anthropic", "openai", "google", "custom".
+        model: Model name from the request body.
+    """
+    if not _is_proxy_telemetry_enabled():
+        return
+    track_event(
+        TelemetryEvent.PROXY_TURN,
+        {
+            "session_id": session_id,
+            "reason": reason,
+            "prompt_word_count": prompt_word_count,
+            "injection_happened": injection_happened,
+            "blocks_count": blocks_count,
+            "provider": provider,
+            "model": model,
+        },
+    )

@@ -141,3 +141,26 @@ def test_clear_removes_session():
 
 def test_clear_noop_for_unknown_session():
     proxy_session.clear("does-not-exist")  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# blocks_count tracking
+# ---------------------------------------------------------------------------
+
+
+def test_mark_injected_stores_blocks_count():
+    sid = proxy_session.new_session_id()
+    proxy_session.get_or_create(sid)
+    proxy_session.mark_injected(sid, blocks_count=3)
+    assert proxy_session.get_blocks_count(sid) == 3
+
+
+def test_mark_injected_default_blocks_count_zero():
+    sid = proxy_session.new_session_id()
+    proxy_session.get_or_create(sid)
+    proxy_session.mark_injected(sid)
+    assert proxy_session.get_blocks_count(sid) == 0
+
+
+def test_get_blocks_count_unknown_session_returns_zero():
+    assert proxy_session.get_blocks_count("nonexistent") == 0
