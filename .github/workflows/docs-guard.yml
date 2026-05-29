@@ -33,10 +33,7 @@ jobs:
             echo "Drift issue #$EXISTING already open — skipping duplicate."
           else
             gh issue create \
-              --title "🚨 Docs drift detected on main" \
-              --body "$(python scripts/docs-consistency.py 2>&1 || true)
-
-Auto-opened by docs-guard CI after push to main.
-Fix: update CLAUDE.md, SECURITY.md, or internal/ARCHITECTURE.md to match current version, then close this issue." \
+              --title "Docs drift detected on main" \
+              --body "docs-consistency.py found version or staleness drift. Run locally: python scripts/docs-consistency.py. Fix: update CLAUDE.md, SECURITY.md, or internal/ARCHITECTURE.md to match current version, then close this issue." \
               --label "documentation"
           fi
