@@ -9,7 +9,7 @@ from __future__ import annotations
 import time
 import uuid
 
-_SESSION_TTL: float = 4 * 3600.0
+from turnzero.config import SESSION_TTL_SECONDS
 
 # session_id → {"started": float, "injected": bool}
 _sessions: dict[str, dict[str, float | bool]] = {}
@@ -23,7 +23,7 @@ def new_session_id() -> str:
 def get_or_create(session_id: str) -> str:
     """Ensure session exists and is within TTL. Rotate if expired. Return session_id."""
     session = _sessions.get(session_id)
-    if session and time.time() - float(session["started"]) > _SESSION_TTL:
+    if session and time.time() - float(session["started"]) > SESSION_TTL_SECONDS:
         del _sessions[session_id]
         session = None
     if not session:

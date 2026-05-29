@@ -20,11 +20,10 @@ from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
-from turnzero.config import get_data_dir
+from turnzero.config import SESSION_TTL_SECONDS, get_data_dir
 from turnzero.services import candidate_svc, retrieval_svc, stats_svc
 from turnzero.types import (
-    BLOCK_ID_NO_MATCH_HINT,
-    BLOCK_ID_PERSONAL_LIMIT_WARNING,
+    BLOCK_ID_SENTINELS,
     TOOL_INJECT_BLOCK,
     TOOL_LIST_SUGGESTED,
     TOOL_SUBMIT_CANDIDATE,
@@ -36,10 +35,8 @@ from turnzero.validators import safe_path, validate_session_name
 
 # ---------------------------------------------------------------------------
 # WF-1: Process-scoped session identity constants
-# Rotated after _SESSION_TTL to prevent cross-conversation bleed.
+# Rotated after SESSION_TTL_SECONDS to prevent cross-conversation bleed.
 # ---------------------------------------------------------------------------
-
-_SESSION_TTL: float = 4 * 3600.0  # 4 hours
 
 # Mutable container avoids module-level reassignment (PLW0603).
 _proc_session: dict[str, float | str] = {
@@ -62,7 +59,7 @@ _log_tool_call = stats_svc.log_tool_call
 def _effective_session_id(caller_id: str | None) -> str:
     if caller_id:
         return caller_id
-    if time.time() - float(_proc_session["started"]) > _SESSION_TTL:
+    if time.time() - float(_proc_session["started"]) > SESSION_TTL_SECONDS:
         _proc_session["id"] = str(uuid.uuid4())
         _proc_session["started"] = time.time()
     return str(_proc_session["id"])
@@ -147,7 +144,6 @@ def list_suggested_blocks(
         suggestions = retrieval_svc.list_suggested_blocks(
             prompt, project_root=Path.cwd(), session_id=sid, inject_all=inject_all
         )
-        _sentinel_ids = {BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING}
         stats_svc.log_tool_call(
             TOOL_LIST_SUGGESTED,
             {"prompt": prompt, "session_id": sid, "inject_all": inject_all},
@@ -156,7 +152,7 @@ def list_suggested_blocks(
                 "inject_all": inject_all,
                 "block_ids": [
                     s["block_id"] for s in suggestions
-                    if s.get("block_id") and s["block_id"] not in _sentinel_ids
+                    if s.get("block_id") and s["block_id"] not in BLOCK_ID_SENTINELS
                 ],
             } if inject_all else None,
         )

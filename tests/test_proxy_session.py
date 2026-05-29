@@ -7,6 +7,7 @@ import uuid
 
 import pytest
 
+from turnzero.config import SESSION_TTL_SECONDS
 from turnzero.proxy import session as proxy_session
 
 
@@ -102,7 +103,7 @@ def test_ttl_expired_session_resets_on_get_or_create(monkeypatch):
     monkeypatch.setitem(
         proxy_session._sessions[sid],
         "started",
-        time.time() - proxy_session._SESSION_TTL - 1,
+        time.time() - SESSION_TTL_SECONDS - 1,
     )
 
     proxy_session.get_or_create(sid)
@@ -118,7 +119,7 @@ def test_non_expired_session_preserved(monkeypatch):
     monkeypatch.setitem(
         proxy_session._sessions[sid],
         "started",
-        time.time() - proxy_session._SESSION_TTL + 60,
+        time.time() - SESSION_TTL_SECONDS + 60,
     )
 
     proxy_session.get_or_create(sid)

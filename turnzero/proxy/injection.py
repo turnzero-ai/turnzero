@@ -7,9 +7,7 @@ from typing import Any
 
 from turnzero.proxy import session as proxy_session
 from turnzero.services import retrieval_svc
-from turnzero.types import BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING
-
-_SENTINEL_IDS = {BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING}
+from turnzero.types import BLOCK_ID_SENTINELS
 
 
 def _extract_prompt(messages: list[dict[str, Any]]) -> str:
@@ -66,7 +64,7 @@ def maybe_inject(
         prior_text = "\n\n".join(
             s["full_text"]
             for s in suggestions
-            if s.get("full_text") and s.get("block_id") not in _SENTINEL_IDS
+            if s.get("full_text") and s.get("block_id") not in BLOCK_ID_SENTINELS
         )
         if prior_text:
             messages = _prepend_to_system(messages, prior_text)

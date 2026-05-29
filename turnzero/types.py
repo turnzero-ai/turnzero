@@ -30,6 +30,7 @@ INJECTION_TOOLS: frozenset[str] = frozenset({TOOL_LIST_SUGGESTED, TOOL_INJECT_BL
 # Special block ID sentinels
 BLOCK_ID_NO_MATCH_HINT = "no-match-hint"
 BLOCK_ID_PERSONAL_LIMIT_WARNING = "personal-priors-limit-warning"
+BLOCK_ID_SENTINELS: frozenset[str] = frozenset({BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING})
 
 
 # ---------------------------------------------------------------------------

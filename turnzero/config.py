@@ -14,6 +14,8 @@ import yaml
 
 TIERS = ("local", "community", "team", "personal")
 
+SESSION_TTL_SECONDS: float = 4 * 3600.0  # shared by MCP server and proxy
+
 # Domains written to config on fresh install. Users can extend with `turnzero domain add`.
 DEFAULT_ACTIVE_DOMAINS: list[str] = [
     "python",
