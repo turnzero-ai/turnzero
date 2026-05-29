@@ -41,3 +41,9 @@ jobs:
 
       - name: Verify stats command runs without data dir
         run: TURNZERO_DATA_DIR=/tmp/smoke-data /tmp/smoke-venv/bin/turnzero stats || true
+
+      - name: Verify proxy subcommand loads
+        run: /tmp/smoke-venv/bin/turnzero proxy --help
+
+      - name: Verify proxy serve help loads
+        run: /tmp/smoke-venv/bin/turnzero proxy serve --help
