@@ -28,6 +28,8 @@ install-hooks:
 	@cp .claude/hooks/pre-push.sh .git/hooks/pre-push
 	@chmod +x .git/hooks/pre-commit .git/hooks/pre-push
 	@echo "✓ Git hooks installed (pre-commit + pre-push)"
+	@echo "  Note: .claude/hooks/*.py are gitignored — kept locally only."
+	@echo "  If missing after a fresh setup, restore from this repo's sprint history."
 
 uninstall-hooks:
 	@rm -f .git/hooks/pre-commit .git/hooks/pre-push
