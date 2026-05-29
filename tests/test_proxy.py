@@ -10,7 +10,7 @@ from starlette.responses import JSONResponse
 from starlette.testclient import TestClient
 
 from turnzero.proxy import session as proxy_session
-from turnzero.proxy.injection import _extract_prompt, _prepend_to_system, maybe_inject
+from turnzero.proxy.injection import _prepend_to_system, extract_prompt, maybe_inject
 from turnzero.proxy.providers import DEFAULT_PROVIDER_RULES, resolve_provider_url
 from turnzero.proxy.server import build_app
 
@@ -66,20 +66,20 @@ def test_user_rules_prepend_and_win():
 
 
 # ---------------------------------------------------------------------------
-# injection.py — _extract_prompt
+# injection.py — extract_prompt
 # ---------------------------------------------------------------------------
 
 
 def test_extract_prompt_string_content():
     messages = [{"role": "user", "content": "write a fastapi route"}]
-    assert _extract_prompt(messages) == "write a fastapi route"
+    assert extract_prompt(messages) == "write a fastapi route"
 
 
 def test_extract_prompt_array_content():
     messages = [
         {"role": "user", "content": [{"type": "text", "text": "hello"}, {"type": "image_url", "url": "x"}]}
     ]
-    assert _extract_prompt(messages) == "hello"
+    assert extract_prompt(messages) == "hello"
 
 
 def test_extract_prompt_returns_last_user_message():
@@ -88,12 +88,12 @@ def test_extract_prompt_returns_last_user_message():
         {"role": "assistant", "content": "reply"},
         {"role": "user", "content": "second"},
     ]
-    assert _extract_prompt(messages) == "second"
+    assert extract_prompt(messages) == "second"
 
 
 def test_extract_prompt_empty_when_no_user_message():
     messages = [{"role": "system", "content": "you are helpful"}]
-    assert _extract_prompt(messages) == ""
+    assert extract_prompt(messages) == ""
 
 
 # ---------------------------------------------------------------------------

@@ -13,8 +13,12 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route
 
 from turnzero.config import get_data_dir, load_config
-from turnzero.proxy.injection import _extract_prompt, maybe_inject
-from turnzero.proxy.providers import provider_label_for_url, resolve_provider_url
+from turnzero.proxy.injection import extract_prompt, maybe_inject
+from turnzero.proxy.providers import (
+    OPENAI_API_URL,
+    provider_label_for_url,
+    resolve_provider_url,
+)
 from turnzero.proxy.session import (
     get_blocks_count,
     get_or_create,
@@ -27,6 +31,10 @@ _CHAT_PATH = "/v1/chat/completions"
 _SECRET_HEADER = "X-TurnZero-Secret"
 _SESSION_HEADER = "X-TurnZero-Session"
 _SKIP_HEADERS = {"host", "content-length", _SECRET_HEADER.lower(), _SESSION_HEADER.lower()}
+
+
+def _unauthorized() -> JSONResponse:
+    return JSONResponse({"error": "unauthorized"}, status_code=401)
 
 
 def _forward_headers(request: Request) -> dict[str, str]:
@@ -62,7 +70,7 @@ def _get_provider_url(request: Request, model: str) -> str:
 
 async def _proxy_chat(request: Request, secret: str) -> Response:
     if request.headers.get(_SECRET_HEADER) != secret:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
+        return _unauthorized()
 
     body: dict[str, Any] = await request.json()
     messages: list[dict[str, Any]] = body.get("messages", [])
@@ -73,7 +81,7 @@ async def _proxy_chat(request: Request, secret: str) -> Response:
     get_or_create(session_id)
 
     was_turn_0 = is_turn_0(session_id)
-    prompt_word_count = len(_extract_prompt(messages).split())
+    prompt_word_count = len(extract_prompt(messages).split())
     body["messages"] = maybe_inject(messages, session_id)
     injection_happened = was_turn_0 and not is_turn_0(session_id)
 
@@ -136,10 +144,10 @@ async def _json_response(
 
 async def _passthrough(request: Request, secret: str) -> Response:
     if request.headers.get(_SECRET_HEADER) != secret:
-        return JSONResponse({"error": "unauthorized"}, status_code=401)
+        return _unauthorized()
 
     proxy_cfg = _load_proxy_config()
-    provider_url = str(proxy_cfg.get("provider_url", "https://api.openai.com/v1")).rstrip("/")
+    provider_url = str(proxy_cfg.get("provider_url", OPENAI_API_URL)).rstrip("/")
     target = _resolve_url(request, provider_url)
     headers = _forward_headers(request)
     body_bytes = await request.body()
