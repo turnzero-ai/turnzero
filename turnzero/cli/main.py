@@ -9,6 +9,7 @@ from turnzero.cli.contribute import contribute
 from turnzero.cli.discovery import inject, list_blocks, preview, query, show, stats
 from turnzero.cli.domain import domain_app
 from turnzero.cli.index import index_app, threshold_test, validate
+from turnzero.cli.proxy import proxy_app
 from turnzero.cli.review import harvest, review
 from turnzero.cli.setup import feedback, setup, source_app
 from turnzero.cli.telemetry import telemetry
@@ -39,6 +40,7 @@ def _app_options(
 app.add_typer(index_app, name="index")
 app.add_typer(source_app, name="source")
 app.add_typer(domain_app, name="domain")
+app.add_typer(proxy_app, name="proxy")
 
 # Register top-level commands
 app.command()(preview)
