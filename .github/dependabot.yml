@@ -1,0 +1,24 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      patch-updates:
+        update-types: ["patch"]
+    ignore:
+      # onnxruntime and tokenizers are pinned by python_version conditional —
+      # only bump when manually verified against Python 3.14 compatibility.
+      - dependency-name: "onnxruntime"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "tokenizers"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

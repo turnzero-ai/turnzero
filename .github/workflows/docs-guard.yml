@@ -1,0 +1,43 @@
+name: Docs Guard
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  docs-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check docs consistency
+        id: check
+        run: python .claude/hooks/docs-consistency.py
+        continue-on-error: true
+
+      - name: Open drift issue
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(gh issue list --label "documentation" --state open --search "Docs drift detected" --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            echo "Drift issue #$EXISTING already open — skipping duplicate."
+          else
+            gh issue create \
+              --title "🚨 Docs drift detected on main" \
+              --body "$(python .claude/hooks/docs-consistency.py 2>&1 || true)
+
+---
+Auto-opened by docs-guard CI after push to main.
+Fix: update CLAUDE.md, SECURITY.md, or internal/ARCHITECTURE.md to match current version, then close this issue." \
+              --label "documentation"
+          fi

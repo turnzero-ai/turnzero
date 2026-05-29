@@ -10,7 +10,7 @@ TurnZero is at **v0.17.0** (not yet published — proxy sprint in progress on `f
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 440 tests passing; Hit Rate@3 = 0.815 on validation set
+- 447 tests passing; Hit Rate@3 = 0.815 on validation set
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
@@ -112,7 +112,6 @@ Never `TURNZERO_DATA_DIR=data turnzero index build` — falls back to Ollama sil
 - Every new behaviour gets a test before the task is closed
 - Retrieval quality gate: Hit Rate@3 ≥ 0.70 on `tests/validation_set.json` — run `turnzero validate` before any retrieval change
 - Test the public contract, not internals. Mock nothing that can be tested with real data
-- Run: `source .venv/bin/activate && pytest`
 
 ### Git commit standards
 - Conventional commits: `fix:`, `feat:`, `docs:`, `refactor:`, `test:`, `chore:`
@@ -126,11 +125,10 @@ Never `TURNZERO_DATA_DIR=data turnzero index build` — falls back to Ollama sil
 - Rule of thumb: if a failure would break `pipx install turnzero`, it goes on a branch
 - No PR required — branch → tests pass locally → merge to main
 
-### Pre-push gate
-Run this before every push to main — must be fully clean:
-```bash
-source .venv/bin/activate && pytest && ruff check . && mypy turnzero
-```
+### Quality gates (automated)
+Pre-commit hook enforces ruff + mypy + pytest on every commit.
+Pre-push hook enforces docs consistency, layer audit, and Claude code review before code reaches GitHub.
+Install once: `make install-hooks`. Bypass only in emergencies: `git push --no-verify`.
 
 ### Versioning
 

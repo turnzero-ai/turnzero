@@ -1,4 +1,4 @@
-.PHONY: install lint type-check test check index-build index-verify
+.PHONY: install lint type-check test check index-build index-verify install-hooks uninstall-hooks
 
 install:
 	uv pip install -e ".[dev]"
@@ -22,3 +22,13 @@ index-verify:
 
 release: index-build
 	hatch build
+
+install-hooks:
+	@cp .claude/hooks/pre-commit.sh .git/hooks/pre-commit
+	@cp .claude/hooks/pre-push.sh .git/hooks/pre-push
+	@chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+	@echo "✓ Git hooks installed (pre-commit + pre-push)"
+
+uninstall-hooks:
+	@rm -f .git/hooks/pre-commit .git/hooks/pre-push
+	@echo "✓ Git hooks removed"

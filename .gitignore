@@ -56,8 +56,8 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Claude Code local settings (personal MCP config, paths are machine-specific)
-.claude/settings.local.json
+# Claude Code — entire .claude/ dir is local-only (hooks, settings, MCP config)
+.claude/
 *.swp
 *.swo
 
