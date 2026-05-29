@@ -49,7 +49,6 @@ def test_setup_merges_blocks_instead_of_overwriting(tmp_path: Path):
             data_dir=dest_dir,
             force=True,
             interactive=False,
-            with_hook=False,
             openai_key=None,
         )
 

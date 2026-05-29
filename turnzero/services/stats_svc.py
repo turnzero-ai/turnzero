@@ -29,7 +29,7 @@ def log_injection(
     session_id: str | None = None,
     tokens_injected: int = 0,
 ) -> None:
-    """Append a session entry to hook_log.jsonl so compute() reflects MCP injections."""
+    """Append an injection entry to injection_log.jsonl so compute() can aggregate stats."""
     entry = json.dumps(
         {
             "ts": time.time(),
@@ -82,7 +82,7 @@ def log_tool_call(
 
 
 def _load_log_entries(data_dir: Path) -> list[dict[str, Any]]:
-    """Load all injection log entries from hook_log.jsonl in data_dir."""
+    """Load all injection log entries from the injection log in data_dir."""
     log_path = data_dir / "hook_log.jsonl"
     entries: list[dict[str, Any]] = []
     if log_path.exists():

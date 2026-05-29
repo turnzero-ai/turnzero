@@ -180,7 +180,7 @@ def test_list_suggested_blocks_no_duplicates() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_log_mcp_injection_writes_hook_log(data_dir: Path) -> None:
+def test_log_injection_writes_log(data_dir: Path) -> None:
     _log_mcp_injection(
         block_ids=["nextjs15-approuter-build"],
         domains=["nextjs"],
@@ -198,7 +198,7 @@ def test_log_mcp_injection_writes_hook_log(data_dir: Path) -> None:
     assert "ts" in entry
 
 
-def test_log_mcp_injection_appends(data_dir: Path) -> None:
+def test_log_injection_appends(data_dir: Path) -> None:
     _log_mcp_injection(["block-a"], ["fastapi"], 5)
     _log_mcp_injection(["block-b"], ["nextjs"], 8)
     lines = (data_dir / "hook_log.jsonl").read_text().strip().splitlines()

@@ -58,14 +58,6 @@ _LEGACY_TURNZERO_MD_MARKER = "## TurnZero — Expert Prior injection"
 _DEMO_PROMPT = "Building a FastAPI REST API with Pydantic models and async SQLAlchemy"
 
 
-def _generate_hook(data_dir: Path) -> str:
-    """Load hook script template and substitute data directory path."""
-    template_path = (
-        Path(__file__).parent.parent / "templates" / "hooks" / "turnzero_hook.py.template"
-    )
-    return template_path.read_text(encoding="utf-8").replace("__DATA_DIR__", str(data_dir))
-
-
 def _strip_turnzero_block(existing: str) -> str:
     """Remove any existing TurnZero instruction block (current or legacy marker)."""
     lines = existing.splitlines(keepends=True)
@@ -365,42 +357,6 @@ def _setup_index(resolved: Path, dest_blocks: Path, force: bool, embedding_ok: b
     return False
 
 
-def _setup_hooks(claude_dir: Path, resolved: Path, with_hook: bool, force: bool) -> None:
-    """Write hook script and register it in settings.json if --with-hook."""
-    if not with_hook:
-        console.print(
-            "[dim]Hook not installed (MCP server is enough for most clients — use --with-hook for Claude Code guarantee)[/dim]"
-        )
-        return
-
-    hook_path = claude_dir / "turnzero-hook.py"
-    if not hook_path.exists() or force:
-        hook_path.write_text(_generate_hook(resolved), encoding="utf-8")
-        hook_path.chmod(0o755)
-        console.print(f"[green]✓[/green] Hook written → {hook_path}")
-    else:
-        console.print(f"[dim]✓ Hook already exists ({hook_path}) — use --force to regenerate[/dim]")
-
-    settings_path = claude_dir / "settings.json"
-    settings: dict[str, Any] = {}
-    if settings_path.exists():
-        with contextlib.suppress(json.JSONDecodeError):
-            settings = json.loads(settings_path.read_text(encoding="utf-8"))
-
-    hook_command = f"{sys.executable} {hook_path}"
-    hook_entry = {"type": "command", "command": hook_command, "timeout": 6}
-    hooks = settings.setdefault("hooks", {})
-    submit_hooks = hooks.setdefault("UserPromptSubmit", [{"hooks": []}])
-    hook_list = submit_hooks[0].setdefault("hooks", [])
-    already = any("turnzero-hook.py" in h.get("command", "") for h in hook_list)
-    if not already:
-        hook_list.append(hook_entry)
-        settings_path.write_text(json.dumps(settings, indent=2), encoding="utf-8")
-        console.print(f"[green]✓[/green] Hook registered in {settings_path}")
-    else:
-        console.print("[dim]✓ Hook already registered in settings.json[/dim]")
-
-
 def _render_demo_results(prompt: str) -> None:
     """Run retrieval for prompt and print what TurnZero would inject."""
     from turnzero.mcp_server import _list_suggested_blocks
@@ -620,7 +576,6 @@ def _print_setup_summary(
                 f"  [dim]Browse: [/dim][cyan]turnzero domain list[/cyan]\n"
             )
         _print_setup_finale(interactive)
-        console.print("\nAdd [cyan]--with-hook[/cyan] for an extra guarantee on Claude Code.")
     else:
         console.print("[bold yellow]Partial setup complete.[/bold yellow]\n")
         console.print("Resolve the issues above, then re-run:\n\n  [cyan]turnzero setup --force[/cyan]")
@@ -702,11 +657,6 @@ def setup(
     force: bool = typer.Option(
         False, "--force", "-f", help="Overwrite existing MCP config."
     ),
-    with_hook: bool = typer.Option(
-        False,
-        "--with-hook",
-        help="Also install the Claude Code UserPromptSubmit hook for guaranteed injection regardless of model behaviour.",
-    ),
     openai_key: str = typer.Option(
         None,
         "--openai-key",
@@ -724,9 +674,6 @@ def setup(
     Registers the TurnZero MCP server globally. Any MCP-compatible AI client
     (Claude Code, Cursor, Claude Desktop) will automatically call
     list_suggested_blocks on Turn 0 and inject Expert Priors.
-
-    Use --with-hook to also install the Claude Code UserPromptSubmit hook
-    for guaranteed injection regardless of model behaviour.
     """
     claude_dir = Path.home() / ".claude"
     claude_dir.mkdir(exist_ok=True)
@@ -765,11 +712,7 @@ def setup(
     console.print()
     index_ok = _setup_index(resolved, dest_blocks, force, embedding_ok)
 
-    # ── 4. Hook (optional) ────────────────────────────────────────────────
-    console.print()
-    _setup_hooks(claude_dir, resolved, with_hook, force)
-
-    # ── 5. MCP registration + instruction files ──────────────────────────
+    # ── 4. MCP registration + instruction files ──────────────────────────
     mcp_bin = str(Path(sys.executable).parent / "turnzero-mcp")
     _register_all_mcp_clients(mcp_bin, resolved, force)
     _write_all_md_files(force)
