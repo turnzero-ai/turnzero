@@ -63,6 +63,7 @@ Circle 3 — Enterprise (Phase 5)
 ---
 
 ## Maintenance & Done
+- [ ] v0.17.0 — DELIV-1 Phase 1: local HTTP proxy (`turnzero proxy serve`), compliance-free prior injection for any OAI-compatible client. Starlette ASGI, uuid4 sessions, fail-open injection, data-driven provider resolution. 440 tests.
 - [x] v0.16.0 — refactor/types-and-tests: Intent/TurnLabel/TOOL_* enums wired, StatsData/DisplayStatsData fully typed, no-match hint moved to service layer (MCP-1), block_repo.update_fields(), detect_domain data-driven constants, threshold_test split into helpers, make_block/write_block_yaml/assert_stats_shape conftest fixtures. 402 tests.
 - [x] v0.15.1 — fix(INF-5): onnxruntime + tokenizers promoted to base deps (python_version < '3.14'); smoke CI workflow added.
 - [x] v0.15.0 — Debt-reduction sprint: BlockSubmission dataclass (DEBT-1), _score_entry QueryContext refactor (DEBT-2), review()/list_blocks() decomposition (DEBT-3/4), file structure fixes (DEBT-5), compute() env-var hack removed (DEBT-6), harvest.py → harvest/ package (REF-9). 400 tests.
