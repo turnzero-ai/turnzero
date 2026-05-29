@@ -11,7 +11,13 @@ from starlette.testclient import TestClient
 
 from turnzero.proxy import session as proxy_session
 from turnzero.proxy.injection import _prepend_to_system, extract_prompt, maybe_inject
-from turnzero.proxy.providers import DEFAULT_PROVIDER_RULES, resolve_provider_url
+from turnzero.proxy.providers import (
+    ANTHROPIC_API_URL,
+    DEFAULT_PROVIDER_RULES,
+    GOOGLE_API_URL,
+    OPENAI_API_URL,
+    resolve_provider_url,
+)
 from turnzero.proxy.server import build_app
 
 SECRET = "test-secret-proxy"
@@ -36,22 +42,22 @@ def client():
 
 def test_resolve_anthropic_by_key_prefix():
     url = resolve_provider_url("Bearer sk-ant-abc123", "gpt-4")
-    assert "anthropic.com" in url
+    assert url == ANTHROPIC_API_URL
 
 
 def test_resolve_anthropic_by_model_prefix():
     url = resolve_provider_url(None, "claude-3-5-sonnet")
-    assert "anthropic.com" in url
+    assert url == ANTHROPIC_API_URL
 
 
 def test_resolve_openai_by_model_prefix():
     url = resolve_provider_url(None, "gpt-4o")
-    assert "openai.com" in url
+    assert url == OPENAI_API_URL
 
 
 def test_resolve_gemini_by_model_prefix():
     url = resolve_provider_url(None, "gemini-pro")
-    assert "googleapis.com" in url
+    assert url == GOOGLE_API_URL
 
 
 def test_resolve_default_fallback():
