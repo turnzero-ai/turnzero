@@ -29,7 +29,7 @@ def log_injection(
     session_id: str | None = None,
     tokens_injected: int = 0,
 ) -> None:
-    """Append an injection entry to injection_log.jsonl so compute() can aggregate stats."""
+    """Append an injection entry to hook_log.jsonl so compute() can aggregate stats."""
     entry = json.dumps(
         {
             "ts": time.time(),

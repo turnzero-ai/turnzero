@@ -11,8 +11,8 @@ import uuid
 
 from turnzero.config import SESSION_TTL_SECONDS
 
-# session_id → {"started": float, "injected": bool}
-_sessions: dict[str, dict[str, float | bool]] = {}
+# session_id → {"started": float, "injected": bool, "blocks_count": int}
+_sessions: dict[str, dict[str, float | bool | int]] = {}
 
 
 def new_session_id() -> str:

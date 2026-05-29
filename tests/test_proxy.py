@@ -322,8 +322,8 @@ def test_provider_unreachable_returns_502(monkeypatch, client):
 # ---------------------------------------------------------------------------
 
 
-def test_telemetry_suppressed_without_consent(monkeypatch, client):
-    """track_proxy_turn must not fire PostHog when proxy.telemetry_consent is unset."""
+def test_server_calls_track_proxy_turn_once(monkeypatch, client):
+    """Server calls track_proxy_turn once per request. Consent gate tested separately."""
     fired = []
     monkeypatch.setattr("turnzero.proxy.server.track_proxy_turn", lambda **kw: fired.append(kw))
     monkeypatch.setattr("turnzero.proxy.server.maybe_inject", lambda m, s, **kw: m)

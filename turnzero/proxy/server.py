@@ -27,7 +27,8 @@ from turnzero.proxy.session import (
 )
 from turnzero.telemetry import track_proxy_turn
 
-_CHAT_PATH = "/v1/chat/completions"
+_CHAT_ROUTE = "/v1/chat/completions"   # path clients send to the proxy
+_CHAT_PATH  = "/chat/completions"      # path appended to provider base URL (which ends in /v1)
 _SECRET_HEADER = "X-TurnZero-Secret"
 _SESSION_HEADER = "X-TurnZero-Session"
 _SKIP_HEADERS = {"host", "content-length", _SECRET_HEADER.lower(), _SESSION_HEADER.lower()}
@@ -60,7 +61,7 @@ def _get_provider_url(request: Request, model: str) -> str:
     proxy_cfg = _load_proxy_config()
     if override := proxy_cfg.get("provider_url"):
         return str(override).rstrip("/")
-    user_rules: list[dict[str, str]] | None = proxy_cfg.get("provider_rules") or None
+    user_rules: list[dict[str, Any]] | None = proxy_cfg.get("provider_rules") or None
     return resolve_provider_url(
         request.headers.get("Authorization"),
         model,
@@ -179,6 +180,6 @@ def build_app(secret: str) -> Starlette:
         return await _passthrough(request, secret)
 
     return Starlette(routes=[
-        Route(_CHAT_PATH, endpoint=chat_handler, methods=["POST"]),
+        Route(_CHAT_ROUTE, endpoint=chat_handler, methods=["POST"]),
         Route("/{path:path}", endpoint=passthrough_handler, methods=["GET", "POST", "DELETE", "PUT", "PATCH"]),
     ])

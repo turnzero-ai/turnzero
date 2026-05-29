@@ -20,7 +20,7 @@ jobs:
 
       - name: Check docs consistency
         id: check
-        run: python .claude/hooks/docs-consistency.py
+        run: python scripts/docs-consistency.py
         continue-on-error: true
 
       - name: Open drift issue
@@ -34,7 +34,7 @@ jobs:
           else
             gh issue create \
               --title "🚨 Docs drift detected on main" \
-              --body "$(python .claude/hooks/docs-consistency.py 2>&1 || true)
+              --body "$(python scripts/docs-consistency.py 2>&1 || true)
 
 ---
 Auto-opened by docs-guard CI after push to main.

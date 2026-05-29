@@ -7,6 +7,8 @@ both derive from the same list.
 
 from __future__ import annotations
 
+from typing import Any
+
 # ---------------------------------------------------------------------------
 # Provider URL constants — single source of truth for all provider URLs.
 # ---------------------------------------------------------------------------
@@ -21,21 +23,23 @@ GOOGLE_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 # User config can prepend custom rules (see resolve_provider_url).
 # ---------------------------------------------------------------------------
 
-DEFAULT_PROVIDER_RULES: list[dict[str, str]] = [
+# Rule dict keys: "key_prefix"|"model_prefix"|"default" (bool sentinel) → "url", "label"
+# dict[str, Any] — intentionally heterogeneous (str keys, str|bool values depending on key)
+DEFAULT_PROVIDER_RULES: list[dict[str, Any]] = [
     {"key_prefix": "sk-ant-",   "url": ANTHROPIC_API_URL, "label": "anthropic"},
     {"model_prefix": "claude-", "url": ANTHROPIC_API_URL, "label": "anthropic"},
     {"model_prefix": "gemini-", "url": GOOGLE_API_URL,    "label": "google"},
     {"model_prefix": "gpt-",    "url": OPENAI_API_URL,    "label": "openai"},
     {"model_prefix": "o1",      "url": OPENAI_API_URL,    "label": "openai"},
     {"model_prefix": "o3",      "url": OPENAI_API_URL,    "label": "openai"},
-    {"default": "true",         "url": OPENAI_API_URL,    "label": "openai"},
+    {"default": True,           "url": OPENAI_API_URL,    "label": "openai"},
 ]
 
 
 def resolve_provider_url(
     auth_header: str | None,
     model: str,
-    user_rules: list[dict[str, str]] | None = None,
+    user_rules: list[dict[str, Any]] | None = None,
 ) -> str:
     """Return provider base URL by matching rules in order.
 
@@ -50,18 +54,18 @@ def resolve_provider_url(
     rules = (user_rules or []) + DEFAULT_PROVIDER_RULES
     key = (auth_header or "").removeprefix("Bearer ").strip()
     for rule in rules:
-        if "key_prefix" in rule and key.startswith(rule["key_prefix"]):
-            return rule["url"]
-        if "model_prefix" in rule and model.startswith(rule["model_prefix"]):
-            return rule["url"]
+        if "key_prefix" in rule and key.startswith(str(rule["key_prefix"])):
+            return str(rule["url"])
+        if "model_prefix" in rule and model.startswith(str(rule["model_prefix"])):
+            return str(rule["url"])
         if "default" in rule:
-            return rule["url"]
-    return DEFAULT_PROVIDER_RULES[-1]["url"]
+            return str(rule["url"])
+    return str(DEFAULT_PROVIDER_RULES[-1]["url"])
 
 
 def provider_label_for_url(
     url: str,
-    user_rules: list[dict[str, str]] | None = None,
+    user_rules: list[dict[str, Any]] | None = None,
 ) -> str:
     """Return short provider label for a resolved URL.
 
@@ -78,6 +82,6 @@ def provider_label_for_url(
     normalised = url.rstrip("/")
     rules = (user_rules or []) + DEFAULT_PROVIDER_RULES
     for rule in rules:
-        if rule.get("url", "").rstrip("/") == normalised:
-            return rule.get("label", "custom")
+        if str(rule.get("url", "")).rstrip("/") == normalised:
+            return str(rule.get("label", "custom"))
     return "custom"
