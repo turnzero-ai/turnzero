@@ -14,7 +14,7 @@ from starlette.routing import Route
 
 from turnzero.config import get_data_dir, load_config
 from turnzero.proxy.injection import _extract_prompt, maybe_inject
-from turnzero.proxy.providers import resolve_provider_url
+from turnzero.proxy.providers import provider_label_for_url, resolve_provider_url
 from turnzero.proxy.session import (
     get_blocks_count,
     get_or_create,
@@ -27,20 +27,6 @@ _CHAT_PATH = "/v1/chat/completions"
 _SECRET_HEADER = "X-TurnZero-Secret"
 _SESSION_HEADER = "X-TurnZero-Session"
 _SKIP_HEADERS = {"host", "content-length", _SECRET_HEADER.lower(), _SESSION_HEADER.lower()}
-
-
-_PROVIDER_LABELS: list[tuple[str, str]] = [
-    ("anthropic.com", "anthropic"),
-    ("openai.com", "openai"),
-    ("googleapis.com", "google"),
-]
-
-
-def _provider_label(url: str) -> str:
-    for fragment, label in _PROVIDER_LABELS:
-        if fragment in url:
-            return label
-    return "custom"
 
 
 def _forward_headers(request: Request) -> dict[str, str]:
@@ -101,7 +87,7 @@ async def _proxy_chat(request: Request, secret: str) -> Response:
         prompt_word_count=prompt_word_count,
         injection_happened=injection_happened,
         blocks_count=get_blocks_count(session_id) if injection_happened else 0,
-        provider=_provider_label(provider_url),
+        provider=provider_label_for_url(provider_url),
         model=model,
     )
 

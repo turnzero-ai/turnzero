@@ -364,9 +364,9 @@ def test_proxy_telemetry_enabled_with_consent(monkeypatch):
 
 
 def test_provider_label_extraction():
-    from turnzero.proxy.server import _provider_label
+    from turnzero.proxy.providers import provider_label_for_url
 
-    assert _provider_label("https://api.anthropic.com/v1") == "anthropic"
-    assert _provider_label("https://api.openai.com/v1") == "openai"
-    assert _provider_label("https://generativelanguage.googleapis.com/v1beta/openai") == "google"
-    assert _provider_label("http://localhost:11434/v1") == "custom"
+    assert provider_label_for_url("https://api.anthropic.com/v1") == "anthropic"
+    assert provider_label_for_url("https://api.openai.com/v1") == "openai"
+    assert provider_label_for_url("https://generativelanguage.googleapis.com/v1beta/openai") == "google"
+    assert provider_label_for_url("http://localhost:11434/v1") == "custom"
