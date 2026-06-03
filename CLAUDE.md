@@ -4,14 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.17.0** (not yet published — tagging in progress).
+TurnZero is at **v0.17.0** (tagged, not yet on PyPI — v0.18.0 in progress on main).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 450 tests passing; Hit Rate@3 = 0.815 on validation set
+- 475 tests passing; Hit Rate@3 = 0.815 on validation set
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
+- Proxy daemon: `turnzero proxy install` (launchd/systemd), `proxy setup cursor/windsurf/continue`
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
