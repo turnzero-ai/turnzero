@@ -45,6 +45,14 @@ def _patch_yaml(port: int, secret: str) -> None:
 
     text = _CONFIG_YAML.read_text(encoding="utf-8")
 
+    # Preserve existing apiKey if user already set one
+    existing_key: str | None = None
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("apiKey:") and "YOUR_PROVIDER_KEY_HERE" not in stripped:
+            existing_key = stripped.removeprefix("apiKey:").strip()
+            break
+
     # Remove existing TurnZero block if present (idempotent)
     lines = text.splitlines(keepends=True)
     filtered: list[str] = []
@@ -64,7 +72,10 @@ def _patch_yaml(port: int, secret: str) -> None:
     elif "models: []" in text:
         text = text.replace("models: []", "models:")
 
-    text = text.rstrip() + "\n" + _yaml_entry(port, secret)
+    entry = _yaml_entry(port, secret)
+    if existing_key:
+        entry = entry.replace("YOUR_PROVIDER_KEY_HERE", existing_key)
+    text = text.rstrip() + "\n" + entry
     _CONFIG_YAML.write_text(text, encoding="utf-8")
 
 

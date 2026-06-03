@@ -26,16 +26,32 @@ def extract_prompt(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
+_CLIENT_MARKER_PATTERNS = ("BEGIN_ARG", "END_ARG", "<context>", "<file_contents>")
+
+
+def _has_client_markers(content: object) -> bool:
+    """Return True if content contains client-injected context markers (e.g. Continue's @codebase)."""
+    text = content if isinstance(content, str) else str(content)
+    return any(m in text for m in _CLIENT_MARKER_PATTERNS)
+
+
 def _prepend_to_system(
     messages: list[dict[str, Any]], prefix: str
 ) -> list[dict[str, Any]]:
-    """Prepend prefix to existing system message, or insert one if absent."""
+    """Append priors to existing system message, or insert one if absent.
+
+    Skips modification when the system message contains client context markers
+    (e.g. Continue's BEGIN_ARG/END_ARG from @codebase) — those markers break
+    if combined with injected text and cause Gemini to echo them back.
+    """
     messages = [dict(m) for m in messages]
     for i, msg in enumerate(messages):
         if msg.get("role") == "system":
             existing = msg.get("content", "")
-            # Append after existing — preserves client context marker formats (e.g. Continue's
-            # BEGIN_ARG/END_ARG) which break if priors are prepended before them.
+            if _has_client_markers(existing):
+                # Can't safely merge — client markers (e.g. Continue's @codebase BEGIN_ARG/END_ARG)
+                # break when combined with injected text. Skip injection for this request.
+                return messages
             messages[i] = {**msg, "content": f"{existing}\n\n{prefix}".strip()}
             return messages
     return [{"role": "system", "content": prefix}, *messages]
