@@ -10,9 +10,10 @@ TurnZero is at **v0.17.0** (tagged, not yet on PyPI — v0.18.0 in progress on m
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 475 tests passing; Hit Rate@3 = 0.815 on validation set
+- 478 tests passing; Hit Rate@3 = 0.815 on validation set
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
 - Proxy daemon: `turnzero proxy install` (launchd/systemd), `proxy setup cursor/windsurf/continue`
+- Continue.dev wired + validated end-to-end (Gemini 2.5 Flash). Proxy skips injection for agent mode (`<important_rules>`) and context markers (`BEGIN_ARG`, `<context>` etc).
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
