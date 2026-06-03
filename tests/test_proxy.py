@@ -126,9 +126,10 @@ def test_extract_prompt_empty_when_no_user_message():
 
 
 def test_prepend_to_existing_system_message():
+    # Priors appended AFTER existing content — preserves client context marker formats
     messages = [{"role": "system", "content": "original"}, {"role": "user", "content": "hi"}]
     result = _prepend_to_system(messages, "PRIOR")
-    assert result[0]["content"] == "PRIOR\n\noriginal"
+    assert result[0]["content"] == "original\n\nPRIOR"
     assert result[1]["role"] == "user"
 
 

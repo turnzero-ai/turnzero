@@ -34,7 +34,9 @@ def _prepend_to_system(
     for i, msg in enumerate(messages):
         if msg.get("role") == "system":
             existing = msg.get("content", "")
-            messages[i] = {**msg, "content": f"{prefix}\n\n{existing}".strip()}
+            # Append after existing — preserves client context marker formats (e.g. Continue's
+            # BEGIN_ARG/END_ARG) which break if priors are prepended before them.
+            messages[i] = {**msg, "content": f"{existing}\n\n{prefix}".strip()}
             return messages
     return [{"role": "system", "content": prefix}, *messages]
 
