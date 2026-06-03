@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-TurnZero is at **v0.17.0** (not yet published — proxy sprint in progress on `feat/proxy-p1-core`).
+TurnZero is at **v0.17.0** (not yet published — tagging in progress).
 
 - **Public SSOT:** [ROADMAP.md](ROADMAP.md) (Vision and Phases)
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
