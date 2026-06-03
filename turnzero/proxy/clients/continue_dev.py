@@ -45,8 +45,8 @@ def _save_config(cfg: dict[str, Any]) -> None:
 def patch(port: int, secret: str) -> bool:
     """Add or update TurnZero Proxy entry in ~/.continue/config.json.
 
-    Returns True if the file was written, False if Continue.dev is not installed
-    and the config doesn't exist yet (user opted not to create it blind).
+    Creates the config file if absent (Continue.dev will pick it up on next launch).
+    Always returns True.
     """
     cfg = _load_config()
     models: list[dict[str, Any]] = cfg.get("models", [])

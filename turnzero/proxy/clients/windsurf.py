@@ -16,7 +16,8 @@ def _app_support_path() -> Path:
         return Path.home() / "Library" / "Application Support" / "Windsurf"
     if platform.system() == "Windows":
         import os
-        return Path(os.environ.get("APPDATA", "")) / "Windsurf"
+        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return Path(appdata) / "Windsurf"
     return Path.home() / ".config" / "Windsurf"
 
 

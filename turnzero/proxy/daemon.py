@@ -72,13 +72,13 @@ def generate_plist(executable: Path, secret: str, port: int, data_dir: Path) -> 
         <string>serve</string>
         <string>--port</string>
         <string>{port}</string>
-        <string>--secret</string>
-        <string>{secret}</string>
     </array>
     <key>EnvironmentVariables</key>
     <dict>
         <key>TURNZERO_DATA_DIR</key>
         <string>{data_dir}</string>
+        <key>TURNZERO_PROXY_SECRET</key>
+        <string>{secret}</string>
     </dict>
     <key>RunAtLoad</key>
     <true/>
@@ -140,8 +140,9 @@ Description=TurnZero Proxy
 After=network.target
 
 [Service]
-ExecStart={executable} proxy serve --port {port} --secret {secret}
+ExecStart={executable} proxy serve --port {port}
 Environment=TURNZERO_DATA_DIR={data_dir}
+Environment=TURNZERO_PROXY_SECRET={secret}
 Restart=always
 StandardOutput=append:{log}
 StandardError=append:{log}

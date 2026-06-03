@@ -29,9 +29,28 @@ def test_generate_plist_contains_label() -> None:
     assert PLIST_LABEL in xml
 
 
-def test_generate_plist_embeds_secret_in_args() -> None:
+def test_generate_plist_embeds_secret_as_env_var() -> None:
     xml = generate_plist(_EXE, _SECRET, _PORT, _DATA_DIR)
+    assert "TURNZERO_PROXY_SECRET" in xml
     assert _SECRET in xml
+
+
+def test_generate_plist_secret_not_in_program_arguments() -> None:
+    xml = generate_plist(_EXE, _SECRET, _PORT, _DATA_DIR)
+    # Secret must be in EnvironmentVariables, not ProgramArguments (ps aux leak)
+    tree = ET.fromstring(xml)
+    root_dict = tree  # plist root is <dict>
+    in_args = False
+    in_args_block = False
+    for child in root_dict:
+        if child.tag == "key" and child.text == "ProgramArguments":
+            in_args_block = True
+        elif in_args_block and child.tag == "array":
+            for string in child:
+                if string.text == _SECRET:
+                    in_args = True
+            in_args_block = False
+    assert not in_args
 
 
 def test_generate_plist_embeds_port_in_args() -> None:
