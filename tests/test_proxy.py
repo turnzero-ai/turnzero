@@ -60,6 +60,24 @@ def test_resolve_gemini_by_model_prefix():
     assert url == GOOGLE_API_URL
 
 
+def test_resolve_xai_by_key_prefix():
+    from turnzero.proxy.providers import XAI_API_URL
+    url = resolve_provider_url("Bearer xai-abc123", "unknown-model")
+    assert url == XAI_API_URL
+
+
+def test_resolve_xai_by_grok_model_prefix():
+    from turnzero.proxy.providers import XAI_API_URL
+    url = resolve_provider_url(None, "grok-3")
+    assert url == XAI_API_URL
+
+
+def test_resolve_xai_grok_mini():
+    from turnzero.proxy.providers import XAI_API_URL
+    url = resolve_provider_url(None, "grok-3-mini")
+    assert url == XAI_API_URL
+
+
 def test_resolve_default_fallback():
     url = resolve_provider_url(None, "unknown-model-xyz")
     assert url == DEFAULT_PROVIDER_RULES[-1]["url"]
@@ -375,4 +393,5 @@ def test_provider_label_extraction():
     assert provider_label_for_url("https://api.anthropic.com/v1") == "anthropic"
     assert provider_label_for_url("https://api.openai.com/v1") == "openai"
     assert provider_label_for_url("https://generativelanguage.googleapis.com/v1beta/openai") == "google"
+    assert provider_label_for_url("https://api.x.ai/v1") == "xai"
     assert provider_label_for_url("http://localhost:11434/v1") == "custom"

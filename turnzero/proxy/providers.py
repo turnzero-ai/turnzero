@@ -16,6 +16,7 @@ from typing import Any
 ANTHROPIC_API_URL = "https://api.anthropic.com/v1"
 OPENAI_API_URL = "https://api.openai.com/v1"
 GOOGLE_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
+XAI_API_URL = "https://api.x.ai/v1"
 
 # ---------------------------------------------------------------------------
 # Rule list — evaluated top-to-bottom; first match wins.
@@ -27,9 +28,11 @@ GOOGLE_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 # dict[str, Any] — intentionally heterogeneous (str keys, str|bool values depending on key)
 DEFAULT_PROVIDER_RULES: list[dict[str, Any]] = [
     {"key_prefix": "sk-ant-",   "url": ANTHROPIC_API_URL, "label": "anthropic"},
+    {"key_prefix": "xai-",      "url": XAI_API_URL,       "label": "xai"},
     {"model_prefix": "claude-", "url": ANTHROPIC_API_URL, "label": "anthropic"},
     {"model_prefix": "gemini-", "url": GOOGLE_API_URL,    "label": "google"},
     {"model_prefix": "gpt-",    "url": OPENAI_API_URL,    "label": "openai"},
+    {"model_prefix": "grok-",   "url": XAI_API_URL,       "label": "xai"},
     {"model_prefix": "o1",      "url": OPENAI_API_URL,    "label": "openai"},
     {"model_prefix": "o3",      "url": OPENAI_API_URL,    "label": "openai"},
     {"default": True,           "url": OPENAI_API_URL,    "label": "openai"},
