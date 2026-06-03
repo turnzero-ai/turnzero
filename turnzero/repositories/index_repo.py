@@ -34,7 +34,7 @@ class IndexHeader:
 @dataclass
 class IndexEntry:
     block_id: str
-    embedding: np.ndarray  # type: ignore[type-arg]
+    embedding: np.ndarray
     domain: str
     intent: str
     tags: list[str]

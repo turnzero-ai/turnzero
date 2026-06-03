@@ -121,6 +121,7 @@ def test_embed_falls_back_to_openai_when_local_unavailable(
     vec = [0.5] * EMBEDDING_DIM
 
     with (
+        patch("turnzero.embed._is_onnx_available", return_value=False),
         patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("ollama down")),
         patch(
             "turnzero.embed._embed_openai", return_value=np.array(vec, dtype=np.float32)
@@ -136,6 +137,7 @@ def test_embed_raises_when_all_backends_fail(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with (
+        patch("turnzero.embed._is_onnx_available", return_value=False),
         patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")),
         pytest.raises(RuntimeError, match="No embedding backend available"),
     ):
@@ -146,6 +148,7 @@ def test_embed_skips_openai_when_no_key(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with (
+        patch("turnzero.embed._is_onnx_available", return_value=False),
         patch("turnzero.embed._embed_ollama", side_effect=RuntimeError("down")),
         patch("turnzero.embed._embed_openai") as mock_openai,
         pytest.raises(RuntimeError),
