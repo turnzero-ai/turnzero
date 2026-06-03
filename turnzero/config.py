@@ -38,6 +38,11 @@ _DEFAULTS: dict[str, Any] = {
     "harvest_opt_in": False,
     # None = all domains active (backward compat). List = only those domains score.
     "active_domains": None,
+    "proxy": {
+        "secret": None,   # generated on first install, stored here
+        "port": 9981,
+        "telemetry_consent": False,
+    },
 }
 
 _TELEMETRY_DEFAULTS: dict[str, object] = {
