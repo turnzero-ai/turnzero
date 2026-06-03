@@ -57,6 +57,7 @@ class TestLearningLoop:
 
     def test_submitted_block_is_retrievable(self, tmp_path: Path) -> None:
         os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+        os.environ["TURNZERO_ALLOW_MCP_AUTO_APPROVE"] = "true"
         try:
             _seed_data_dir(tmp_path)
 
@@ -91,9 +92,11 @@ class TestLearningLoop:
             )
         finally:
             del os.environ["TURNZERO_DATA_DIR"]
+            os.environ.pop("TURNZERO_ALLOW_MCP_AUTO_APPROVE", None)
 
     def test_submitted_block_scores_above_threshold(self, tmp_path: Path) -> None:
         os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+        os.environ["TURNZERO_ALLOW_MCP_AUTO_APPROVE"] = "true"
         try:
             _seed_data_dir(tmp_path)
 
@@ -128,6 +131,7 @@ class TestLearningLoop:
 
         finally:
             del os.environ["TURNZERO_DATA_DIR"]
+            os.environ.pop("TURNZERO_ALLOW_MCP_AUTO_APPROVE", None)
 
     def test_queued_block_not_retrievable(self, tmp_path: Path) -> None:
         """auto_approve=False must NOT make the block retrievable."""
@@ -292,7 +296,7 @@ class TestHarvestPipeline:
 
             # Mock extract_with_llm to return our controlled YAML
             with patch(
-                "turnzero.harvest.extract_with_llm", return_value=_MOCK_LLM_YAML
+                "turnzero.harvest._extraction.extract_with_llm", return_value=_MOCK_LLM_YAML
             ):
                 from turnzero.harvest import harvest
 
@@ -376,6 +380,7 @@ class TestInjectionSequence:
     def test_list_then_inject_pipeline_is_coherent(self, tmp_path: Path) -> None:
         """list_suggested_blocks -> inject_block must produce output containing constraints."""
         os.environ["TURNZERO_DATA_DIR"] = str(tmp_path)
+        os.environ["TURNZERO_ALLOW_MCP_AUTO_APPROVE"] = "true"
         try:
             _seed_data_dir(tmp_path)
 
@@ -415,3 +420,4 @@ class TestInjectionSequence:
             )
         finally:
             del os.environ["TURNZERO_DATA_DIR"]
+            os.environ.pop("TURNZERO_ALLOW_MCP_AUTO_APPROVE", None)
