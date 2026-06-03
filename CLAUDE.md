@@ -10,7 +10,7 @@ TurnZero is at **v0.17.0** (not yet published — tagging in progress).
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 447 tests passing; Hit Rate@3 = 0.815 on validation set
+- 450 tests passing; Hit Rate@3 = 0.815 on validation set
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
 - Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
