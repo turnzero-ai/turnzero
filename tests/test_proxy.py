@@ -246,9 +246,11 @@ def test_maybe_inject_skips_sentinel_ids(monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_missing_secret_returns_401(client):
+def test_missing_secret_is_allowed(client):
+    # No header = client can't send custom headers (Cursor/Windsurf); localhost bind is the guard.
+    # Proxy auth passes; response body must not be the proxy's own {"error": "unauthorized"}.
     resp = client.post("/v1/chat/completions", json={"model": "gpt-4", "messages": []})
-    assert resp.status_code == 401
+    assert resp.json().get("error") != "unauthorized"
 
 
 def test_wrong_secret_returns_401(client):
@@ -258,11 +260,13 @@ def test_wrong_secret_returns_401(client):
         headers={"X-TurnZero-Secret": "wrong"},
     )
     assert resp.status_code == 401
+    assert resp.json().get("error") == "unauthorized"
 
 
-def test_non_chat_missing_secret_returns_401(client):
+def test_non_chat_missing_secret_is_allowed(client):
+    # No header = allowed; wrong header = blocked. Response may not be JSON (provider unreachable).
     resp = client.get("/v1/models")
-    assert resp.status_code == 401
+    assert resp.status_code != 401
 
 
 # ---------------------------------------------------------------------------

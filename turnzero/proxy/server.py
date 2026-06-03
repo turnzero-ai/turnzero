@@ -69,8 +69,16 @@ def _get_provider_url(request: Request, model: str) -> str:
     )
 
 
+def _is_authorized(request: Request, secret: str) -> bool:
+    """Allow if secret header matches OR if no header sent (localhost-only bind is the boundary)."""
+    incoming = request.headers.get(_SECRET_HEADER)
+    if incoming is None:
+        return True  # Cursor/Windsurf can't send custom headers; 127.0.0.1 bind is the guard
+    return incoming == secret
+
+
 async def _proxy_chat(request: Request, secret: str) -> Response:
-    if request.headers.get(_SECRET_HEADER) != secret:
+    if not _is_authorized(request, secret):
         return _unauthorized()
 
     body: dict[str, Any] = await request.json()
@@ -144,7 +152,7 @@ async def _json_response(
 
 
 async def _passthrough(request: Request, secret: str) -> Response:
-    if request.headers.get(_SECRET_HEADER) != secret:
+    if not _is_authorized(request, secret):
         return _unauthorized()
 
     proxy_cfg = _load_proxy_config()
