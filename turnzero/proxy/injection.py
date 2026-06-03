@@ -26,7 +26,13 @@ def extract_prompt(messages: list[dict[str, Any]]) -> str:
     return ""
 
 
-_CLIENT_MARKER_PATTERNS = ("BEGIN_ARG", "END_ARG", "<context>", "<file_contents>")
+_CLIENT_MARKER_PATTERNS = (
+    "BEGIN_ARG",        # Continue @codebase context
+    "END_ARG",          # Continue @codebase context
+    "<context>",        # Continue file context
+    "<file_contents>",  # Continue file context
+    "<important_rules>", # Continue agent mode system prompt
+)
 
 
 def _has_client_markers(content: object) -> bool:
