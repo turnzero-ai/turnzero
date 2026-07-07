@@ -164,6 +164,7 @@ Install once: `make install-hooks`. Bypass only in emergencies: `git push --no-v
 - `ROADMAP.md` Maintenance & Done — add completed milestone with version tag
 - `internal/PROJECT_STATE.md` — mark completed tickets, add new debt found
 - `internal/ARCHITECTURE.md` — update `Last verified` line to new version/commit; verify Module Map and MCP Tool Surface are accurate
+- `internal/diagrams/*.svg` — regenerate from `.mmd` source (claude-mermaid `mermaid_preview` + `mermaid_save`) if module map or release pipeline changed; stale SVGs drift silently, no automated check
 - `BENCHMARK.md` — add results row if benchmark was run this sprint; keep consolidated three-agent table current
 
 ### Block YAML schema
