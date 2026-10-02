@@ -18,7 +18,7 @@ from turnzero.config import (
 from turnzero.formatters import block_fmt
 from turnzero.repositories.block_repo import load_all_blocks
 from turnzero.repositories.index_repo import IndexEntry, load_index
-from turnzero.retrieval import is_implementation_prompt
+from turnzero.retrieval import MAX_PERSONAL_TOKENS, is_implementation_prompt
 from turnzero.retrieval import query as _query
 from turnzero.session import (
     clear_session_injections,
@@ -138,48 +138,37 @@ def _apply_domain_whitelist(blocks: dict[str, Block]) -> dict[str, Block]:
 def _assemble_suggestions(
     personal_results: list[tuple[Block, float]],
     expert_results: list[tuple[Block, float]],
-    limit_exceeded: bool,
+    omitted: int,
     turn: TurnLabel,
     session_id: str | None,
     project_root: Path | None,
-    inject_all: bool,
 ) -> list[SuggestionEntry]:
-    """Build SuggestionEntry list and record injections when inject_all=True."""
-    def _build_entry(block: Block, score: float, is_personal: bool) -> SuggestionEntry:
-        entry: SuggestionEntry = {
+    """Build SuggestionEntry list with full text and record every injection."""
+
+    def _build_entry(block: Block, score: float) -> SuggestionEntry:
+        if session_id:
+            record_session_injection(session_id, block.slug)
+        if project_root:
+            record_project_affinity(project_root, block.slug)
+        track_block_injected(domain=block.domain, tier=block.tier or "local")
+        return {
             "block_id": block.slug,
             "score": round(score, 3),
             "domain": block.domain,
             "intent": block.intent,
             "tags": block.tags,
-            "context_weight": block.context_weight,
+            "context_weight": block_fmt.injection_tokens(block),
             "stale": block.is_stale(),
             "turn": turn,
-            "preview": (
-                "[personal prior — call inject_block to read]"
-                if is_personal
-                else _expert_preview(block)
-            ),
+            "preview": _expert_preview(block),
+            "full_text": block_fmt.to_injection_text(block),
         }
-        if inject_all:
-            # WF-3: inline full text and record injection in one round trip
-            entry["full_text"] = block_fmt.to_injection_text(block)
-            if session_id:
-                record_session_injection(session_id, block.slug)
-            if project_root:
-                record_project_affinity(project_root, block.slug)
-            track_block_injected(domain=block.domain, tier=block.tier or "local")
-        return entry
 
     formatted: list[SuggestionEntry] = [
-        _build_entry(block, score, is_personal=True)
-        for block, score in personal_results
-    ] + [
-        _build_entry(block, score, is_personal=False)
-        for block, score in expert_results
+        _build_entry(block, score) for block, score in personal_results + expert_results
     ]
 
-    if limit_exceeded:
+    if omitted:
         formatted.append(
             {
                 "block_id": BLOCK_ID_PERSONAL_LIMIT_WARNING,
@@ -190,7 +179,10 @@ def _assemble_suggestions(
                 "context_weight": 0,
                 "stale": False,
                 "turn": turn,
-                "preview": "⚠ Personal Priors budget exceeded (2500 tokens). Some rules omitted.",
+                "preview": (
+                    f"⚠ Personal Priors budget exceeded ({MAX_PERSONAL_TOKENS} tokens). "
+                    f"{omitted} prior(s) omitted."
+                ),
             }
         )
     return formatted
@@ -235,7 +227,6 @@ def list_suggested_blocks(
     strict_intent: bool = True,
     project_root: Path | None = None,
     session_id: str | None = None,
-    inject_all: bool = False,
     digest: bool = False,
 ) -> list[SuggestionEntry]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
@@ -248,25 +239,26 @@ def list_suggested_blocks(
     # WF-2: skip personal priors on Turn N (already injected this session).
     is_turn_0 = not exclude_ids
     if is_turn_0:
-        personal_results, limit_exceeded = get_identity_context(
-            blocks, project_root=project_root, exclude_ids=exclude_ids
+        personal_results, omitted = get_identity_context(
+            blocks, prompt, index, project_root=project_root, exclude_ids=exclude_ids
         )
     else:
-        personal_results, limit_exceeded = [], False
+        personal_results, omitted = [], 0
 
-    personal_weight = sum(b.context_weight for b, _ in personal_results)
     expert_results = _query(
         prompt, index, blocks,
         top_k=top_k, threshold=threshold,
-        context_weight=context_weight - personal_weight,
+        context_weight=context_weight,
         strict_intent=strict_intent, project_root=project_root,
-        exclude_block_ids=exclude_ids | {b.slug for b, _ in personal_results},
+        # Personal priors are chosen above, by eligibility. Leaving them in the
+        # expert query would bring a pinned or gated one back as an expert match.
+        exclude_block_ids=exclude_ids
+        | {slug for slug, b in blocks.items() if b.tier == Tier.PERSONAL},
     )
 
     turn = TurnLabel.FIRST if is_turn_0 else TurnLabel.SUBSEQUENT
     formatted = _assemble_suggestions(
-        personal_results, expert_results, limit_exceeded, turn,
-        session_id, project_root, inject_all,
+        personal_results, expert_results, omitted, turn, session_id, project_root
     )
     _record_and_track(formatted, blocks, prompt, session_id, personal_results)
 

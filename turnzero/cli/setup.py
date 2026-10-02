@@ -21,6 +21,7 @@ from turnzero.cli.base import (
     err_console,
     get_data_dir,
 )
+from turnzero.retrieval import IDENTITY_SCORE_THRESHOLD
 from turnzero.types import BLOCK_ID_PERSONAL_LIMIT_WARNING
 
 source_app = typer.Typer(
@@ -48,7 +49,7 @@ TurnZero MCP is installed. Follow these rules to establish a consistent **Portab
 - **Why:** This clears TurnZero's memory of what was already injected, ensuring the **Portable AI Identity** is re-suggested immediately.
 
 ### 4. Integration
-- Use `inject_block` to retrieve the full text of relevant priors before answering.
+- `list_suggested_blocks` returns each prior's full text in `full_text`; apply it before answering.
 - Call `get_stats` if the user asks about TurnZero's impact or library size.
 """
 
@@ -374,8 +375,10 @@ def _render_demo_results(prompt: str) -> None:
             )
             return
 
-        personal = [r for r in all_results if "[personal" in r.get("preview", "")]
-        expert = [r for r in all_results if "[personal" not in r.get("preview", "")]
+        personal = [
+            r for r in all_results if r.get("score") == IDENTITY_SCORE_THRESHOLD
+        ]
+        expert = [r for r in all_results if r.get("score") != IDENTITY_SCORE_THRESHOLD]
 
         if personal:
             p_tokens = sum(r.get("context_weight", 0) for r in personal)

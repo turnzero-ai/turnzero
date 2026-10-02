@@ -87,3 +87,8 @@ def to_injection_text(block: Block) -> str:
     )
 
     return "\n".join(lines)
+
+
+def injection_tokens(block: Block) -> int:
+    """Estimated token size of the block's injection text (characters / 4)."""
+    return len(to_injection_text(block)) // 4

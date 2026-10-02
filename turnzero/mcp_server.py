@@ -83,7 +83,8 @@ mcp = FastMCP(
         "RULE 1 — ALWAYS call list_suggested_blocks before responding to ANY non-trivial user message. "
         "Do not wait — call it in parallel with preparing your response. "
         "This retrieves your Personal Priors (Identity) and relevant Expert Priors (Domain Knowledge). "
-        "Use inject_block to retrieve the full text of each relevant prior before answering. "
+        "Each result carries the prior's full text in 'full_text': apply it before answering. "
+        "No inject_block call is needed. "
         "SKIP list_suggested_blocks only for pure chitchat — greetings, social acknowledgments "
         "('thanks', 'looks good', 'got it'), or any message with no actionable content. "
         "If a result has block_id 'outcome-digest', it is not a prior: show its preview "
@@ -116,55 +117,45 @@ def list_suggested_blocks(
 ) -> list[SuggestionEntry]:
     """Suggest Expert Priors relevant to an opening developer prompt.
 
-    Returns Personal Priors (always-on identity) and relevant Expert Priors.
-    Call this at the start of a session before the user's first question.
+    Returns the Personal Priors that apply to this project and relevant
+    Expert Priors. Every prior comes with its full text in the "full_text" field: apply that
+    text before answering. No further call is needed to read a prior.
 
     Each result includes a "turn" field: "first" means Personal Priors are
-    included (inject them now); "subsequent" means they were already injected
-    this session and are omitted — only new Expert Priors are returned.
+    included; "subsequent" means they were already injected this session and
+    are omitted — only new Expert Priors are returned.
 
     About once a week one extra entry has block_id "outcome-digest". It is not
     a prior: show its preview line to the user once, verbatim.
 
-    Set inject_all=True to receive full block text inline ("full_text" field)
-    and skip individual inject_block calls. Reduces N+1 round trips to 1.
-
-    IMPORTANT: when inject_all=False (default), preview text is for relevance
-    filtering ONLY — truncated and incomplete. Call inject_block for every
-    suggested block before applying any prior content.
-
     Args:
         prompt: The user's opening prompt or session description.
         session_id: Optional session identifier for deduplication.
-        inject_all: If True, include full block text inline and record all
-            injections immediately — no inject_block calls needed.
+        inject_all: Ignored. Full text is always included; the argument is
+            accepted so older client instructions keep working.
 
     Returns:
         List of Expert Prior suggestions, ranked by relevance score.
         Each item has: block_id, score, domain, intent, tags,
-        context_weight, stale, preview, turn.
+        context_weight, stale, preview, turn, full_text.
         Returns a single error entry if no embedding backend is configured.
     """
     sid = _effective_session_id(session_id)
     try:
         suggestions = retrieval_svc.list_suggested_blocks(
-            prompt,
-            project_root=Path.cwd(),
-            session_id=sid,
-            inject_all=inject_all,
-            digest=True,
+            prompt, project_root=Path.cwd(), session_id=sid, digest=True
         )
         stats_svc.log_tool_call(
             TOOL_LIST_SUGGESTED,
-            {"prompt": prompt, "session_id": sid, "inject_all": inject_all},
+            {"prompt": prompt, "session_id": sid},
             suggestions,
             meta={
-                "inject_all": inject_all,
                 "block_ids": [
-                    s["block_id"] for s in suggestions
+                    s["block_id"]
+                    for s in suggestions
                     if s.get("block_id") and s["block_id"] not in BLOCK_ID_SENTINELS
                 ],
-            } if inject_all else None,
+            },
         )
         return suggestions
     except RuntimeError as e:

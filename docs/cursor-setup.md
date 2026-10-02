@@ -51,9 +51,9 @@ Restart Cursor after saving. Confirm the server is connected: **Cursor Settings 
 On the very first user message of every conversation, you MUST:
 
 1. Call list_suggested_blocks (TurnZero MCP server) with the user's opening message as prompt.
-2. Inject the returned Personal Priors once for this session.
-3. For every relevant Expert Prior returned, call inject_block with its block_id.
-4. Treat the returned text from each inject_block call as hard constraints that govern your response — follow all listed constraints and avoid all listed anti-patterns.
+2. Read the full_text of every prior returned (Personal Priors and Expert Priors). No inject_block call is needed.
+3. Apply the Personal Priors once for this session.
+4. Treat each prior's full_text as hard constraints that govern your response — follow all listed constraints and avoid all listed anti-patterns.
 5. Begin your response with exactly one line (no explanation, no preamble):
    > 📎 TurnZero: <slug1> · <slug2> · <slug3>
 

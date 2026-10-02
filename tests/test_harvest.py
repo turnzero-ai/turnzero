@@ -333,7 +333,7 @@ def test_parse_claude_session_extracts_injections(tmp_path: Path) -> None:
             assistant("Looking.", 1, tool_uses=[suggest_call("t1")]),
             tool_result("t1", ["block-a", "personal-priors-limit-warning"], 2),
             assistant("More.", 3, tool_uses=[suggest_call("t2", inject_all=False)]),
-            tool_result("t2", ["block-preview-only"], 4),
+            tool_result("t2", ["block-preview-only"], 4, full_text=False),
             assistant("Reading.", 5, tool_uses=[inject_call("block-b")]),
         ],
     )
@@ -343,6 +343,33 @@ def test_parse_claude_session_extracts_injections(tmp_path: Path) -> None:
         (2, ("block-a",)),
         (5, ("block-b",)),
     ]
+
+
+def test_parse_claude_session_counts_full_text_without_inject_all(
+    tmp_path: Path,
+) -> None:
+    """Since full text became the default, calls no longer pass inject_all."""
+    from tests.fixtures.transcripts import (
+        assistant,
+        suggest_call,
+        tool_result,
+        user,
+        write_transcript,
+    )
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(
+        tmp_path,
+        "s",
+        [
+            user("build it", 0),
+            assistant("Looking.", 1, tool_uses=[suggest_call("t1", inject_all=False)]),
+            tool_result("t1", ["block-a"], 2),
+        ],
+    )
+    parsed = parse_claude_session(path)
+
+    assert [(i.line, i.block_ids) for i in parsed.injections] == [(2, ("block-a",))]
 
 
 def test_parse_claude_session_skips_malformed_line(tmp_path: Path) -> None:

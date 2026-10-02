@@ -16,5 +16,5 @@ TurnZero MCP is installed. Follow these rules to establish a consistent **Portab
 - **Why:** This clears TurnZero's memory of what was already injected, ensuring the **Portable AI Identity** is re-suggested immediately.
 
 ### 4. Integration
-- Use `inject_block` to retrieve the full text of relevant priors before answering.
+- `list_suggested_blocks` returns each prior's full text in `full_text`; apply it before answering.
 - Call `get_stats` if the user asks about TurnZero's impact or library size.

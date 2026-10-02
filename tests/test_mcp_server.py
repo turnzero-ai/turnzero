@@ -495,6 +495,7 @@ def test_get_stats_reports_measured_outcomes(data_dir: Path) -> None:
     assert result["outcomes"]["repeat_rate"] is None
     assert "estimated_turns_saved" not in result
     assert "estimated_tokens_saved" not in result
+    assert "word_count" not in result["context_tokens_injected"]["note"]
 
 
 # ---------------------------------------------------------------------------
@@ -558,30 +559,72 @@ def test_list_suggested_blocks_subsequent_turn_skips_personal(data_dir: Path) ->
         r for r in results if r.get("block_id") != "personal-priors-limit-warning"
     ]
     assert all(r["turn"] == "subsequent" for r in real)
-    personal = [r for r in real if r.get("preview", "").startswith("[personal")]
-    assert personal == []
+    assert [r for r in real if r["score"] == 2.0] == []
 
 
 # ---------------------------------------------------------------------------
-# WF-3: inject_all flag
+# Full text is always included
 # ---------------------------------------------------------------------------
 
 
-def test_list_suggested_blocks_inject_all_includes_full_text() -> None:
-    results = _list_suggested_blocks(
-        "build a fastapi app with postgres", inject_all=True
-    )
-    real = [r for r in results if r.get("block_id") != "personal-priors-limit-warning"]
-    assert len(real) > 0
-    assert all("full_text" in r for r in real)
-    assert all(
-        isinstance(r["full_text"], str) and len(r["full_text"]) > 0 for r in real
-    )
-
-
-def test_list_suggested_blocks_no_inject_all_has_no_full_text() -> None:
+def test_list_suggested_blocks_always_includes_full_text() -> None:
     results = _list_suggested_blocks("build a fastapi app with postgres")
-    assert all("full_text" not in r for r in results)
+    real = [r for r in results if r["block_id"] != "personal-priors-limit-warning"]
+
+    assert len(real) > 0
+    for r in real:
+        assert isinstance(r["full_text"], str) and r["full_text"]
+        assert r["context_weight"] == len(r["full_text"]) // 4
+        assert "inject_block" not in r["preview"]
+
+
+def test_handler_ignores_inject_all_and_logs_block_ids(data_dir: Path) -> None:
+    from turnzero.mcp_server import list_suggested_blocks
+
+    results = list_suggested_blocks(
+        "build a fastapi app with postgres", session_id="full-text", inject_all=False
+    )
+
+    real = [r for r in results if r["score"] > 0]
+    assert real and all(r["full_text"] for r in real)
+    logged = json.loads((data_dir / "tool_call_log.jsonl").read_text().splitlines()[-1])
+    assert logged["block_ids"] == [r["block_id"] for r in real]
+
+
+def test_second_call_in_a_session_returns_no_personal_priors(data_dir: Path) -> None:
+    prior = data_dir / "blocks" / "personal" / "global" / "style.yaml"
+    prior.parent.mkdir(parents=True)
+    prior.write_text(
+        "slug: style\nversion: 1.0.0\ndomain: global\nintent: build\n"
+        "last_verified: 2026-05-01\ncontext_weight: 100\n"
+        'constraints:\n  - "Keep answers short"\nanti_patterns: []\n'
+        "confidence: 0.9\narchived: false\n",
+        encoding="utf-8",
+    )
+
+    first = _list_suggested_blocks("hi", session_id="twice")
+    second = _list_suggested_blocks("hi again", session_id="twice")
+
+    assert [r["block_id"] for r in first if r["score"] == 2.0] == ["style"]
+    assert [r for r in second if r["score"] == 2.0] == []
+
+
+def test_personal_prior_without_constraints_still_returns_its_text(
+    data_dir: Path,
+) -> None:
+    prior = data_dir / "blocks" / "personal" / "global" / "empty.yaml"
+    prior.parent.mkdir(parents=True)
+    prior.write_text(
+        "slug: empty\nversion: 1.0.0\ndomain: global\nintent: build\n"
+        "last_verified: 2026-05-01\ncontext_weight: 100\nconstraints: []\n"
+        "anti_patterns: []\nconfidence: 0.9\narchived: false\n",
+        encoding="utf-8",
+    )
+
+    (entry,) = [r for r in _list_suggested_blocks("hi") if r["block_id"] == "empty"]
+
+    assert entry["preview"] == ""
+    assert "Slug: empty" in entry["full_text"]
 
 
 # ── DEBT-1: BlockSubmission dataclass ────────────────────────────────────────

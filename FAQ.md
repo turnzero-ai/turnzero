@@ -58,7 +58,7 @@ TurnZero still works — it just injects nothing, which is the right answer when
 
 **Why is there a token budget for Personal and Expert Priors?**
 
-TurnZero implements a strict budget split (2,500 tokens for Identity, 5,000 tokens total) to maintain **Hierarchical Contextual Anchoring**. Research into LLM "Attention Sinks" (Xiao et al., 2024) and "Lost in the Middle" (Liu et al., 2023) phenomena shows that AI accuracy degrades as the ratio of "Instruction context" to "Task context" shifts. If instructions are too large, they crowd out the model's effective "thinking space" for the immediate task. By keeping priors sparse and high-signal, we improve predictability and reduce errors.
+TurnZero keeps two separate budgets to maintain **Hierarchical Contextual Anchoring**: 6,000 tokens for personal priors, measured from the text actually injected, and 5,000 for expert priors. Personal priors load only where they apply (a prior pinned to a project loads only there; a language-specific prior loads only in projects using that language), and when they exceed the budget the least relevant to your opening prompt are left out. Research into LLM "Attention Sinks" (Xiao et al., 2024) and "Lost in the Middle" (Liu et al., 2023) phenomena shows that AI accuracy degrades as the ratio of "Instruction context" to "Task context" shifts. If instructions are too large, they crowd out the model's effective "thinking space" for the immediate task. By keeping priors sparse and high-signal, we improve predictability and reduce errors.
 
 ---
 

@@ -7,6 +7,8 @@ import shutil
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from turnzero.cli.setup import (
     _setup_claude_desktop_mcp,
     _setup_cursor_mcp,
@@ -154,7 +156,7 @@ def test_template_copied_when_personal_dir_empty(tmp_path: Path) -> None:
     assert dst.exists()
     content = dst.read_text()
     assert "turnzero-guide" in content
-    assert "inject_block" in content
+    assert "full_text" in content
     assert "submit_candidate" in content
 
 
@@ -183,12 +185,14 @@ def test_live_demo_shows_results_when_blocks_returned() -> None:
     fake_results = [
         {
             "block_id": "personal-prior-1",
+            "score": 2.0,
             "context_weight": 200,
             "domain": "global",
-            "preview": "[personal prior — call inject_block to read]",
+            "preview": "Keep answers short",
         },
         {
             "block_id": "fastapi-async-build",
+            "score": 0.9,
             "context_weight": 800,
             "domain": "fastapi",
             "preview": "Use async def for all endpoint…",
@@ -251,3 +255,49 @@ def test_template_yaml_is_valid_block_schema(tmp_path: Path) -> None:
     assert isinstance(data["constraints"], list) and len(data["constraints"]) > 0
     assert isinstance(data["anti_patterns"], list) and len(data["anti_patterns"]) > 0
     assert all(ap.startswith("Do not") for ap in data["anti_patterns"])
+
+
+def test_client_instructions_do_not_require_inject_block() -> None:
+    from turnzero.cli import setup as setup_mod
+
+    assert "Use `inject_block`" not in setup_mod._TURNZERO_MD_BLOCK
+    assert "full text" in setup_mod._TURNZERO_MD_BLOCK
+
+
+def test_starter_prior_does_not_require_inject_block() -> None:
+    import yaml
+
+    template = (
+        Path(__file__).parent.parent
+        / "data"
+        / "templates"
+        / "personal"
+        / "turnzero-guide.yaml"
+    )
+    data = yaml.safe_load(template.read_text(encoding="utf-8"))
+
+    assert not any("call inject_block for every" in c for c in data["constraints"])
+    assert not any("always call inject_block" in a for a in data["anti_patterns"])
+    assert all(a.startswith("Do not") for a in data["anti_patterns"])
+
+
+def test_setup_demo_counts_personal_priors_as_personal(
+    data_dir: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from turnzero.cli import setup as setup_mod
+
+    prior = data_dir / "blocks" / "personal" / "global" / "style.yaml"
+    prior.parent.mkdir(parents=True)
+    prior.write_text(
+        "slug: style\nversion: 1.0.0\ndomain: global\nintent: build\n"
+        "last_verified: 2026-05-01\ncontext_weight: 100\n"
+        'constraints:\n  - "Keep answers short"\nanti_patterns: []\n'
+        "confidence: 0.9\narchived: false\n",
+        encoding="utf-8",
+    )
+
+    setup_mod._render_demo_results("hi")
+
+    out = capsys.readouterr().out
+    assert "Personal Priors" in out
+    assert "1 rule" in out

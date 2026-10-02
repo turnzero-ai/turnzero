@@ -102,9 +102,9 @@ class DocAnchorData(TypedDict):
 class SuggestionEntry(TypedDict, total=False):
     """One entry returned by list_suggested_blocks.
 
-    Required fields are always present. ``full_text`` is only present when
-    ``inject_all=True`` was passed. Sentinel entries (no-match-hint,
-    personal-priors-limit-warning) share this shape with subset of fields.
+    Block entries carry every field, including ``full_text``. Sentinel entries
+    (no-match-hint, personal-priors-limit-warning, outcome-digest) have no
+    ``full_text``.
     """
 
     # Required
@@ -117,7 +117,7 @@ class SuggestionEntry(TypedDict, total=False):
     stale: bool
     turn: str
     preview: str
-    # Optional — only when inject_all=True
+    # Absent on sentinel entries
     full_text: str
 
 
@@ -204,6 +204,12 @@ class OutcomeStats(TypedDict):
     uncovered: int
     threshold: float
     noise_samples: int
+    sessions_injected: int
+    median_load: int
+    recurring: int
+    dormant: int
+    own_blocks: int
+    data_days: int
 
 
 class StatsData(TypedDict):

@@ -8,7 +8,8 @@ from pathlib import Path
 from typing import Any
 
 from turnzero.blocks import Block
-from turnzero.embed import cosine_similarity
+from turnzero.embed import cosine_similarity, embed
+from turnzero.formatters import block_fmt
 from turnzero.repositories.index_repo import IndexEntry  # re-exported for callers
 from turnzero.signals import (
     _ALL_SIGNALS,
@@ -16,6 +17,7 @@ from turnzero.signals import (
     _QUESTION_PATTERNS,
     _SHORT_QUESTION_STARTERS,
     _SOCIAL_PATTERNS,
+    DOMAIN_PROJECT_MARKERS,
     FUZZY_MAX_LENGTH_DELTA,
     FUZZY_MIN_RATIO,
     FUZZY_WORD_MIN_LEN,
@@ -44,7 +46,9 @@ PROJECT_AFFINITY_BOOST = 1.25
 # the 0.70 threshold without raw score > 1.17 — effectively a hard filter.
 DOMAIN_OVERLAP_PENALTY = 0.6
 
-MAX_PERSONAL_WEIGHT = 2500    # Token budget for identity injection
+# Budget for personal priors at session start, in real tokens (injected text
+# length / 4), not declared context_weight, which overstates by about 40%.
+MAX_PERSONAL_TOKENS = 6000
 IDENTITY_SCORE_THRESHOLD = 2.0  # Scores >= this indicate Identity Priors
 HIGH_CONFIDENCE_THRESHOLD = 0.90  # Threshold for high-confidence matches
 
@@ -255,53 +259,108 @@ def detect_domain(prompt: str, project_root: Path | None = None) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def _project_dirs(project_root: Path) -> list[Path]:
+    # The client may be started in a subdirectory: the project is everything up
+    # to the enclosing git repository root. Without a repository there is no
+    # safe place to stop, so only the directory itself counts.
+    chain = [project_root, *project_root.parents]
+    for depth, directory in enumerate(chain):
+        if (directory / ".git").exists():
+            return chain[: depth + 1]
+    return [project_root]
+
+
+def _has_marker(dirs: list[Path], markers: tuple[str, ...]) -> bool:
+    # Also one level below the starting directory, for monorepos that keep each
+    # language in its own top-level folder.
+    patterns = [*markers, *(f"*/{marker}" for marker in markers)]
+    return any(
+        next(directory.glob(pattern), None) is not None
+        for position, directory in enumerate(dirs)
+        for pattern in (patterns if position == 0 else markers)
+    )
+
+
+def _is_eligible_personal(
+    block: Block,
+    prompt_lower: str,
+    dirs: list[Path],
+    project_hashes: set[str],
+) -> bool:
+    if block.project_hash:
+        return block.project_hash in project_hashes
+    markers = DOMAIN_PROJECT_MARKERS.get(block.domain)
+    if markers is None or not dirs:
+        return True
+    return block.domain in prompt_lower or _has_marker(dirs, markers)
+
+
+def _personal_relevance(
+    candidates: list[Block], prompt: str, index: list[IndexEntry]
+) -> dict[str, float]:
+    if _similarity_override is not None:
+        return {b.slug: float(_similarity_override(prompt, b)) for b in candidates}
+    prompt_embedding = embed(prompt)
+    vectors = {entry.block_id: entry.embedding for entry in index}
+    return {
+        b.slug: cosine_similarity(prompt_embedding, vectors[b.slug])
+        if b.slug in vectors
+        else 0.0
+        for b in candidates
+    }
+
+
 def get_identity_context(
     blocks: dict[str, Block],
+    prompt: str,
+    index: list[IndexEntry],
     project_root: Path | None = None,
     exclude_ids: set[str] | None = None,
-) -> tuple[list[tuple[Block, float]], bool]:
-    """Return all blocks from the 'personal' tier that fit the context budget.
+) -> tuple[list[tuple[Block, float]], int]:
+    """Return the personal priors that apply to this session, within budget.
 
-    Personal Priors establish the 'Portable AI Identity'. They are injected
-    unconditionally at session start, regardless of domain (universal persona).
+    A pinned prior applies only in its project. An unpinned prior for a
+    language domain applies where the project has that language's marker
+    files or the prompt names the domain. Everything else applies everywhere.
+    The project is project_root and its ancestors up to the git repository root.
 
-    If project_root is provided, personal priors are filtered:
-    - Included if domain is 'global'
-    - Included if project_hash matches the project_root
-    - Included if project_hash is None (legacy/universal)
+    When the eligible priors exceed MAX_PERSONAL_TOKENS they are ordered by
+    similarity to the prompt and added in that order; one that does not fit
+    in the remaining budget is skipped and the rest are still tried.
 
-    Returns (blocks, limit_exceeded).
+    Returns (priors, number left out for budget).
     """
     from turnzero.session import _get_project_hash
 
-    exclude_ids = exclude_ids or set()
-    personal_results: list[tuple[Block, float]] = []
-    personal_weight = 0
+    excluded = exclude_ids or set()
+    dirs = _project_dirs(project_root) if project_root else []
+    project_hashes = {_get_project_hash(directory) for directory in dirs}
+    prompt_lower = prompt.lower()
+    candidates = sorted(
+        (
+            b
+            for b in blocks.values()
+            if b.tier == Tier.PERSONAL
+            and b.slug not in excluded
+            and _is_eligible_personal(b, prompt_lower, dirs, project_hashes)
+        ),
+        key=lambda b: b.slug,
+    )
+    sizes = {b.slug: block_fmt.injection_tokens(b) for b in candidates}
 
-    project_hash = _get_project_hash(project_root) if project_root else None
+    if sum(sizes.values()) > MAX_PERSONAL_TOKENS:
+        relevance = _personal_relevance(candidates, prompt, index)
+        candidates.sort(key=lambda b: -relevance[b.slug])
 
-    candidates = [
-        b
-        for b in blocks.values()
-        if b.tier == Tier.PERSONAL
-        and b.slug not in exclude_ids
-        and (
-            b.domain == "global"
-            or not b.project_hash
-            or (project_hash and b.project_hash == project_hash)
-        )
-    ]
-    candidates.sort(key=lambda b: b.last_verified, reverse=True)
-
-    limit_exceeded = False
-    for b in candidates:
-        if personal_weight + b.context_weight <= MAX_PERSONAL_WEIGHT:
-            personal_results.append((b, IDENTITY_SCORE_THRESHOLD))
-            personal_weight += b.context_weight
-        else:
-            limit_exceeded = True
-
-    return personal_results, limit_exceeded
+    kept: list[tuple[Block, float]] = []
+    used = 0
+    for block in candidates:
+        # A prior that does not fit is skipped, not a stopping point: smaller,
+        # less relevant priors after it may still fit.
+        if used + sizes[block.slug] <= MAX_PERSONAL_TOKENS:
+            kept.append((block, IDENTITY_SCORE_THRESHOLD))
+            used += sizes[block.slug]
+    return kept, len(candidates) - len(kept)
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +525,6 @@ def _prepare_query_context(
     project_root: Path | None,
 ) -> QueryContext:
     """Prepare all shared values for a query call in one place."""
-    from turnzero.embed import embed
     from turnzero.session import get_project_affinity
 
     use_override = _similarity_override is not None

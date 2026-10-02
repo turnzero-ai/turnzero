@@ -116,6 +116,24 @@ _SHORT_QUESTION_STARTERS: frozenset[str] = frozenset({
 })
 
 # ---------------------------------------------------------------------------
+# Language-domain project markers
+# ---------------------------------------------------------------------------
+
+# Glob patterns that show a language domain is in use in a project. An unpinned
+# personal prior for one of these domains loads only where a marker exists or
+# the prompt names the domain. A domain not listed here cannot be checked.
+DOMAIN_PROJECT_MARKERS: dict[str, tuple[str, ...]] = {
+    "python": (
+        "pyproject.toml", "requirements.txt", "setup.py", "setup.cfg",
+        "Pipfile", "uv.lock", "environment.yml", "*.py",
+    ),
+    "typescript": ("tsconfig.json",),
+    "javascript": ("package.json",),
+    "golang": ("go.mod",),
+    "rust": ("Cargo.toml",),
+}
+
+# ---------------------------------------------------------------------------
 # Correction gate — does a mid-session user turn correct the assistant?
 # ---------------------------------------------------------------------------
 

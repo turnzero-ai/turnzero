@@ -10,12 +10,12 @@ TurnZero is at **v0.17.0** (tagged, not yet on PyPI — v0.18.0 in progress on m
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 543 tests passing; Hit Rate@3 = 0.926 on validation set
+- 576 tests passing; Hit Rate@3 = 0.926 on validation set
 - Outcome signal: `outcome_svc` scans Claude Code transcripts for mid-session corrections, matches them to priors by per-rule vectors, and stores scores in `outcomes.jsonl` with no transcript text. The match threshold calibrates itself from the scores of ordinary turns (mean + 3 sd), and the verdict (`failed` / `miss` / `new`) is derived when stats are read. Local embedding backends only; `outcome_scan: false` in `config.yaml` turns it off. `turnzero stats` and `get_stats` report measured repeat corrections per session; the turn-saving estimates are gone.
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
 - Proxy daemon: `turnzero proxy install` (launchd/systemd), `proxy setup cursor/windsurf/continue`
 - Continue.dev wired + validated end-to-end (Gemini 2.5 Flash). Proxy skips injection for agent mode (`<important_rules>`) and context markers (`BEGIN_ARG`, `<context>` etc).
-- Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant.
+- Hybrid Model: Personal Priors once per session, Expert Priors when newly relevant. Personal priors are gated by project pin and language marker files, budgeted at 6,000 real tokens, and ordered by relevance when over. `list_suggested_blocks` always returns full prior text (`inject_all` is accepted and ignored).
 - Support for: Claude Code, Cursor, Claude Desktop, Codex, Gemini CLI
 - AI-driven learning: `submit_candidate` MCP tool — no harvest daemon needed
 - All thresholds unified at 0.70 (CLI, MCP, retrieval)
@@ -26,7 +26,7 @@ TurnZero is at **v0.17.0** (tagged, not yet on PyPI — v0.18.0 in progress on m
 
 TurnZero eliminates cold-start friction in AI sessions by injecting relevant context at the start of a session. It uses a dual-injection model:
 1. **Expert Priors:** Domain-specific knowledge retrieved via semantic similarity.
-2. **Personal Priors:** Idiosyncratic user preferences and standards injected **unconditionally** at session start (Turn 0) to establish a **Portable AI Identity**.
+2. **Personal Priors:** Idiosyncratic user preferences and standards injected at session start (Turn 0), wherever they apply (project pin, language in use), to establish a **Portable AI Identity**.
 
 Raw prompt text is **never stored** — only embeddings. Injection is always client-side.
 

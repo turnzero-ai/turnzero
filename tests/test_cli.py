@@ -486,6 +486,11 @@ def test_stats_shows_measured_outcomes(
     assert "failed-block (2×)" in result.output
     assert "missed-block (1×)" in result.output
     assert "Match threshold" in result.output
+    assert "Sessions with priors applied" in result.output
+    assert "10 of 10" in result.output
+    assert "Median session-start load" in result.output
+    assert "Recurring uncovered corrections" in result.output
+    assert "Dormant own blocks" in result.output
     assert "0.72" in result.output
     assert "Est. turns saved" not in result.output
 
@@ -678,7 +683,7 @@ def test_retrieval_svc_no_filter_when_active_domains_none(data_dir: Path, monkey
     monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
     monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
     import turnzero.retrieval as ret
-    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, *args, **kw: ([], 0))
     import turnzero.services.stats_svc as ssvc
     monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
     import turnzero.telemetry as tel

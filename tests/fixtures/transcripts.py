@@ -60,9 +60,17 @@ def inject_call(block_id: str) -> dict[str, Any]:
 
 
 def tool_result(
-    tool_use_id: str, block_ids: list[str], second: int = 0
+    tool_use_id: str,
+    block_ids: list[str],
+    second: int = 0,
+    full_text: bool = True,
 ) -> dict[str, Any]:
-    payload = json.dumps({"result": [{"block_id": b, "score": 0.9} for b in block_ids]})
+    """A list_suggested_blocks result; full_text=False gives a preview-only result."""
+    entries: list[dict[str, Any]] = [{"block_id": b, "score": 0.9} for b in block_ids]
+    if full_text:
+        for entry in entries:
+            entry["full_text"] = f"# EXPERT_PRIOR_IDENTITY\nSlug: {entry['block_id']}"
+    payload = json.dumps({"result": entries})
     return {
         **_base("user", second),
         "toolUseResult": payload,

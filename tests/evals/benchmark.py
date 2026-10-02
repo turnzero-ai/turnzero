@@ -207,17 +207,15 @@ class RunStats:
             1 for c in self.tool_calls if c.get("tool") == "list_suggested_blocks"
         )
 
-        # inject_all=True is the WF-3 batch path: full block text returned inline
-        # from list_suggested_blocks, no separate inject_block calls needed.
-        # Detect via log meta (all agents) or stream input (Claude).
-        _used_inject_all = any(
-            c.get("tool") == "list_suggested_blocks"
-            and (c.get("inject_all") or c.get("input", {}).get("inject_all"))
+        # list_suggested_blocks returns full prior text; a call that returned
+        # blocks (block_ids in the tool-call log) is an injection.
+        _listed_blocks = any(
+            c.get("tool") == "list_suggested_blocks" and c.get("block_ids")
             for c in self.tool_calls
         )
         self.called_inject = (
             any(c.get("tool") == "inject_block" for c in self.tool_calls)
-            or _used_inject_all
+            or _listed_blocks
         )
         self.inject_count = sum(
             1 for c in self.tool_calls if c.get("tool") == "inject_block"
@@ -229,11 +227,8 @@ class RunStats:
             for c in self.tool_calls
             if c.get("tool") == "inject_block"
         ]
-        # Also collect from inject_all log entries (block_ids written to meta).
         for c in self.tool_calls:
-            if c.get("tool") == "list_suggested_blocks" and (
-                c.get("inject_all") or c.get("input", {}).get("inject_all")
-            ):
+            if c.get("tool") == "list_suggested_blocks":
                 self.blocks_injected.extend(c.get("block_ids", []))
 
         self.called_submit = any(
@@ -639,7 +634,7 @@ def _run_once(  # noqa: PLR0912
             stats.error = err
             log_calls = _read_log_since(ts_before)
             # stream-json is authoritative for Claude; log covers submit_candidate
-            # and provides inject_all metadata that the stream does not emit.
+            # and provides block_ids, which the stream does not emit.
             merged = {id(c): c for c in stream_tools}
             for lc in log_calls:
                 match = next(
@@ -651,10 +646,8 @@ def _run_once(  # noqa: PLR0912
                     None,
                 )
                 if match is not None:
-                    # Augment the stream entry with log-only fields (inject_all, block_ids).
-                    for key in ("inject_all", "block_ids"):
-                        if key in lc:
-                            match[key] = lc[key]
+                    if "block_ids" in lc:
+                        match["block_ids"] = lc["block_ids"]
                 else:
                     merged[id(lc)] = lc
             stats.tool_calls = list(merged.values())

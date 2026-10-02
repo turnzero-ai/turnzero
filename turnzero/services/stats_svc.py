@@ -270,7 +270,7 @@ def compute(data_dir: Path | None = None) -> StatsData:
         "context_tokens_injected": {
             "total": tokens_injected_total,
             "this_week": tokens_injected_week,
-            "note": "estimated from context_weight (word_count x 4), not a real tokenizer",
+            "note": "estimated from injected text length / 4, not a real tokenizer",
         },
         "injection_overhead": {
             "total": tool_stats["injection_overhead_total"],

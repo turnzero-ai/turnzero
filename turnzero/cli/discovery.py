@@ -90,7 +90,7 @@ def _render_outcomes(outcomes: OutcomeStats) -> None:
         return
 
     table = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
-    table.add_column("", style="dim", min_width=30)
+    table.add_column("", style="dim", min_width=32)
     table.add_column("")
 
     trend = ""
@@ -116,6 +116,22 @@ def _render_outcomes(outcomes: OutcomeStats) -> None:
     table.add_row(
         "Uncovered corrections",
         f"~{outcomes['uncovered']}  [dim]rough count, no prior exists[/dim]",
+    )
+    table.add_row(
+        "Sessions with priors applied",
+        f"{outcomes['sessions_injected']} of {sessions}",
+    )
+    table.add_row(
+        "Median session-start load", f"{outcomes['median_load']:,} tokens"
+    )
+    table.add_row(
+        "Recurring uncovered corrections",
+        f"{outcomes['recurring']}  [dim]same correction in more than one session[/dim]",
+    )
+    table.add_row(
+        "Dormant own blocks",
+        f"{outcomes['dormant']} of {outcomes['own_blocks']}  "
+        f"[dim]never injected in {outcomes['data_days']} days of data[/dim]",
     )
     console.print(table)
     samples = outcomes["noise_samples"]
@@ -318,7 +334,9 @@ def _print_explain(
         context_weight=999_999,
         strict_intent=False,
         project_root=Path.cwd(),
-        exclude_block_ids={b.slug for b, _ in identity_blocks},
+        exclude_block_ids={
+            slug for slug, b in blocks.items() if b.tier == Tier.PERSONAL
+        },
     )
 
     above = [(b, s) for b, s in all_candidates if s >= threshold]
@@ -389,10 +407,10 @@ def query(
     blocks, index = _load_blocks_and_index()
 
     # 1. Personal Identity context (unconditional)
-    identity_blocks, limit_exceeded = get_identity_context(
-        blocks, project_root=Path.cwd()
+    identity_blocks, _ = get_identity_context(
+        blocks, prompt, index, project_root=Path.cwd()
     )
-    identity_weight = sum(b.context_weight for b, _ in identity_blocks)
+    identity_weight = sum(block_fmt.injection_tokens(b) for b, _ in identity_blocks)
 
     if explain:
         _print_explain(
@@ -415,11 +433,13 @@ def query(
         blocks,
         top_k=top_k,
         threshold=threshold,
-        context_weight=context_weight - identity_weight,
+        context_weight=context_weight,
         strict_intent=strict_intent,
         rerank_model=rerank,
         project_root=Path.cwd(),
-        exclude_block_ids={b.slug for b, _ in identity_blocks},
+        exclude_block_ids={
+            slug for slug, b in blocks.items() if b.tier == Tier.PERSONAL
+        },
     )
 
     results = identity_blocks + expert_results
@@ -451,17 +471,20 @@ def preview(
     blocks, index = _load_blocks_and_index()
 
     # Use the same dual-stream logic as query()
-    identity_blocks, _ = get_identity_context(blocks, project_root=Path.cwd())
-    identity_weight = sum(b.context_weight for b, _ in identity_blocks)
+    identity_blocks, _ = get_identity_context(
+        blocks, prompt, index, project_root=Path.cwd()
+    )
 
     expert_results = _query(
         prompt,
         index,
         blocks,
         threshold=threshold,
-        context_weight=4000 - identity_weight,
+        context_weight=4000,
         project_root=Path.cwd(),
-        exclude_block_ids={b.slug for b, _ in identity_blocks},
+        exclude_block_ids={
+            slug for slug, b in blocks.items() if b.tier == Tier.PERSONAL
+        },
     )
 
     results = identity_blocks + expert_results

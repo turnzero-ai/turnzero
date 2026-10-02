@@ -320,11 +320,14 @@ def _result_block_ids(content: Any) -> tuple[str, ...]:
     entries = payload.get("result") if isinstance(payload, dict) else payload
     if not isinstance(entries, list):
         return ()
+    # Only entries that carried the prior's text were injected; a preview-only
+    # entry (older clients without inject_all) was listed, not read.
     return tuple(
         e["block_id"]
         for e in entries
         if isinstance(e, dict)
         and isinstance(e.get("block_id"), str)
+        and isinstance(e.get("full_text"), str)
         and e["block_id"] not in BLOCK_ID_SENTINELS
     )
 
@@ -332,8 +335,8 @@ def _result_block_ids(content: Any) -> tuple[str, ...]:
 def _tool_use_injections(
     items: list[Any], line_no: int, pending_suggest_ids: set[str]
 ) -> list[Injection]:
-    # An inject_all suggestion only injects once its result arrives, so its id
-    # is added to pending_suggest_ids for _tool_result_injections to resolve.
+    # A suggestion injects only if its result carries full_text, so the call id
+    # is kept in pending_suggest_ids for _tool_result_injections to resolve.
     found: list[Injection] = []
     for item in items:
         if not isinstance(item, dict) or item.get("type") != "tool_use":
@@ -344,7 +347,7 @@ def _tool_use_injections(
             continue
         if name.endswith(TOOL_INJECT_BLOCK) and isinstance(args.get("block_id"), str):
             found.append(Injection(line_no, (args["block_id"],)))
-        elif name.endswith(TOOL_LIST_SUGGESTED) and args.get("inject_all") is True:
+        elif name.endswith(TOOL_LIST_SUGGESTED):
             pending_suggest_ids.add(str(item.get("id")))
     return found
 

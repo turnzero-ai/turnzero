@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import statistics
 import time
 from collections import Counter
 from datetime import datetime
@@ -19,6 +20,7 @@ from rich.console import Console
 
 from turnzero.config import get_data_dir, load_config
 from turnzero.embed import embed
+from turnzero.formatters import block_fmt
 from turnzero.harvest import Injection, ParsedSession, UserTurn, parse_claude_session
 from turnzero.repositories.index_repo import sync_rule_vectors
 from turnzero.services import retrieval_svc
@@ -28,7 +30,7 @@ from turnzero.signals import (
     CORRECTION_EXCLUSIONS,
     CORRECTION_OPENERS,
 )
-from turnzero.types import OutcomeStats, TopBlockEntry, Verdict
+from turnzero.types import OutcomeStats, Tier, TopBlockEntry, Verdict
 
 OUTCOMES_FILE = "outcomes.jsonl"
 RULE_VECTORS_FILE = "rule_vectors.npz"
@@ -94,10 +96,15 @@ def _is_valid_row(row: dict[str, Any]) -> bool:
         )
     if row.get("kind") == "correction":
         block_id = row.get("block_id")
+        embedding = row.get("embedding")
         return (
             _is_number(row.get("score"))
             and (block_id is None or isinstance(block_id, str))
             and isinstance(row.get("injected"), bool)
+            and (
+                embedding is None
+                or (isinstance(embedding, list) and all(map(_is_number, embedding)))
+            )
         )
     return False
 
@@ -360,6 +367,42 @@ def _top(counts: Counter[str]) -> list[TopBlockEntry]:
     ]
 
 
+def _library_sizes() -> tuple[dict[str, int], set[str]]:
+    try:
+        blocks = retrieval_svc._load_active_blocks()
+    except FileNotFoundError:
+        blocks = {}
+    sizes = {slug: block_fmt.injection_tokens(b) for slug, b in blocks.items()}
+    own = {
+        slug
+        for slug, b in blocks.items()
+        if b.tier in (Tier.LOCAL, Tier.PERSONAL) and not b.archived
+    }
+    return sizes, own
+
+
+def _recurring_count(
+    window: list[dict[str, Any]], pool: list[dict[str, Any]], threshold: float
+) -> int:
+    pool = [r for r in pool if r.get("embedding")]
+    if len(pool) <= 1:
+        return 0
+    # Vectors of another length come from a different embedding model and
+    # cannot be compared, so only the most common length is kept.
+    size = Counter(len(r["embedding"]) for r in pool).most_common(1)[0][0]
+    pool = [r for r in pool if len(r["embedding"]) == size]
+    matrix = np.array([r["embedding"] for r in pool], dtype=np.float32)
+    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
+    norms[norms == 0.0] = 1.0
+    matrix = matrix / norms
+    sessions = np.array([r["session"] for r in pool])
+    other_session = sessions[:, None] != sessions[None, :]
+    best = np.where(other_session, matrix @ matrix.T, -1.0).max(axis=1)
+    window_ids = {id(r) for r in window}
+    in_window = np.array([id(r) in window_ids for r in pool])
+    return int((in_window & (best >= threshold)).sum())
+
+
 def summarize(data_dir: Path, now: float | None = None) -> OutcomeStats:
     """Aggregate outcome rows over the last window and the one before it."""
     end = now if now is not None else time.time()
@@ -388,6 +431,15 @@ def summarize(data_dir: Path, now: float | None = None) -> OutcomeStats:
     )
     injected = {b for s in cur_sessions for b in s["injected"]}
 
+    sizes, own = _library_sizes()
+    loads = [
+        sum(sizes.get(b, 0) for b in s["injected"]) for s in cur_sessions if s["injected"]
+    ]
+    uncovered_rows = [c for c in corrections if verdict_of(c, threshold) == Verdict.NEW]
+    cur_ids = {id(c) for c in cur_corrections}
+    injected_ever = {b for s in sessions for b in s["injected"]}
+    oldest = min((float(s["ts"]) for s in sessions), default=end)
+
     return {
         "window_days": OUTCOME_WINDOW_DAYS,
         "sessions": len(cur_sessions),
@@ -402,6 +454,14 @@ def summarize(data_dir: Path, now: float | None = None) -> OutcomeStats:
         "uncovered": len(cur_corrections) - repeat_count,
         "threshold": threshold,
         "noise_samples": noise_samples,
+        "sessions_injected": len(loads),
+        "median_load": int(statistics.median(loads)) if loads else 0,
+        "recurring": _recurring_count(
+            [c for c in uncovered_rows if id(c) in cur_ids], uncovered_rows, threshold
+        ),
+        "dormant": len(own - injected_ever),
+        "own_blocks": len(own),
+        "data_days": int((end - oldest) // 86400),
     }
 
 

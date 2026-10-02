@@ -210,7 +210,7 @@ def test_list_suggested_blocks_filters_inactive_domain(
     monkeypatch.setattr(rsvc, "_query", _fake_query)
     monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
     monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
-    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, *args, **kw: ([], 0))
     monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
     monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
 
@@ -235,7 +235,7 @@ def _patch_empty_results(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
     monkeypatch.setattr(rsvc, "_query", lambda *a, **kw: [])
     monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
-    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, *args, **kw: ([], 0))
     monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
     monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
 
@@ -283,7 +283,7 @@ def test_no_match_hint_suppressed_when_results_exist(
     monkeypatch.setattr(rsvc, "_load_active_index", lambda: [])
     monkeypatch.setattr(rsvc, "_query", lambda *a, **kw: [(fake_block, 0.85)])
     monkeypatch.setattr(rsvc, "get_session_injections", lambda _: set())
-    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, **kw: ([], False))
+    monkeypatch.setattr(ret, "get_identity_context", lambda blocks, *args, **kw: ([], 0))
     monkeypatch.setattr(ssvc, "log_injection", lambda **kw: None)
     monkeypatch.setattr(tel, "track_session_start", lambda **kw: None)
 

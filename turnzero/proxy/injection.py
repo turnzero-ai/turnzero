@@ -70,7 +70,7 @@ def maybe_inject(
 ) -> list[dict[str, Any]]:
     """Inject relevant priors into system message at Turn 0. Fail-open on any error.
 
-    Uses inject_all=True (WF-3 batch path) — one retrieval_svc call, no N+1 round trips.
+    One retrieval_svc call returns every prior with its full text.
     On any exception (embedding down, index missing, etc.) returns messages unchanged.
     """
     if not proxy_session.is_turn_0(session_id):
@@ -81,7 +81,6 @@ def maybe_inject(
         prompt = extract_prompt(messages)
         suggestions = retrieval_svc.list_suggested_blocks(
             prompt,
-            inject_all=True,
             session_id=session_id,
             project_root=project_root,
         )

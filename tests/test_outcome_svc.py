@@ -636,3 +636,92 @@ def test_scan_records_match_scores_of_ordinary_turns(data_dir: Path) -> None:
     append_entries(path, [assistant("Fixed.", 7), user("show me the diff", 8)])
     outcome_svc.scan(data_dir, projects)
     assert _rows(data_dir, "session")[-1]["noise_n"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Session-start load, recurrence, dormant blocks
+# ---------------------------------------------------------------------------
+
+
+def _new_row(session: str, ts: float, embedding: list[float]) -> dict[str, Any]:
+    return {**_correction_row(session, ts, "new", None), "embedding": embedding}
+
+
+def test_summarize_reports_sessions_with_priors_and_median_load(data_dir: Path) -> None:
+    from turnzero.formatters import block_fmt
+    from turnzero.services import retrieval_svc
+
+    _write_block(data_dir, "venv-rule", [RULE])
+    rows = [_session_row(f"with{i}", NOW - DAY, ["venv-rule"]) for i in range(4)]
+    rows += [_session_row(f"none{i}", NOW - DAY, []) for i in range(6)]
+    _write_rows(data_dir, rows)
+
+    stats = outcome_svc.summarize(data_dir, now=NOW)
+
+    size = block_fmt.injection_tokens(retrieval_svc._load_active_blocks()["venv-rule"])
+    assert stats["sessions_injected"] == 4
+    assert stats["median_load"] == size > 0
+
+
+def test_summarize_load_ignores_blocks_no_longer_in_the_library(data_dir: Path) -> None:
+    _write_block(data_dir, "venv-rule", [RULE])
+    rows = [_session_row(f"s{i}", NOW - DAY, ["deleted-block"]) for i in range(10)]
+    _write_rows(data_dir, rows)
+
+    stats = outcome_svc.summarize(data_dir, now=NOW)
+
+    assert stats["sessions_injected"] == 10
+    assert stats["median_load"] == 0
+
+
+def test_summarize_counts_corrections_recurring_across_sessions(data_dir: Path) -> None:
+    same = [1.0, 0.0, 0.0]
+    other = [0.0, 1.0, 0.0]
+    rows = [_session_row(f"s{i}", NOW - DAY, []) for i in range(10)]
+    rows += [
+        _new_row("s0", NOW - DAY, same),
+        _new_row("s1", NOW - DAY, same),
+        _new_row("s2", NOW - DAY, other),
+        _new_row("s2", NOW - DAY, other),
+    ]
+    _write_rows(data_dir, rows)
+
+    stats = outcome_svc.summarize(data_dir, now=NOW)
+
+    assert stats["recurring"] == 2
+
+
+def test_summarize_recurring_survives_mixed_embedding_sizes(data_dir: Path) -> None:
+    rows = [_session_row(f"s{i}", NOW - DAY, []) for i in range(10)]
+    rows += [
+        _new_row("s0", NOW - DAY, [1.0, 0.0, 0.0]),
+        _new_row("s1", NOW - DAY, [1.0, 0.0, 0.0]),
+        _new_row("s2", NOW - DAY, [1.0, 0.0]),
+        {**_correction_row("s3", NOW - DAY, "new", None), "embedding": "not a vector"},
+    ]
+    _write_rows(data_dir, rows)
+
+    assert outcome_svc.summarize(data_dir, now=NOW)["recurring"] == 2
+
+
+def test_summarize_counts_dormant_own_blocks_and_data_days(data_dir: Path) -> None:
+    _write_block(data_dir, "used-rule", [RULE])
+    _write_block(data_dir, "unused-rule", ["always write tests first"])
+    rows = [_session_row(f"s{i}", NOW - DAY, ["used-rule"]) for i in range(9)]
+    rows.append(_session_row("oldest", NOW - 20 * DAY, []))
+    _write_rows(data_dir, rows)
+
+    stats = outcome_svc.summarize(data_dir, now=NOW)
+
+    assert stats["own_blocks"] == 2
+    assert stats["dormant"] == 1
+    assert stats["data_days"] == 20
+
+
+def test_summarize_new_numbers_without_data(data_dir: Path) -> None:
+    stats = outcome_svc.summarize(data_dir, now=NOW)
+
+    assert stats["sessions_injected"] == 0
+    assert stats["median_load"] == 0
+    assert stats["recurring"] == 0
+    assert stats["data_days"] == 0
