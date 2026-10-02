@@ -200,6 +200,14 @@ def _is_ollama_running() -> bool:
         return False
 
 
+def _is_ollama_local() -> bool:
+    from urllib.parse import urlsplit
+
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    name = urlsplit(host if "//" in host else f"//{host}").hostname or ""
+    return name in ("localhost", "::1") or name.startswith("127.")
+
+
 def embed(
     text: str, local_only: bool = False
 ) -> np.ndarray[Any, np.dtype[np.float32]]:
@@ -212,8 +220,9 @@ def embed(
 
     Everything runs locally by default. No text leaves the machine unless
     OPENAI_API_KEY is explicitly set. With local_only=True the OpenAI step is
-    skipped and a RuntimeError is raised instead — for callers that embed text
-    the user never chose to send anywhere, such as session transcripts.
+    skipped, and so is ollama when OLLAMA_HOST is not this machine; a
+    RuntimeError is raised instead — for callers that embed text the user
+    never chose to send anywhere, such as session transcripts.
     """
     if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
         return _embed_test(text)
@@ -224,10 +233,11 @@ def embed(
         except RuntimeError:
             pass
 
-    try:
-        return _embed_ollama(text)
-    except RuntimeError:
-        pass
+    if not local_only or _is_ollama_local():
+        try:
+            return _embed_ollama(text)
+        except RuntimeError:
+            pass
 
     if os.environ.get("OPENAI_API_KEY") and not local_only:
         return _embed_openai(text)

@@ -359,3 +359,34 @@ def test_embed_local_only_never_calls_openai(monkeypatch: pytest.MonkeyPatch) ->
 
     embed_mod.embed("an opening prompt")
     assert sent == ["an opening prompt"]
+
+
+def test_embed_local_only_skips_a_remote_ollama_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """OLLAMA_HOST can point at another machine; local_only must not post there."""
+    from turnzero import embed as embed_mod
+
+    sent: list[str] = []
+
+    def fake_ollama(text: str) -> np.ndarray:
+        sent.append(text)
+        return np.ones(EMBEDDING_DIM, dtype=np.float32)
+
+    monkeypatch.setattr(embed_mod, "_is_onnx_available", lambda: False)
+    monkeypatch.setattr(embed_mod, "_embed_ollama", fake_ollama)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    monkeypatch.setenv("OLLAMA_HOST", "http://gpu-box.example.com:11434")
+    with pytest.raises(RuntimeError):
+        embed_mod.embed("private transcript text", local_only=True)
+    assert sent == []
+    embed_mod.embed("an opening prompt")
+    assert sent == ["an opening prompt"]
+
+    for loopback in ("http://localhost:11434", "127.0.0.1:11434", "http://[::1]:11434"):
+        monkeypatch.setenv("OLLAMA_HOST", loopback)
+        embed_mod.embed("private transcript text", local_only=True)
+    monkeypatch.delenv("OLLAMA_HOST")
+    embed_mod.embed("private transcript text", local_only=True)
+    assert sent.count("private transcript text") == 4
