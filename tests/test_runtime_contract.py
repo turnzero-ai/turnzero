@@ -24,3 +24,9 @@ def test_embedding_dependency_contract_is_pinned() -> None:
     assert '"numpy>=1.26,<3"' in text
     assert "sentence-transformers" not in text
     assert "transformers" not in text
+
+
+def test_mcp_dependency_excludes_v2() -> None:
+    """mcp 2.x removed mcp.server.fastmcp.FastMCP, which mcp_server.py imports."""
+    text = _pyproject_text()
+    assert '"mcp>=1.0,<2"' in text
