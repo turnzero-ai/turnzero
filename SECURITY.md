@@ -6,8 +6,8 @@ Currently, only the latest version of TurnZero is supported for security updates
 
 | Version | Supported          |
 | ------- | ------------------ |
-| >= 0.17.0 | :white_check_mark: |
-| < 0.17.0  | :x:                |
+| >= 0.18.0 | :white_check_mark: |
+| < 0.18.0  | :x:                |
 
 ## Reporting a Vulnerability
 
