@@ -66,20 +66,17 @@ def test_compute_display_data_returns_expected_keys(tmp_path: Path) -> None:
         "sessions_total",
         "priors_total",
         "corrections_total",
-        "est_turns",
-        "est_tokens",
+        "outcomes",
         "blocks_total",
         "data_dir",
     ):
         assert key in data, f"Missing key: {key}"
 
 
-def test_compute_display_data_uses_roi_constants(tmp_path: Path) -> None:
-    """est_turns and est_tokens must derive from analytics constants, not magic literals."""
-    from turnzero.analytics import TOKENS_PER_TURN, TURNS_SAVED_PER_INJECTION
+def test_compute_display_data_has_no_estimates(tmp_path: Path) -> None:
+    """Stats report measured outcomes; constant-based estimates are gone."""
     from turnzero.services import stats_svc
 
-    # Write a fake hook_log with 10 block injections
     log = tmp_path / "hook_log.jsonl"
     log.write_text(
         json.dumps(
@@ -89,8 +86,9 @@ def test_compute_display_data_uses_roi_constants(tmp_path: Path) -> None:
     )
 
     data = stats_svc.compute_display_data(tmp_path)
-    assert data["est_turns"] == round(10 * TURNS_SAVED_PER_INJECTION)
-    assert data["est_tokens"] == 10 * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN
+    assert "est_turns" not in data
+    assert "est_tokens" not in data
+    assert data["outcomes"]["repeat_rate"] is None
 
 
 # ── DEBT-6: compute() data_dir param + no env-var mutation ───────────────────
@@ -130,3 +128,29 @@ def test_compute_display_data_no_env_mutation(
 
     after_env = {k: v for k, v in os.environ.items() if k == "TURNZERO_DATA_DIR"}
     assert not after_env, "TURNZERO_DATA_DIR must not be set after compute_display_data()"
+
+
+# ── TST-DEBT-2: the suite must never touch a real data directory ─────────────
+
+
+def test_suite_never_uses_the_real_data_dir() -> None:
+    """Without the data_dir fixture, tests still get a throwaway data directory."""
+    from turnzero.config import get_data_dir
+
+    resolved = get_data_dir().resolve()
+    assert resolved != (Path.home() / ".turnzero").resolve()
+    assert resolved != Path("data").resolve()
+
+
+def test_logging_without_data_dir_fixture_stays_out_of_home() -> None:
+    from turnzero.config import get_data_dir
+    from turnzero.services import stats_svc
+
+    real_log = Path.home() / ".turnzero" / "hook_log.jsonl"
+    before = real_log.stat().st_size if real_log.exists() else None
+
+    stats_svc.log_injection(["b1"], ["python"], 3)
+
+    after = real_log.stat().st_size if real_log.exists() else None
+    assert after == before
+    assert (get_data_dir() / "hook_log.jsonl").exists()

@@ -14,6 +14,7 @@ Add to Claude Code .claude/settings.json:
 
 from __future__ import annotations
 
+import threading
 import time
 import uuid
 from pathlib import Path
@@ -21,7 +22,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from turnzero.config import SESSION_TTL_SECONDS, get_data_dir
-from turnzero.services import candidate_svc, retrieval_svc, stats_svc
+from turnzero.services import candidate_svc, outcome_svc, retrieval_svc, stats_svc
 from turnzero.types import (
     BLOCK_ID_SENTINELS,
     TOOL_INJECT_BLOCK,
@@ -85,6 +86,8 @@ mcp = FastMCP(
         "Use inject_block to retrieve the full text of each relevant prior before answering. "
         "SKIP list_suggested_blocks only for pure chitchat — greetings, social acknowledgments "
         "('thanks', 'looks good', 'got it'), or any message with no actionable content. "
+        "If a result has block_id 'outcome-digest', it is not a prior: show its preview "
+        "line to the user once, verbatim. "
         "\n\n"
         "RULE 2 — ALWAYS call submit_candidate when: "
         "(a) the user corrects you on any domain-specific fact, API, rule, pattern, or threshold; "
@@ -120,6 +123,9 @@ def list_suggested_blocks(
     included (inject them now); "subsequent" means they were already injected
     this session and are omitted — only new Expert Priors are returned.
 
+    About once a week one extra entry has block_id "outcome-digest". It is not
+    a prior: show its preview line to the user once, verbatim.
+
     Set inject_all=True to receive full block text inline ("full_text" field)
     and skip individual inject_block calls. Reduces N+1 round trips to 1.
 
@@ -142,7 +148,11 @@ def list_suggested_blocks(
     sid = _effective_session_id(session_id)
     try:
         suggestions = retrieval_svc.list_suggested_blocks(
-            prompt, project_root=Path.cwd(), session_id=sid, inject_all=inject_all
+            prompt,
+            project_root=Path.cwd(),
+            session_id=sid,
+            inject_all=inject_all,
+            digest=True,
         )
         stats_svc.log_tool_call(
             TOOL_LIST_SUGGESTED,
@@ -229,12 +239,13 @@ def inject_block(block_id: str, session_id: str | None = None) -> str:
 def get_stats() -> StatsData:
     """Return TurnZero usage and library statistics.
 
-    Call this when the user asks how TurnZero is doing, how many priors have
-    been injected, or what domains are covered.
+    Call this when the user asks how TurnZero is doing, whether it is working,
+    how many priors have been injected, or what domains are covered.
 
     Returns:
-        Dict with sessions, priors injected, estimated turns saved, top domains,
-        top blocks, library size, stale block count, and candidates pending review.
+        Dict with sessions, priors injected, top domains, top blocks, library
+        size, stale block count, candidates pending review, and measured
+        outcomes (repeat corrections per session, priors that held or failed).
     """
     result = stats_svc.compute()
     stats_svc.log_tool_call("get_stats", {}, result)
@@ -367,7 +378,14 @@ def learn_from_session(transcript: str, session_name: str = "mcp-session") -> st
 # ---------------------------------------------------------------------------
 
 
+def _scan_outcomes() -> None:
+    outcome_svc.scan_quietly()
+
+
 def main() -> None:
+    threading.Thread(
+        target=_scan_outcomes, daemon=True, name="turnzero-outcome-scan"
+    ).start()
     mcp.run()
 
 

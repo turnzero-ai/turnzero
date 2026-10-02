@@ -10,7 +10,8 @@ TurnZero is at **v0.17.0** (tagged, not yet on PyPI — v0.18.0 in progress on m
 - **Internal SSOT:** `internal/PROJECT_STATE.md` (Debt, Active Tickets, Launch Gate — **GITIGNORED**)
 
 - 152 Expert Priors across 40 domains shipped in wheel
-- 478 tests passing; Hit Rate@3 = 0.815 on validation set
+- 543 tests passing; Hit Rate@3 = 0.926 on validation set
+- Outcome signal: `outcome_svc` scans Claude Code transcripts for mid-session corrections, matches them to priors by per-rule vectors, and stores scores in `outcomes.jsonl` with no transcript text. The match threshold calibrates itself from the scores of ordinary turns (mean + 3 sd), and the verdict (`failed` / `miss` / `new`) is derived when stats are read. Local embedding backends only; `outcome_scan: false` in `config.yaml` turns it off. `turnzero stats` and `get_stats` report measured repeat corrections per session; the turn-saving estimates are gone.
 - Primary injection path: MCP server + local HTTP proxy (`turnzero proxy serve`, v0.17.0)
 - Proxy daemon: `turnzero proxy install` (launchd/systemd), `proxy setup cursor/windsurf/continue`
 - Continue.dev wired + validated end-to-end (Gemini 2.5 Flash). Proxy skips injection for agent mode (`<important_rules>`) and context markers (`BEGIN_ARG`, `<context>` etc).

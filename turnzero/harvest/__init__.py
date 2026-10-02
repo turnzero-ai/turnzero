@@ -23,8 +23,12 @@ from turnzero.harvest._extraction import (
 from turnzero.harvest._parsers import (
     MIN_SESSION_WORDS,
     MIN_TURN_WORDS,
+    Injection,
+    ParsedSession,
+    UserTurn,
     convert_claude_session,
     load_conversation,
+    parse_claude_session,
 )
 from turnzero.harvest._session import (
     SELF_REF_HITS_THRESHOLD,
@@ -39,6 +43,10 @@ __all__ = [
     "convert_claude_session",
     "MIN_TURN_WORDS",
     "MIN_SESSION_WORDS",
+    "parse_claude_session",
+    "ParsedSession",
+    "UserTurn",
+    "Injection",
     # session
     "scan_new_sessions",
     "is_self_referential",

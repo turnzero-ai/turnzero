@@ -297,3 +297,65 @@ def test_ollama_timeout_invalid_env_falls_back_to_default() -> None:
 def test_ollama_timeout_below_minimum_clamped() -> None:
     with patch.dict("os.environ", {"TURNZERO_OLLAMA_TIMEOUT_SECONDS": "0"}):
         assert _ollama_timeout() == 1.0
+
+
+@pytest.mark.integration
+def test_onnx_pads_to_input_length_with_identical_vectors() -> None:
+    """ONNX inputs are padded to their own length; vectors match 512-padding."""
+    if not (_is_onnx_available() and _is_onnx_model_downloaded()):
+        pytest.skip("ONNX model not available")
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
+
+    from turnzero import embed as embed_mod
+
+    text = "no, use the existing venv"
+    embed_mod._onnx_backend._cache.clear()
+    got = embed_mod._embed_onnx(text)
+
+    assert embed_mod._onnx_backend._cache["tokenizer"].padding is None
+
+    model_dir = embed_mod._get_onnx_model_dir()
+    tok = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
+    tok.enable_padding(length=512)
+    tok.enable_truncation(max_length=512)
+    session = ort.InferenceSession(
+        str(model_dir / "onnx" / "model.onnx"), providers=["CPUExecutionProvider"]
+    )
+    enc = tok.encode(text)
+    ids = np.array([enc.ids], dtype=np.int64)
+    mask = np.array([enc.attention_mask], dtype=np.int64)
+    feeds = {"input_ids": ids, "attention_mask": mask}
+    if "token_type_ids" in {i.name for i in session.get_inputs()}:
+        feeds["token_type_ids"] = np.zeros_like(ids)
+    out = session.run(None, feeds)[0].astype(np.float32)
+    weights = mask[..., np.newaxis].astype(np.float32)
+    ref = ((out * weights).sum(axis=1) / weights.sum(axis=1))[0]
+    ref = ref / np.linalg.norm(ref)
+    assert float(np.dot(got, ref)) > 0.9999
+
+
+def test_embed_local_only_never_calls_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+    """local_only=True fails rather than sending text to a remote backend."""
+    from turnzero import embed as embed_mod
+
+    sent: list[str] = []
+
+    def ollama_down(text: str) -> np.ndarray:
+        raise RuntimeError("ollama unavailable")
+
+    def fake_openai(text: str) -> np.ndarray:
+        sent.append(text)
+        return np.zeros(EMBEDDING_DIM, dtype=np.float32)
+
+    monkeypatch.setattr(embed_mod, "_is_onnx_available", lambda: False)
+    monkeypatch.setattr(embed_mod, "_embed_ollama", ollama_down)
+    monkeypatch.setattr(embed_mod, "_embed_openai", fake_openai)
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+
+    with pytest.raises(RuntimeError):
+        embed_mod.embed("private transcript text", local_only=True)
+    assert sent == []
+
+    embed_mod.embed("an opening prompt")
+    assert sent == ["an opening prompt"]

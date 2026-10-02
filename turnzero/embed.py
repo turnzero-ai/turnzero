@@ -66,7 +66,9 @@ class OnnxBackend:
 
         if "tokenizer" not in self._cache:
             tok: Any = Tokenizer.from_file(str(model_dir / "tokenizer.json"))
-            tok.enable_padding(length=512)
+            # No fixed padding: a single input needs none, and padding to 512
+            # made every call run a full-length forward pass for the same vector.
+            tok.no_padding()
             tok.enable_truncation(max_length=512)
             self._cache["tokenizer"] = tok
 
@@ -198,7 +200,9 @@ def _is_ollama_running() -> bool:
         return False
 
 
-def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
+def embed(
+    text: str, local_only: bool = False
+) -> np.ndarray[Any, np.dtype[np.float32]]:
     """Embed text, returning a float32 ndarray of shape (768,).
 
     Fallback chain:
@@ -207,7 +211,9 @@ def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
       3. OpenAI text-embedding-3-small (cloud, OPENAI_API_KEY)
 
     Everything runs locally by default. No text leaves the machine unless
-    OPENAI_API_KEY is explicitly set.
+    OPENAI_API_KEY is explicitly set. With local_only=True the OpenAI step is
+    skipped and a RuntimeError is raised instead — for callers that embed text
+    the user never chose to send anywhere, such as session transcripts.
     """
     if os.environ.get("TURNZERO_TEST_EMBEDDINGS") == "1":
         return _embed_test(text)
@@ -223,7 +229,7 @@ def embed(text: str) -> np.ndarray[Any, np.dtype[np.float32]]:
     except RuntimeError:
         pass
 
-    if os.environ.get("OPENAI_API_KEY"):
+    if os.environ.get("OPENAI_API_KEY") and not local_only:
         return _embed_openai(text)
 
     raise RuntimeError(

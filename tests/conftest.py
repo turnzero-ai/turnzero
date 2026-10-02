@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,30 @@ def _use_test_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
     """Use hash-based embeddings and lexical similarity override for all tests."""
     monkeypatch.setenv("TURNZERO_TEST_EMBEDDINGS", "1")
     monkeypatch.setattr(_retrieval, "_similarity_override", test_similarity)
+
+
+@pytest.fixture(autouse=True)
+def _isolated_data_dir(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """Give every test a throwaway data directory.
+
+    Without this, get_data_dir() resolves to ~/.turnzero (or ./data in CI) and
+    tests append to the real hook_log.jsonl and tool_call_log.jsonl. Blocks and
+    index fall back to the bundled ones. The data_dir fixture overrides this.
+    """
+    monkeypatch.setenv("TURNZERO_DATA_DIR", str(tmp_path_factory.mktemp("turnzero-data")))
+
+
+@pytest.fixture(autouse=True)
+def _no_real_transcripts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """Point the outcome scanner at an empty directory, never ~/.claude/projects."""
+    from turnzero.services import outcome_svc
+
+    empty = tmp_path_factory.mktemp("claude-projects")
+    monkeypatch.setattr(outcome_svc, "_default_projects_dir", lambda: empty)
 
 
 @pytest.fixture
@@ -102,7 +127,7 @@ def write_block_yaml() -> Callable[..., Path]:
         intent: str = "build",
     ) -> Path:
         path.parent.mkdir(parents=True, exist_ok=True)
-        verified = "2020-01-01" if stale else "2026-05-01"
+        verified = "2020-01-01" if stale else date.today().isoformat()
         path.write_text(
             f"slug: {slug}\nversion: 1.0.0\ndomain: {domain}\nintent: {intent}\n"
             f"last_verified: {verified}\ncontext_weight: 100\nconstraints: []\n"

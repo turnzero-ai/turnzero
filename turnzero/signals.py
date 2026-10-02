@@ -116,6 +116,37 @@ _SHORT_QUESTION_STARTERS: frozenset[str] = frozenset({
 })
 
 # ---------------------------------------------------------------------------
+# Correction gate — does a mid-session user turn correct the assistant?
+# ---------------------------------------------------------------------------
+
+# Matched only at the start of a turn.
+CORRECTION_OPENERS: tuple[str, ...] = (
+    "no", "nope", "nah", "wrong", "again", "actually", "stop",
+)
+
+# Matched anywhere in a turn, on word boundaries.
+CORRECTION_CUES: tuple[str, ...] = (
+    "that's wrong", "thats wrong", "that is wrong", "this is wrong", "it's wrong",
+    "that's not", "thats not", "that is not", "this is not", "not what i",
+    "not like that", "incorrect",
+    "i said", "i told you", "i asked", "as i said", "like i said",
+    "you forgot", "you missed", "you didn't", "you did not", "you keep",
+    "you should have", "you shouldn't", "you should not", "shouldn't",
+    "why did you", "why are you",
+    "don't", "do not", "stop",
+    "always use", "never use", "we never", "we always", "must always", "must never",
+    "instead", "revert", "undo",
+)
+
+# Removed from a turn before the cues are applied.
+CORRECTION_EXCLUSIONS: tuple[str, ...] = (
+    "no problem", "no worries", "no rush", "no need", "no idea", "no thanks",
+    "don't worry", "do not worry", "don't bother", "don't know", "do not know",
+    "don't mind", "don't have to", "don't think", "don't see", "don't understand",
+    "not sure", "not a bad", "not bad", "never mind", "nevermind",
+)
+
+# ---------------------------------------------------------------------------
 # Computed sets (derived — do not edit directly)
 # ---------------------------------------------------------------------------
 

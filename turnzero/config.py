@@ -36,6 +36,8 @@ _DEFAULTS: dict[str, Any] = {
         "personal": True,
     },
     "harvest_opt_in": False,
+    # Background scan of local session transcripts for the outcome scoreboard.
+    "outcome_scan": True,
     # None = all domains active (backward compat). List = only those domains score.
     "active_domains": None,
     "proxy": {

@@ -30,7 +30,10 @@ INJECTION_TOOLS: frozenset[str] = frozenset({TOOL_LIST_SUGGESTED, TOOL_INJECT_BL
 # Special block ID sentinels
 BLOCK_ID_NO_MATCH_HINT = "no-match-hint"
 BLOCK_ID_PERSONAL_LIMIT_WARNING = "personal-priors-limit-warning"
-BLOCK_ID_SENTINELS: frozenset[str] = frozenset({BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING})
+BLOCK_ID_OUTCOME_DIGEST = "outcome-digest"
+BLOCK_ID_SENTINELS: frozenset[str] = frozenset(
+    {BLOCK_ID_NO_MATCH_HINT, BLOCK_ID_PERSONAL_LIMIT_WARNING, BLOCK_ID_OUTCOME_DIGEST}
+)
 
 
 # ---------------------------------------------------------------------------
@@ -61,6 +64,14 @@ class TurnLabel(StrEnum):
 
     FIRST = "first"
     SUBSEQUENT = "subsequent"
+
+
+class Verdict(StrEnum):
+    """Outcome of a mid-session correction, relative to the prior library."""
+
+    FAILED = "failed"  # matched a prior that was injected earlier in the session
+    MISS = "miss"  # matched a prior that was not injected
+    NEW = "new"  # matched no prior
 
 
 class TelemetryEvent(StrEnum):
@@ -177,6 +188,24 @@ class ToolCallStats(TypedDict):
     by_tool: dict[str, int]
 
 
+class OutcomeStats(TypedDict):
+    """Measured prior outcomes over the last window, from outcome_svc.summarize()."""
+
+    window_days: int
+    sessions: int
+    repeat_corrections: int
+    repeat_rate: float | None
+    previous_rate: float | None
+    held: int
+    failed_total: int
+    failed: list[TopBlockEntry]
+    missed_total: int
+    missed: list[TopBlockEntry]
+    uncovered: int
+    threshold: float
+    noise_samples: int
+
+
 class StatsData(TypedDict):
     """Shape of stats_svc.compute() return value."""
 
@@ -184,13 +213,12 @@ class StatsData(TypedDict):
     priors_injected: CountWithWeek
     context_tokens_injected: ContextTokensStats
     injection_overhead: InjectionOverheadStats
-    estimated_turns_saved: int
-    estimated_tokens_saved: int
     top_domains: list[str]
     top_blocks: list[TopBlockEntry]
     library: LibraryStats
     tool_calls: ToolCallStats
     token_cost: TokenCostStats
+    outcomes: OutcomeStats
 
 
 class DisplayStatsData(TypedDict):
@@ -207,8 +235,7 @@ class DisplayStatsData(TypedDict):
     corrections_total: int
     corrections_week: int
     top_domains: list[str]
-    est_turns: int
-    est_tokens: float
+    outcomes: OutcomeStats
     blocks_total: int
     personal_count: int
     personal_weeks: int | None

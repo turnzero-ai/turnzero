@@ -227,7 +227,8 @@ High-signal source: mid-session corrections. When the AI gets it wrong and you s
 - **Client-side injection only.** TurnZero never sits in the request path between user and AI provider.
 - **Provider neutral.** Works with any MCP-compatible client.
 - **Token budget aware.** Warns when selected blocks exceed 4000 tokens (configurable).
-- **`harvest` stores transcripts locally.** The `turnzero harvest` command reads your local AI session files and writes conversation transcripts to `~/.turnzero/` for candidate extraction. Explicit opt-in — nothing is read or stored automatically. Transcripts never leave your machine. The MCP injection path never touches session content.
+- **The outcome scan reads session transcripts locally.** To measure whether priors work, TurnZero reads your local Claude Code session files (`~/.claude/projects/`) when the MCP server starts and when you run `turnzero stats`. Transcript text is held in memory and discarded; only embeddings, block ids, hashes, and counts are written to `~/.turnzero/outcomes.jsonl`. The scan uses local embedding backends only (ONNX or ollama) and never sends transcript text to OpenAI, even when `OPENAI_API_KEY` is set. It is on by default; turn it off with `outcome_scan: false` in `~/.turnzero/config.yaml`.
+- **`harvest` stores transcripts locally.** The `turnzero harvest` command reads your local AI session files and writes conversation transcripts to `~/.turnzero/` for candidate extraction. Explicit opt-in — `harvest` never runs on its own.
 
 ---
 

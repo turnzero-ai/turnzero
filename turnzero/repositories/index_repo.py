@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import sys
@@ -12,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
+from turnzero.blocks import Block
 from turnzero.embed import embed, get_model_id
 from turnzero.formatters import block_fmt
 from turnzero.repositories.block_repo import load_all_blocks, load_block
@@ -39,6 +41,14 @@ class IndexEntry:
     intent: str
     tags: list[str]
     source: str = "local"
+
+
+@dataclass
+class RuleVector:
+    """Embedding of one constraint or anti-pattern, tagged with its block."""
+
+    block_id: str
+    embedding: np.ndarray
 
 
 # ---------------------------------------------------------------------------
@@ -215,3 +225,59 @@ def append_block(
         from turnzero.config import get_blocks_dir
 
         build(get_blocks_dir(), index_path, data_dir=data_dir)
+
+
+def sync_rule_vectors(
+    blocks: dict[str, Block], path: Path, local_only: bool = False
+) -> list[RuleVector]:
+    """Return one vector per constraint and anti-pattern of every block.
+
+    Vectors are cached at path, keyed by block id and a hash of the rule text.
+    Only rules missing from the cache are embedded. local_only is passed to
+    embed(): True means rule text is never sent to a remote backend.
+    """
+    model_id = get_model_id()
+    cached: dict[str, np.ndarray] = {}
+    if path.exists():
+        try:
+            with np.load(path, allow_pickle=False) as data:
+                if str(data["model"]) == model_id:
+                    cached = dict(zip(data["keys"].tolist(), data["vecs"], strict=True))
+        except Exception:
+            # Corrupt or foreign cache file: rebuild from scratch.
+            cached = {}
+
+    keys: list[str] = []
+    vecs: list[np.ndarray] = []
+    block_ids: list[str] = []
+    for slug, block in blocks.items():
+        for rule in [*block.constraints, *block.anti_patterns]:
+            digest = hashlib.sha256(rule.encode("utf-8")).hexdigest()[:16]
+            key = f"{slug}\t{digest}"
+            vec = cached.get(key)
+            if vec is None:
+                vec = embed(rule, local_only=local_only)
+            keys.append(key)
+            vecs.append(vec)
+            block_ids.append(slug)
+
+    if keys and set(keys) != set(cached):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_path = path.with_suffix(".tmp")
+        try:
+            with tmp_path.open("wb") as f:
+                np.savez(
+                    f,
+                    model=np.array(model_id),
+                    keys=np.array(keys),
+                    vecs=np.stack(vecs).astype(np.float32),
+                )
+            os.replace(tmp_path, path)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
+
+    return [
+        RuleVector(block_id, vec)
+        for block_id, vec in zip(block_ids, vecs, strict=True)
+    ]

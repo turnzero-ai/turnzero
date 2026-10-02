@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from turnzero.config import get_data_dir
+from turnzero.services import outcome_svc
 from turnzero.types import (
     INJECTION_TOOLS,
     TOOL_SUBMIT_CANDIDATE,
@@ -187,8 +188,6 @@ def compute_display_data(data_dir: Path) -> DisplayStatsData:
         and e.get("ts", 0) >= week_ago
     )
 
-    from turnzero.analytics import TOKENS_PER_TURN, TURNS_SAVED_PER_INJECTION
-
     sessions = base["sessions"]
     priors = base["priors_injected"]
     ctx_tokens = base["context_tokens_injected"]
@@ -206,8 +205,7 @@ def compute_display_data(data_dir: Path) -> DisplayStatsData:
         "corrections_total": corrections_total,
         "corrections_week": corrections_week,
         "top_domains": base["top_domains"],
-        "est_turns": round(priors["total"] * TURNS_SAVED_PER_INJECTION),
-        "est_tokens": priors["total"] * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN,
+        "outcomes": base["outcomes"],
         "blocks_total": base["library"]["total_blocks"],
         "personal_count": personal_count,
         "personal_weeks": personal_weeks,
@@ -252,11 +250,6 @@ def compute(data_dir: Path | None = None) -> StatsData:
         e.get("tokens_injected", 0) for e in entries if e.get("ts", 0) >= week_ago
     )
 
-    from turnzero.analytics import TOKENS_PER_TURN, TURNS_SAVED_PER_INJECTION
-
-    est_turns = round(priors_total * TURNS_SAVED_PER_INJECTION)
-    est_tokens = round(priors_total * TURNS_SAVED_PER_INJECTION * TOKENS_PER_TURN)
-
     try:
         blocks = _load_active_blocks()
     except FileNotFoundError:
@@ -284,8 +277,6 @@ def compute(data_dir: Path | None = None) -> StatsData:
             "this_week": tool_stats["injection_overhead_week"],
             "note": "MCP call tokens for list_suggested_blocks + inject_block (len(json) // 4)",
         },
-        "estimated_turns_saved": est_turns,
-        "estimated_tokens_saved": est_tokens,
         "top_domains": [d for d, _ in domain_counts.most_common(5)],
         "top_blocks": [
             {"block_id": slug, "count": count}
@@ -310,51 +301,5 @@ def compute(data_dir: Path | None = None) -> StatsData:
             "this_week": tool_stats["tokens_in_week"] + tool_stats["tokens_out_week"],
             "submit_candidate_total": tool_stats["submit_tokens_total"],
         },
-    }
-
-
-def get_global_roi(data_dir: Path) -> dict[str, Any]:
-    """Aggregate session-level ROI across all historical SessionAnalytics files."""
-    from turnzero.analytics import SessionAnalytics, SessionEvent
-
-    session_dir = data_dir / "sessions"
-    if not session_dir.exists():
-        return {"total_turns_saved": 0, "total_minutes_saved": 0, "total_sessions": 0}
-
-    total_turns = 0.0
-    total_minutes = 0.0
-    total_injections = 0
-    total_misses = 0
-    session_count = 0
-
-    for path in session_dir.glob("*.json"):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            analytics = SessionAnalytics(
-                session_id=data["session_id"], start_time=data["start_time"]
-            )
-            analytics.events = [
-                SessionEvent(
-                    timestamp=e["timestamp"], event_type=e["type"], details=e["details"]
-                )
-                for e in data["events"]
-            ]
-            roi = analytics.calculate_roi()
-            total_turns += roi["turns_saved"]
-            total_minutes += roi["minutes_saved"]
-            total_injections += roi["injection_count"]
-            total_misses += roi["miss_count"]
-            session_count += 1
-        except Exception:
-            continue
-
-    return {
-        "total_turns_saved": round(total_turns, 1),
-        "total_minutes_saved": round(total_minutes, 1),
-        "total_injections": total_injections,
-        "total_misses": total_misses,
-        "total_sessions": session_count,
-        "historical_precision": total_injections / (total_injections + total_misses)
-        if (total_injections + total_misses) > 0
-        else 1.0,
+        "outcomes": outcome_svc.summarize(resolved),
     }

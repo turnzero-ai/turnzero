@@ -487,6 +487,16 @@ def test_get_stats_includes_token_cost(data_dir: Path) -> None:
     assert result["token_cost"]["total_out"] >= 0
 
 
+def test_get_stats_reports_measured_outcomes(data_dir: Path) -> None:
+    from turnzero.mcp_server import get_stats
+
+    result = get_stats()
+    assert result["outcomes"]["sessions"] == 0
+    assert result["outcomes"]["repeat_rate"] is None
+    assert "estimated_turns_saved" not in result
+    assert "estimated_tokens_saved" not in result
+
+
 # ---------------------------------------------------------------------------
 # WF-1: process-scoped auto session_id
 # ---------------------------------------------------------------------------
@@ -623,3 +633,101 @@ def test_build_block_dict_uses_submission_fields() -> None:
     assert d["confidence"] == 0.8
     assert d["last_verified"] == "2026-05-20"
     assert d["archived"] is False
+
+
+# ---------------------------------------------------------------------------
+# Outcome digest and background scan
+# ---------------------------------------------------------------------------
+
+
+def _write_recent_outcome_sessions(data_dir: Path, count: int) -> None:
+    import time
+
+    ts = time.time() - 3600
+    rows = [
+        {
+            "kind": "session",
+            "session": f"s{i}",
+            "project": "p",
+            "ts": ts,
+            "user_turns": 3,
+            "injected": ["a"],
+            "lines_scanned": 9,
+            "mtime": ts,
+        }
+        for i in range(count)
+    ]
+    (data_dir / "outcomes.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+
+def test_list_suggested_blocks_handler_adds_weekly_digest(data_dir: Path) -> None:
+    from turnzero.mcp_server import list_suggested_blocks
+
+    _write_recent_outcome_sessions(data_dir, 10)
+
+    first = list_suggested_blocks("build a FastAPI async REST API", session_id="digest-1")
+    assert first[-1]["block_id"] == "outcome-digest"
+    assert "repeat corrections/session" in first[-1]["preview"]
+
+    stale_day = {"week": json.loads((data_dir / "outcome_digest.json").read_text())["week"], "date": "2000-01-01"}
+    (data_dir / "outcome_digest.json").write_text(json.dumps(stale_day))
+    second = list_suggested_blocks("build a FastAPI async REST API", session_id="digest-2")
+    assert all(r["block_id"] != "outcome-digest" for r in second)
+
+    log_lines = (data_dir / "tool_call_log.jsonl").read_text().splitlines()
+    assert "outcome-digest" not in json.loads(log_lines[0]).get("block_ids", [])
+
+
+def test_service_list_suggested_blocks_has_no_digest_by_default(data_dir: Path) -> None:
+    _write_recent_outcome_sessions(data_dir, 10)
+
+    results = _list_suggested_blocks("build a FastAPI async REST API", session_id="plain")
+
+    assert all(r["block_id"] != "outcome-digest" for r in results)
+
+
+def test_main_starts_background_outcome_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+
+    from turnzero import mcp_server
+    from turnzero.services import outcome_svc
+
+    started = threading.Event()
+    monkeypatch.setattr(outcome_svc, "scan_quietly", started.set)
+    monkeypatch.setattr(mcp_server.mcp, "run", lambda: None)
+
+    mcp_server.main()
+
+    assert started.wait(timeout=5)
+
+
+def test_list_suggested_blocks_survives_damaged_outcomes_file(data_dir: Path) -> None:
+    from turnzero.mcp_server import list_suggested_blocks
+
+    _write_recent_outcome_sessions(data_dir, 10)
+    with (data_dir / "outcomes.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps({"kind": "session", "session": "bad", "ts": "yesterday"}) + "\n")
+        f.write(json.dumps({"kind": "correction", "session": "bad", "ts": 1.0, "verdict": "failed"}) + "\n")
+
+    results = list_suggested_blocks("build a FastAPI async REST API", session_id="damaged")
+
+    assert any(r["block_id"].startswith("fastapi") for r in results)
+
+
+def test_list_suggested_blocks_survives_digest_failure(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The digest is garnish; it must never take the injection path down."""
+    from turnzero.mcp_server import list_suggested_blocks
+    from turnzero.services import outcome_svc
+
+    def broken(data_dir: Path) -> str:
+        raise ValueError("unexpected")
+
+    monkeypatch.setattr(outcome_svc, "weekly_line", broken)
+
+    results = list_suggested_blocks("build a FastAPI async REST API", session_id="broken")
+
+    assert any(r["block_id"].startswith("fastapi") for r in results)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import numpy as np
@@ -117,3 +118,85 @@ def test_build_no_blocks_raises(tmp_path: Path) -> None:
         from turnzero.index import build
 
         build(blocks_dir, index_path)
+
+
+# ---------------------------------------------------------------------------
+# sync_rule_vectors
+# ---------------------------------------------------------------------------
+
+
+def test_sync_rule_vectors_returns_one_vector_per_rule(
+    tmp_path: Path, make_block: Any
+) -> None:
+    from turnzero.repositories.index_repo import sync_rule_vectors
+
+    blocks = {
+        "a": make_block("a", "python", constraints=["Use venv", "Use ruff"]),
+        "b": make_block("b", "python", constraints=["Use mypy"]),
+    }
+    cache = tmp_path / "rule_vectors.npz"
+    vectors = sync_rule_vectors(blocks, cache)
+
+    assert [v.block_id for v in vectors] == ["a", "a", "b"]
+    assert vectors[0].embedding.shape == (EMBEDDING_DIM,)
+    assert cache.exists()
+
+
+def test_sync_rule_vectors_embeds_only_missing_rules(
+    tmp_path: Path, make_block: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from turnzero.repositories import index_repo
+
+    cache = tmp_path / "rule_vectors.npz"
+    blocks = {"a": make_block("a", "python", constraints=["Use venv", "Use ruff"])}
+    index_repo.sync_rule_vectors(blocks, cache)
+
+    embedded: list[str] = []
+    real_embed = index_repo.embed
+
+    def spy(text: str, **kwargs: Any) -> Any:
+        embedded.append(text)
+        return real_embed(text, **kwargs)
+
+    monkeypatch.setattr(index_repo, "embed", spy)
+    blocks = {"a": make_block("a", "python", constraints=["Use venv", "Use black"])}
+    vectors = index_repo.sync_rule_vectors(blocks, cache)
+
+    assert embedded == ["Use black"]
+    assert len(vectors) == 2
+
+
+def test_sync_rule_vectors_rebuilds_corrupt_cache(
+    tmp_path: Path, make_block: Any
+) -> None:
+    from turnzero.repositories.index_repo import sync_rule_vectors
+
+    cache = tmp_path / "rule_vectors.npz"
+    cache.write_bytes(b"not a zip archive")
+    blocks = {"a": make_block("a", "python", constraints=["Use venv"])}
+
+    assert len(sync_rule_vectors(blocks, cache)) == 1
+    assert len(sync_rule_vectors(blocks, cache)) == 1
+
+
+def test_sync_rule_vectors_ignores_cache_from_another_model(
+    tmp_path: Path, make_block: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from turnzero.repositories import index_repo
+
+    cache = tmp_path / "rule_vectors.npz"
+    blocks = {"a": make_block("a", "python", constraints=["Use venv", "Use ruff"])}
+    index_repo.sync_rule_vectors(blocks, cache)
+
+    embedded: list[str] = []
+    real_embed = index_repo.embed
+
+    def spy(text: str, **kwargs: Any) -> Any:
+        embedded.append(text)
+        return real_embed(text, **kwargs)
+
+    monkeypatch.setattr(index_repo, "embed", spy)
+    monkeypatch.setattr(index_repo, "get_model_id", lambda: "some-other-model")
+    index_repo.sync_rule_vectors(blocks, cache)
+
+    assert embedded == ["Use venv", "Use ruff"]

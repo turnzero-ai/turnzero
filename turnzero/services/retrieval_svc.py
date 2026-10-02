@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 from turnzero.blocks import Block
@@ -32,6 +33,7 @@ from turnzero.telemetry import (
 )
 from turnzero.types import (
     BLOCK_ID_NO_MATCH_HINT,
+    BLOCK_ID_OUTCOME_DIGEST,
     BLOCK_ID_PERSONAL_LIMIT_WARNING,
     BlockData,
     Intent,
@@ -234,6 +236,7 @@ def list_suggested_blocks(
     project_root: Path | None = None,
     session_id: str | None = None,
     inject_all: bool = False,
+    digest: bool = False,
 ) -> list[SuggestionEntry]:
     """Return ranked block suggestions for prompt as serialisable dicts."""
     from turnzero.retrieval import get_identity_context
@@ -285,6 +288,28 @@ def list_suggested_blocks(
                 ),
             )
         ]
+
+    if digest and is_turn_0:
+        from turnzero.services import outcome_svc
+
+        # The digest is garnish on the injection path: it must never break it.
+        line = None
+        with contextlib.suppress(Exception):
+            line = outcome_svc.weekly_line(get_data_dir())
+        if line:
+            formatted.append(
+                SuggestionEntry(
+                    block_id=BLOCK_ID_OUTCOME_DIGEST,
+                    score=0.0,
+                    domain="system",
+                    intent=Intent.REVIEW,
+                    tags=["digest"],
+                    context_weight=0,
+                    stale=False,
+                    turn=turn,
+                    preview=line,
+                )
+            )
     return formatted
 
 

@@ -16,7 +16,7 @@ AI memory remembers *you*. TurnZero remembers your *domain*. Native memory is pe
 
 **Is my data private? Does TurnZero send my prompts anywhere?**
 
-Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks`, your prompt is embedded locally either via ONNX (in-process, default) or via ollama. If neither is available and you choose that backend, it can be embedded remotely via OpenAI's embeddings API. In all cases, TurnZero discards the raw text immediately after embedding and compares only the embedding against a local index. The `harvest` command, which reads past session transcripts, is an explicit opt-in step — nothing is read automatically, and transcripts never leave your machine. The default MCP injection path never touches session content at all.
+Raw prompt text is never stored by TurnZero. When you run `list_suggested_blocks`, your prompt is embedded locally either via ONNX (in-process, default) or via ollama. If neither is available and you choose that backend, it can be embedded remotely via OpenAI's embeddings API. In all cases, TurnZero discards the raw text immediately after embedding and compares only the embedding against a local index. Two features read past session transcripts, both locally. The outcome scan runs when the MCP server starts and when you run `turnzero stats`: it reads your Claude Code session files to count mid-session corrections, keeps only embeddings, block ids, hashes, and counts, never stores transcript text, and never sends it to a remote embedding backend. It is on by default; set `outcome_scan: false` in `~/.turnzero/config.yaml` to turn it off. The `harvest` command is an explicit opt-in step and never runs on its own.
 
 ---
 

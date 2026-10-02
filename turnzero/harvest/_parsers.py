@@ -4,11 +4,42 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from turnzero.types import BLOCK_ID_SENTINELS, TOOL_INJECT_BLOCK, TOOL_LIST_SUGGESTED
+
 MIN_TURN_WORDS = 3
 MIN_SESSION_WORDS = 5
+
+_TURNZERO_TOOL_MARK = "turnzero"
+# Text Claude Code writes into "user" entries that the user never typed.
+_SYNTHETIC_PREFIXES = ("<", "[Request interrupted")
+
+
+@dataclass(frozen=True)
+class UserTurn:
+    line: int
+    ts: float
+    text: str
+    after_assistant: bool
+
+
+@dataclass(frozen=True)
+class Injection:
+    line: int
+    block_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ParsedSession:
+    cwd: str | None
+    lines: int
+    last_ts: float
+    user_turns: list[UserTurn]
+    injections: list[Injection]
 
 
 def load_conversation(path: Path) -> str:
@@ -232,3 +263,150 @@ def convert_claude_session(jsonl_path: Path) -> str:
         turns.append(f"{label}: {text}")
 
     return "\n\n".join(turns)
+
+
+# Transcript entries come from json.loads, so their shape is only known at runtime.
+def _entry_ts(entry: dict[str, Any]) -> float:
+    raw = entry.get("timestamp")
+    if not isinstance(raw, str):
+        return 0.0
+    try:
+        return datetime.fromisoformat(raw).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def _typed_text(entry: dict[str, Any], content: Any) -> str | None:
+    if entry.get("isSidechain") or entry.get("isMeta") or entry.get("isCompactSummary"):
+        return None
+    if "toolUseResult" in entry:
+        return None
+    origin = entry.get("origin")
+    if isinstance(origin, dict) and origin.get("kind") != "human":
+        return None
+    if isinstance(content, str):
+        parts = [content]
+    elif isinstance(content, list):
+        if any(isinstance(i, dict) and i.get("type") == "tool_result" for i in content):
+            return None
+        parts = [
+            str(i.get("text", ""))
+            for i in content
+            if isinstance(i, dict) and i.get("type") == "text"
+        ]
+    else:
+        return None
+    typed = [
+        p.strip()
+        for p in parts
+        if p.strip() and not p.lstrip().startswith(_SYNTHETIC_PREFIXES)
+    ]
+    return "\n".join(typed) or None
+
+
+def _result_block_ids(content: Any) -> tuple[str, ...]:
+    if isinstance(content, list):
+        content = "".join(
+            str(i.get("text", ""))
+            for i in content
+            if isinstance(i, dict) and i.get("type") == "text"
+        )
+    if not isinstance(content, str):
+        return ()
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        return ()
+    entries = payload.get("result") if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        return ()
+    return tuple(
+        e["block_id"]
+        for e in entries
+        if isinstance(e, dict)
+        and isinstance(e.get("block_id"), str)
+        and e["block_id"] not in BLOCK_ID_SENTINELS
+    )
+
+
+def _tool_use_injections(
+    items: list[Any], line_no: int, pending_suggest_ids: set[str]
+) -> list[Injection]:
+    # An inject_all suggestion only injects once its result arrives, so its id
+    # is added to pending_suggest_ids for _tool_result_injections to resolve.
+    found: list[Injection] = []
+    for item in items:
+        if not isinstance(item, dict) or item.get("type") != "tool_use":
+            continue
+        name = str(item.get("name", ""))
+        args = item.get("input")
+        if _TURNZERO_TOOL_MARK not in name or not isinstance(args, dict):
+            continue
+        if name.endswith(TOOL_INJECT_BLOCK) and isinstance(args.get("block_id"), str):
+            found.append(Injection(line_no, (args["block_id"],)))
+        elif name.endswith(TOOL_LIST_SUGGESTED) and args.get("inject_all") is True:
+            pending_suggest_ids.add(str(item.get("id")))
+    return found
+
+
+def _tool_result_injections(
+    items: list[Any], line_no: int, pending_suggest_ids: set[str]
+) -> list[Injection]:
+    found: list[Injection] = []
+    for item in items:
+        if (
+            isinstance(item, dict)
+            and item.get("type") == "tool_result"
+            and item.get("tool_use_id") in pending_suggest_ids
+        ):
+            block_ids = _result_block_ids(item.get("content"))
+            if block_ids:
+                found.append(Injection(line_no, block_ids))
+    return found
+
+
+def parse_claude_session(jsonl_path: Path) -> ParsedSession:
+    """Parse a Claude Code session into typed user turns and TurnZero injections.
+
+    Only text the user typed counts as a user turn. A final line that is not
+    yet complete JSON is left out of ``lines`` so a later scan reads it again.
+    """
+    raw_lines = jsonl_path.read_text(encoding="utf-8", errors="replace").splitlines()
+    complete = len(raw_lines)
+    cwd: str | None = None
+    last_ts = 0.0
+    seen_assistant = False
+    user_turns: list[UserTurn] = []
+    injections: list[Injection] = []
+    pending_suggest_ids: set[str] = set()
+
+    for line_no, raw in enumerate(raw_lines):
+        try:
+            entry = json.loads(raw)
+        except json.JSONDecodeError:
+            if line_no == len(raw_lines) - 1:
+                complete = line_no
+            continue
+        if not isinstance(entry, dict) or entry.get("type") not in ("user", "assistant"):
+            continue
+        if cwd is None and isinstance(entry.get("cwd"), str):
+            cwd = entry["cwd"]
+        ts = _entry_ts(entry)
+        last_ts = max(last_ts, ts)
+        msg = entry.get("message")
+        content = msg.get("content") if isinstance(msg, dict) else None
+        items = content if isinstance(content, list) else []
+
+        if entry["type"] == "assistant":
+            if entry.get("isSidechain"):
+                continue
+            seen_assistant = True
+            injections.extend(_tool_use_injections(items, line_no, pending_suggest_ids))
+            continue
+
+        injections.extend(_tool_result_injections(items, line_no, pending_suggest_ids))
+        text = _typed_text(entry, content)
+        if text is not None:
+            user_turns.append(UserTurn(line_no, ts, text, seen_assistant))
+
+    return ParsedSession(cwd, complete, last_ts, user_turns, injections)

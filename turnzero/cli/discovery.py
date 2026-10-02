@@ -41,9 +41,9 @@ from turnzero.retrieval import (
 from turnzero.retrieval import (
     query as _query,
 )
-from turnzero.services import retrieval_svc, stats_svc
+from turnzero.services import outcome_svc, retrieval_svc, stats_svc
 from turnzero.telemetry import track_list_viewed, track_stats_viewed
-from turnzero.types import DisplayStatsData, Tier
+from turnzero.types import DisplayStatsData, OutcomeStats, Tier, TopBlockEntry
 from turnzero.upgrade import check_for_upgrade
 
 discovery_app = typer.Typer(no_args_is_help=True)
@@ -69,6 +69,67 @@ def _load_stats_data(data_dir: Path) -> DisplayStatsData:
     return stats_svc.compute_display_data(data_dir)
 
 
+def _block_counts(entries: list[TopBlockEntry]) -> str:
+    return ", ".join(f"{e['block_id']} ({e['count']}×)" for e in entries)
+
+
+def _render_outcomes(outcomes: OutcomeStats) -> None:
+    """Render the measured-outcomes block."""
+    sessions = outcomes["sessions"]
+    window = outcomes["window_days"]
+    console.print(
+        f"  [bold]Outcomes[/bold]  [dim]last {window} days · "
+        f"measured from {sessions} sessions[/dim]\n"
+    )
+    rate = outcomes["repeat_rate"]
+    if rate is None:
+        console.print(
+            f"  [dim]Not enough data yet — {sessions} of "
+            f"{outcome_svc.MIN_SESSIONS} sessions scanned.[/dim]\n"
+        )
+        return
+
+    table = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
+    table.add_column("", style="dim", min_width=30)
+    table.add_column("")
+
+    trend = ""
+    previous = outcomes["previous_rate"]
+    if previous is not None:
+        arrow = "▼" if rate < previous else "▲" if rate > previous else "="
+        trend = f"  [dim]{arrow} {previous:.2f} previous {window} days[/dim]"
+    table.add_row("Repeat corrections / session", f"[bold]{rate:.2f}[/bold]{trend}")
+    table.add_row(
+        "Priors that held",
+        f"[green]{outcomes['held']}[/green]  [dim]injected, never corrected[/dim]",
+    )
+    table.add_row(
+        "Priors that failed",
+        f"[red]{outcomes['failed_total']}[/red]  "
+        f"[dim]{_block_counts(outcomes['failed'])}[/dim]",
+    )
+    table.add_row(
+        "Retrieval misses",
+        f"[yellow]{outcomes['missed_total']}[/yellow]  "
+        f"[dim]{_block_counts(outcomes['missed'])}[/dim]",
+    )
+    table.add_row(
+        "Uncovered corrections",
+        f"~{outcomes['uncovered']}  [dim]rough count, no prior exists[/dim]",
+    )
+    console.print(table)
+    samples = outcomes["noise_samples"]
+    source = (
+        f"self-calibrated from {samples} ordinary turns"
+        if samples >= outcome_svc.MIN_NOISE_SAMPLES
+        else f"default until {outcome_svc.MIN_NOISE_SAMPLES} ordinary turns "
+        f"are scored ({samples} so far)"
+    )
+    console.print(
+        f"  [dim]Match threshold {outcomes['threshold']:.2f} · {source}[/dim]\n"
+    )
+
+
 def _render_stats(data: DisplayStatsData) -> None:
     """Render stats tables and nudges to the console."""
 
@@ -76,6 +137,7 @@ def _render_stats(data: DisplayStatsData) -> None:
 
     console.print()
     console.print("[bold]📎 TurnZero — Stats[/bold]\n")
+    _render_outcomes(data["outcomes"])
 
     if sessions_total > 0:
         parts = [
@@ -122,11 +184,6 @@ def _render_stats(data: DisplayStatsData) -> None:
                 f"[bold]{data['overhead_total']:,}[/bold] tokens"
                 f"  [dim](+{data['overhead_week']:,} this week)[/dim]",
             )
-        usage.add_row(
-            "Est. turns saved",
-            f"[bold green]~{data['est_turns']}[/bold green]"
-            f"  [dim](~{int(data['est_tokens'] / 1000)}k tokens est. saved)[/dim]",
-        )
         if data["top_domains"]:
             usage.add_row(
                 "Top domains",
@@ -734,6 +791,8 @@ def stats() -> None:
     """Show injection history and block library statistics."""
 
     data_dir = get_data_dir()
+    with console.status("Scanning recent sessions…"):
+        outcome_svc.scan_quietly(data_dir)
     data = _load_stats_data(data_dir)
 
     track_stats_viewed(sessions_total=data["sessions_total"], blocks_total=data["blocks_total"])

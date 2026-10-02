@@ -432,6 +432,75 @@ def test_stats_personal_prior_growth(
     assert "0 →" in result.output
 
 
+def _write_outcomes(data_dir: Path, n_sessions: int) -> None:
+    import json
+    import time
+
+    now = time.time() - 3600
+    rows: list[dict] = [
+        {
+            "kind": "session",
+            "session": f"s{i}",
+            "project": "p",
+            "ts": now,
+            "user_turns": 3,
+            "injected": ["held-block", "failed-block"],
+            "lines_scanned": 9,
+            "mtime": now,
+        }
+        for i in range(n_sessions)
+    ]
+    rows += [
+        {
+            "kind": "correction",
+            "session": "s0",
+            "ts": now,
+            "turn": 4,
+            "score": score,
+            "block_id": block_id,
+            "injected": injected,
+        }
+        for score, block_id, injected in (
+            (0.9, "failed-block", True),
+            (0.9, "failed-block", True),
+            (0.9, "missed-block", False),
+            (0.3, "failed-block", True),
+        )
+    ]
+    (data_dir / "outcomes.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+
+
+def test_stats_shows_measured_outcomes(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_outcomes(data_dir, 10)
+    result = runner.invoke(app, ["stats"])
+
+    assert result.exit_code == 0
+    assert "Outcomes" in result.output
+    assert "measured from 10 sessions" in result.output
+    assert "Repeat corrections" in result.output
+    assert "0.30" in result.output
+    assert "failed-block (2×)" in result.output
+    assert "missed-block (1×)" in result.output
+    assert "Match threshold" in result.output
+    assert "0.72" in result.output
+    assert "Est. turns saved" not in result.output
+
+
+def test_stats_says_not_enough_data_under_ten_sessions(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_outcomes(data_dir, 4)
+    result = runner.invoke(app, ["stats"])
+
+    assert result.exit_code == 0
+    assert "Not enough data yet" in result.output
+    assert "Repeat corrections" not in result.output
+
+
 # ---------------------------------------------------------------------------
 # RET-7: setup finale interactive demo
 # ---------------------------------------------------------------------------

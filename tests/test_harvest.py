@@ -258,3 +258,144 @@ def test_write_candidate_round_trips(tmp_path: Path) -> None:
     assert loaded["id"] == "roundtrip-build"
     assert loaded["constraints"] == ["Enable strict mode"]
     assert loaded["tags"] == ["ts", "strict"]
+
+
+# ---------------------------------------------------------------------------
+# parse_claude_session
+# ---------------------------------------------------------------------------
+
+
+def test_parse_claude_session_keeps_typed_turns(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import assistant, user, write_transcript
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(
+        tmp_path,
+        "s",
+        [user("set up the project", 0), assistant("Done.", 1), user("now add tests", 2)],
+    )
+    parsed = parse_claude_session(path)
+
+    assert [(t.line, t.text, t.after_assistant) for t in parsed.user_turns] == [
+        (0, "set up the project", False),
+        (2, "now add tests", True),
+    ]
+    assert parsed.cwd == "/work/proj"
+    assert parsed.lines == 3
+    assert parsed.last_ts == parsed.user_turns[1].ts > parsed.user_turns[0].ts
+
+
+def test_parse_claude_session_drops_synthetic_user_entries(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import (
+        assistant,
+        tool_result,
+        user,
+        write_transcript,
+    )
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(
+        tmp_path,
+        "s",
+        [
+            assistant("Hi.", 0),
+            tool_result("t0", ["some-block"], 1),
+            user("expanded skill text", 2, isMeta=True),
+            user("subagent prompt", 3, isSidechain=True),
+            user("summary of earlier turns", 4, isCompactSummary=True),
+            user("background task finished", 5, origin={"kind": "task-notification"}),
+            user("<command-name>/clear</command-name>", 6),
+            user("[Request interrupted by user]", 7),
+            user("the only typed turn", 8),
+        ],
+    )
+    parsed = parse_claude_session(path)
+
+    assert [t.text for t in parsed.user_turns] == ["the only typed turn"]
+
+
+def test_parse_claude_session_extracts_injections(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import (
+        assistant,
+        inject_call,
+        suggest_call,
+        tool_result,
+        user,
+        write_transcript,
+    )
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(
+        tmp_path,
+        "s",
+        [
+            user("build it", 0),
+            assistant("Looking.", 1, tool_uses=[suggest_call("t1")]),
+            tool_result("t1", ["block-a", "personal-priors-limit-warning"], 2),
+            assistant("More.", 3, tool_uses=[suggest_call("t2", inject_all=False)]),
+            tool_result("t2", ["block-preview-only"], 4),
+            assistant("Reading.", 5, tool_uses=[inject_call("block-b")]),
+        ],
+    )
+    parsed = parse_claude_session(path)
+
+    assert [(i.line, i.block_ids) for i in parsed.injections] == [
+        (2, ("block-a",)),
+        (5, ("block-b",)),
+    ]
+
+
+def test_parse_claude_session_skips_malformed_line(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import assistant, user, write_transcript
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(tmp_path, "s", [user("first", 0), assistant("ok", 1)])
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text + "{not json\n" + json.dumps(user("second", 2)) + "\n")
+    parsed = parse_claude_session(path)
+
+    assert [t.text for t in parsed.user_turns] == ["first", "second"]
+    assert parsed.lines == 4
+
+
+def test_parse_claude_session_does_not_count_half_written_last_line(
+    tmp_path: Path,
+) -> None:
+    from tests.fixtures.transcripts import assistant, user, write_transcript
+    from turnzero.harvest import parse_claude_session
+
+    path = write_transcript(tmp_path, "s", [user("first", 0), assistant("ok", 1)])
+    half = json.dumps(user("still being written", 2))[:25]
+    path.write_text(path.read_text(encoding="utf-8") + half)
+    parsed = parse_claude_session(path)
+
+    assert parsed.lines == 2
+    assert [t.text for t in parsed.user_turns] == ["first"]
+
+
+def test_parse_claude_session_handles_entries_without_origin(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import assistant, user, write_transcript
+    from turnzero.harvest import parse_claude_session
+
+    old_style = user("typed in an older client", 1)
+    del old_style["origin"]
+    path = write_transcript(tmp_path, "s", [assistant("Hi.", 0), old_style])
+    parsed = parse_claude_session(path)
+
+    assert [t.text for t in parsed.user_turns] == ["typed in an older client"]
+
+
+def test_parse_claude_session_keeps_text_next_to_image(tmp_path: Path) -> None:
+    from tests.fixtures.transcripts import assistant, user, write_transcript
+    from turnzero.harvest import parse_claude_session
+
+    with_image = user("ignored", 1)
+    with_image["message"]["content"] = [
+        {"type": "image", "source": {"type": "base64", "data": "AAAA"}},
+        {"type": "text", "text": "<system-reminder>injected</system-reminder>"},
+        {"type": "text", "text": "the layout is off, see screenshot"},
+    ]
+    path = write_transcript(tmp_path, "s", [assistant("Hi.", 0), with_image])
+    parsed = parse_claude_session(path)
+
+    assert [t.text for t in parsed.user_turns] == ["the layout is off, see screenshot"]

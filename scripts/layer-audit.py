@@ -70,12 +70,6 @@ RULES: list[Rule] = [
 
 KNOWN_VIOLATIONS: list[KnownViolation] = [
     KnownViolation(
-        file_suffix="analytics.py",
-        import_prefix="turnzero.services",
-        reason="Backwards-compat shim in get_global_roi() — deferred import, documented debt. "
-               "Fix: remove shim, migrate callers to stats_svc.get_global_roi() directly.",
-    ),
-    KnownViolation(
         file_suffix="cli/review.py",
         import_prefix="turnzero.repositories",
         reason="CLI imports block_repo.update_fields directly. "
